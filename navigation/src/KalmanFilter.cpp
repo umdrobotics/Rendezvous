@@ -11,15 +11,21 @@ using namespace Eigen;
 // constructor
 KalmanFilter::KalmanFilter()
 {
-    float sigma_ax = 0.1; // cause max acceleration = 1.5 m/s2
-    float sigma_ay = 0.1;
+    double sigma_ax = 0.1; // cause max acceleration = 1.5 m/s2
+    double sigma_ay = 0.1;
 
-    float dt = 0.1;
-    float dpt = 0.05; // for prediction
+    double dgt = 0.1;  // for GPS
+    double dat = 0.033;	// for Apriltag
+    double dpt = 0.025; // for prediction
 
     // Initialize system matrixes
-    A_ <<   1, 0, dt, 0,
-            0, 1, 0, dt,
+    Aa_ <<  1, 0, dat, 0,
+            0, 1, 0, dat,
+            0, 0, 1, 0,
+            0, 0, 0, 1;
+    
+    Ag_ <<  1, 0, dgt, 0,
+            0, 1, 0, dgt,
             0, 0, 1, 0,
             0, 0, 0, 1;
             
@@ -31,7 +37,8 @@ KalmanFilter::KalmanFilter()
     // B_ = Eigen::MatrixXd(4,2);
     B_ = 0 ;
 
-    C_ = MatrixXd::Identity(4, 4);
+    Cg_ = MatrixXd::Identity(4, 4);
+    Ca_ = MatrixXd::Identity(2, 2);
 
     // Initialize uncertainty and noise
     Q_ <<   pow(dt,4.0)/4*pow(sigma_ax,2.0), 0, pow(dt,3.0)/2*pow(sigma_ax,2.0), 0,
@@ -39,11 +46,13 @@ KalmanFilter::KalmanFilter()
             pow(dt,3.0)/2*pow(sigma_ax,2.0), 0, pow(dt,2.0)*pow(sigma_ax,2.0), 0,
             0, pow(dt,3.0)/2*pow(sigma_ay,2.0), 0, pow(dt,2.0)*pow(sigma_ay,2.0);
 
-    R_ <<   0.3, 0, 0, 0,
+    Rg_ <<  0.3, 0, 0, 0,
             0, 0.3, 0, 0,
             0, 0, 0.18, 0,
             0, 0, 0, 0.18;    // noise, sigma = 0.5
-
+            
+    Ra_ <<  0.1, 0,
+            0, 0.1;
 
     nx_ = A_.cols();
 
@@ -72,7 +81,8 @@ void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
 	if (!IsXhatInitialized_){
 
         xhat_ = xk;
-        P_ = MatrixXd::Identity(4, 4);
+        Pg_ = MatrixXd::Identity(4, 4);
+        Pa_ = MatrixXd::Identity(2, 2);
         
         xEstmWO_ = xhat_;
         
@@ -81,14 +91,14 @@ void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
 }
 
 
-Vector4d KalmanFilter::Update(Vector4d xk)
+Vector4d KalmanFilter::UpdateForGPS(Vector4d xk)
 {
     
     Vector4d output = xk;
 
     // Predict
-    Vector4d xpred = A_ * xhat_ ;              // local var, prediction for time k
-    Matrix4d ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
+    Vector4d xpred = Ag_ * xhat_ ;              // local var, prediction for time k
+    Matrix4d ppred = Ag_ * P_ * Ag_.transpose() + Q_; // local var, prediction for time k
 
     // Compute Kalman Gain
     Vector4d innovation = output - C_ * xpred;

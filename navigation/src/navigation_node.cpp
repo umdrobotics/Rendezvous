@@ -42,6 +42,8 @@
 using namespace std;
 using namespace Eigen;
 
+//~ #define EKF_DEBUG
+
 //~ #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
 #define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/GoToTruck_"
 #define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/AutonomousLanding_"
@@ -76,8 +78,6 @@ using namespace Eigen;
 // LQR integrator
 #define KI (0.03)
 #define DT (0.08)
-
-//~ #define EKF_DEBUG
 
 DJIDrone* _ptrDrone;
 
@@ -998,12 +998,19 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     _TargetLocalPositionPub.publish(_msgTargetLocalPosition);
 
 
-    // Sensor fusion.
-    // Pushed into queue back
-    if (_queMsgTargetLocalPosition.size() > 29){
-        _queMsgTargetLocalPosition.pop_front();
-    }
-    _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
+    //~ // Sensor fusion.
+    //~ // Pushed into queue back
+    //~ if (_queMsgTargetLocalPosition.size() > 29){
+        //~ _queMsgTargetLocalPosition.pop_front();
+    //~ }
+    //~ _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
+    
+// Update estimate by kalman filter
+	Vector2d truckState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
+	_kf.SetXhatInitialPoint(truckState);
+	_truckEstmState = _kf.Update(truckState);
+	_IsGPSUpdated = true;
+
  
 
     // Logging
@@ -1022,56 +1029,56 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 }
 
 
-void RunSensorFusing(){
-
-    float truckSumX=0, truckSumY=0;
-    float truckAvgX=0, truckAvgY=0;
-
-    float targetSumX=0, targetSumY=0;
-    float targetAvgX=0, targetAvgY=0;
-
-    // Calculate the mean of Truck local position
-    bool IsGPSLocationEmpty = _queMsgTruckLocalPosition.size() < 1;
-    if (!IsGPSLocationEmpty){
-        for(int i=0; i < _queMsgTruckLocalPosition.size(); i++){
-            truckSumX += _queMsgTruckLocalPosition.at(i).point.x;
-            truckSumY += _queMsgTruckLocalPosition.at(i).point.y;
-        }
-        truckAvgX = truckSumX/_queMsgTruckLocalPosition.size();
-        truckAvgY = truckSumY/_queMsgTruckLocalPosition.size();
-    }
-
-    // Calculate the mean of Target local position
-    bool IsTagDetectionEmpty = _queMsgTargetLocalPosition.size() < 1;
-    if (!IsTagDetectionEmpty){
-        for(int i=0; i < _queMsgTargetLocalPosition.size(); i++){
-            targetSumX += _queMsgTargetLocalPosition.at(i).point.x;
-            targetSumY += _queMsgTargetLocalPosition.at(i).point.y;
-        }
-        targetAvgX = targetSumX/_queMsgTargetLocalPosition.size();
-        targetAvgY = targetSumY/_queMsgTargetLocalPosition.size();
-    }
-
-    // Fuse data
-    // Idea is if no GPS and tag detections, then fused position is 0
-    // if only GPS or tag detections available, then his factor is 1;
-    // if both are available, then fuse w/ ratio 3:1
-    float truckFuseFactor = IsGPSLocationEmpty  ? 0
-                                                : IsTagDetectionEmpty   ? 1
-                                                                        : 0.25;
-    float targetFuseFactor = IsTagDetectionEmpty ? 0 : 0.75;
-    _msgFusedTargetLocalPosition.header.stamp = ros::Time::now();
-    _msgFusedTargetLocalPosition.point.x = truckAvgX*truckFuseFactor + targetAvgX*targetFuseFactor;
-    _msgFusedTargetLocalPosition.point.y = truckAvgY*truckFuseFactor + targetAvgY*targetFuseFactor;
-    _msgFusedTargetLocalPosition.point.z = 0;
-    _FusedTargetLocalPositionPub.publish(_msgFusedTargetLocalPosition);
-
-    // DEBUG
+//~ void RunSensorFusing(){
+//~ 
+    //~ float truckSumX=0, truckSumY=0;
+    //~ float truckAvgX=0, truckAvgY=0;
+//~ 
+    //~ float targetSumX=0, targetSumY=0;
+    //~ float targetAvgX=0, targetAvgY=0;
+//~ 
+    //~ // Calculate the mean of Truck local position
+    //~ bool IsGPSLocationEmpty = _queMsgTruckLocalPosition.size() < 1;
+    //~ if (!IsGPSLocationEmpty){
+        //~ for(int i=0; i < _queMsgTruckLocalPosition.size(); i++){
+            //~ truckSumX += _queMsgTruckLocalPosition.at(i).point.x;
+            //~ truckSumY += _queMsgTruckLocalPosition.at(i).point.y;
+        //~ }
+        //~ truckAvgX = truckSumX/_queMsgTruckLocalPosition.size();
+        //~ truckAvgY = truckSumY/_queMsgTruckLocalPosition.size();
+    //~ }
+//~ 
+    //~ // Calculate the mean of Target local position
+    //~ bool IsTagDetectionEmpty = _queMsgTargetLocalPosition.size() < 1;
+    //~ if (!IsTagDetectionEmpty){
+        //~ for(int i=0; i < _queMsgTargetLocalPosition.size(); i++){
+            //~ targetSumX += _queMsgTargetLocalPosition.at(i).point.x;
+            //~ targetSumY += _queMsgTargetLocalPosition.at(i).point.y;
+        //~ }
+        //~ targetAvgX = targetSumX/_queMsgTargetLocalPosition.size();
+        //~ targetAvgY = targetSumY/_queMsgTargetLocalPosition.size();
+    //~ }
+//~ 
+    //~ // Fuse data
+    //~ // Idea is if no GPS and tag detections, then fused position is 0
+    //~ // if only GPS or tag detections available, then his factor is 1;
+    //~ // if both are available, then fuse w/ ratio 3:1
+    //~ float truckFuseFactor = IsGPSLocationEmpty  ? 0
+                                                //~ : IsTagDetectionEmpty   ? 1
+                                                                        //~ : 0.25;
+    //~ float targetFuseFactor = IsTagDetectionEmpty ? 0 : 0.75;
+    //~ _msgFusedTargetLocalPosition.header.stamp = ros::Time::now();
+    //~ _msgFusedTargetLocalPosition.point.x = truckAvgX*truckFuseFactor + targetAvgX*targetFuseFactor;
+    //~ _msgFusedTargetLocalPosition.point.y = truckAvgY*truckFuseFactor + targetAvgY*targetFuseFactor;
+    //~ _msgFusedTargetLocalPosition.point.z = 0;
+    //~ _FusedTargetLocalPositionPub.publish(_msgFusedTargetLocalPosition);
+//~ 
+    //~ // DEBUG
     //~ ROS_INFO("Truck AVG = %f, %f , %d " , truckAvgX, truckAvgY , _queMsgTruckLocalPosition.size());
     //~ ROS_INFO("Target AVG = %f, %f , %d ", targetAvgX , targetAvgY, _queMsgTargetLocalPosition.size());
     //~ ROS_INFO("Fused = %f, %f " , _msgFusedTargetLocalPosition.point.x , _msgFusedTargetLocalPosition.point.y);
-
-}
+//~ 
+//~ }
 
 
 
@@ -1105,60 +1112,66 @@ void startSimCallback(const geometry_msgs::PointStamped msgStartSim)
 
 void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
 {
-
-    DJIDrone& drone = *_ptrDrone;
-
-    // Record GPS position
-    _msgTruckGPSPosition.point.x = msgTruckPosition.pose.position.x;
-    _msgTruckGPSPosition.point.y = msgTruckPosition.pose.position.y;
-    _msgTruckGPSPosition.point.z = msgTruckPosition.pose.position.z;
-    
-    float truckDistance_x = (msgTruckPosition.pose.orientation.x - drone.global_position.latitude)/0.0000089354;
-    float truckDistance_y = (msgTruckPosition.pose.orientation.y - drone.global_position.longitude)/0.0000121249;
-
-
-    // Calculate the truck local location
-    // drone.local_position.x means northing
+	
+	// drone.local_position.x means northing
     // drone.local_position.y means easting
-    _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
-    _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
-    _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
-    _msgRealTruckLocalPosition.point.z = 0;
-
+    
+    DJIDrone& drone = *_ptrDrone;
+    
     // Calculate the distance from truck to drone
+    // Note: (msgTruckPosition.pose).position holds noisy measurement, .orientation holds true value
     _msgTruckDistance.point.x = (msgTruckPosition.pose.position.x - drone.global_position.latitude)/0.0000089354;
     _msgTruckDistance.point.y = (msgTruckPosition.pose.position.y - drone.global_position.longitude)/0.0000121249;
     _msgTruckDistance.point.z = 0;
-
-    // If the Truck is extremely far away from drone, then there must be something wrong
-    if( abs(_msgTruckDistance.point.x) > 100 && abs(_msgTruckDistance.point.y) > 100 ) {
-        ROS_INFO_STREAM("DANGER: There is something wrong with the Truck GPS or Drone GPS. Plz check NOW!!!!!");
-        _bIsTargetTrackingRunning = false;  // mission cancel
-        return;
-    }
-
+    
     // Calculate the truck local location
-    // drone.local_position.x means northing
-    // drone.local_position.y means easting
     _msgTruckLocalPosition.header.stamp = ros::Time::now();
     _msgTruckLocalPosition.point.x = drone.local_position.x + _msgTruckDistance.point.x;
     _msgTruckLocalPosition.point.y = drone.local_position.y + _msgTruckDistance.point.y;
     _msgTruckLocalPosition.point.z = 0;
     _TruckLocalPositionPub.publish(_msgTruckLocalPosition);
-
+    
+    if (_bIsSimulation)
+    {
+		double realtruckDistance_x = (msgTruckPosition.pose.orientation.x - drone.global_position.latitude)/0.0000089354;
+		double realtruckDistance_y = (msgTruckPosition.pose.orientation.y - drone.global_position.longitude)/0.0000121249;
+    
+		// Calculate the real truck local location
+		_msgRealTruckLocalPosition.header.stamp = ros::Time::now();
+		_msgRealTruckLocalPosition.point.x = drone.local_position.x + realtruckDistance_x;
+		_msgRealTruckLocalPosition.point.y = drone.local_position.y + realtruckDistance_y;
+		_msgRealTruckLocalPosition.point.z = 0;
+	}
+	
+    // Record GPS position
+    _msgTruckGPSPosition.point.x = msgTruckPosition.pose.position.x;
+    _msgTruckGPSPosition.point.y = msgTruckPosition.pose.position.y;
+    _msgTruckGPSPosition.point.z = msgTruckPosition.pose.position.z;
     
 
-    // Sensor fusion.
-    // Pushed into queue back
-    if (_queMsgTruckLocalPosition.size() > 9){
-        _queMsgTruckLocalPosition.pop_front();
-    }
-    _queMsgTruckLocalPosition.push_back(_msgTruckLocalPosition);
 
-    // If target not found, sensor fuse at 10hz.
-    if( !_bIsTargetFound ){
-        RunSensorFusing();
+    // If the Truck is extremely far away from drone, then there must be something wrong
+    if( abs(_msgTruckDistance.point.x) > 100 && abs(_msgTruckDistance.point.y) > 100 ) {
+        ROS_INFO_STREAM("DANGER: There is something wrong with the Truck GPS or Drone GPS. Plz check NOW!!!!!");
+        _bIsTargetTrackingRunning = false;  // mission cancel
+        _nNavigationTask = 98;
+        return;
     }
+
+
+    //~ // Sensor fusion.
+    //~ // Pushed into queue back
+    //~ if (_queMsgTruckLocalPosition.size() > 9){
+        //~ _queMsgTruckLocalPosition.pop_front();
+    //~ }
+    //~ _queMsgTruckLocalPosition.push_back(_msgTruckLocalPosition);
+	//~ 
+    //~ // If target not found, sensor fuse at 10hz.
+    //~ if( !_bIsTargetFound ){
+        //~ RunSensorFusing();
+    //~ }
+    
+    
     
     // Update estimate by kalman filter
 	Vector4d truckState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
@@ -1383,8 +1396,13 @@ void RunTargetSearch()
 }
 
 
-void RunTargetTracking()
+void RunTimeCriticalTasks()
 {
+    if (_bIsTargetTrackingRunning)
+    {
+        //~ RunTargetSearch();
+    }
+    
     // target tracking has not been initiated. Do nothing
     if (!_bIsTargetTrackingRunning) { return; }
 
@@ -1407,16 +1425,8 @@ void RunTargetTracking()
     // Now target tracking is running and the target is being tracked
     // We can predict the next target position
     // TODO: implement target prediction here. (Kalman filter)
-
-
-}
-
-void RunTimeCriticalTasks()
-{
-    if (_bIsTargetTrackingRunning)
-    {
-        //~ RunTargetSearch();
-    }
+    
+    
 }
 
 
@@ -1737,7 +1747,6 @@ void timerCallback(const ros::TimerEvent&)
 
     // we need to run this functioin regardless of the navigation menu.
     RunTimeCriticalTasks();
-    // RunTargetTracking();
     RunSensorFusing();
 
 
@@ -1803,7 +1812,7 @@ void timerCallback(const ros::TimerEvent&)
 void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
 {
 	if (!_bIsStartSim)
-		{_nNavigationTask = msgNavigationTask.data;}
+	{_nNavigationTask = msgNavigationTask.data;}
 	
     DJIDrone& drone = *_ptrDrone;
 
@@ -1920,18 +1929,18 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
 
             // Reset search center
             _bIsSearchInitiated = false;
-            ROS_INFO_STREAM("Search center reinitialized.");
+            //~ ROS_INFO_STREAM("Search center reinitialized.");
 
             // Go back to Truck GPS location. RunAutonomousLanding3
             _IsOnTruckTop = false;
-            ROS_INFO_STREAM("Time to go back to Truck GPS location.");
+            //~ ROS_INFO_STREAM("Time to go back to Truck GPS location.");
             
             // Reset MPC integrator sum position error
             _mpc.IsXpInitialized_ = false;
             
             _sumPosErrX = 0;
             _sumPosErrY = 0;
-            ROS_INFO_STREAM("Reset MPC integrator sum position error.");
+            //~ ROS_INFO_STREAM("Reset MPC integrator sum position error.");
             
             break;
 
@@ -2044,7 +2053,7 @@ int main(int argc, char **argv)
     _FusedTargetLocalPositionPub = nh.advertise<geometry_msgs::PointStamped>("/navigation/fused_target_local_position", 10);
 
     // main control loop = 20 Hz
-    double dTimeStepSec = 0.05;
+    double dTimeStepSec = 0.025;
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
 
 
