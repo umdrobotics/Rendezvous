@@ -9,9 +9,13 @@
 #include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
 #include <apriltags_ros/AprilTagDetection.h>
 #include <apriltags_ros/AprilTagDetectionArray.h>
+#include <sstream>
+#include <fstream>
 
-//using namespace std;
+using namespace std;
 
+#define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
+#define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/AutonomousLanding_"
 
 #define TARGET_LOST_TIME_OUT_SEC (3.0)
 
@@ -43,10 +47,15 @@ float _StationaryTargetPos_y = 0;
 bool _bIsTestInitiated = false;
 
 
+std::ofstream _ofsTragetTrackingLog;
+std::ofstream _ofsAutonomousLandingLog;
+
+
 sensor_msgs::LaserScan _msgUltraSonic;
 geometry_msgs::Point _toTargetDistance;
 geometry_msgs::PointStamped _msgTargetLocalPosition;
 geometry_msgs::PointStamped _msgDesiredGimbalPoseDeg;
+geometry_msgs::PointStamped _msgTargetDistance;
 
 ros::Publisher _GimbalAnglePub;
 ros::Publisher _TargetLocalPositionPub;
@@ -59,7 +68,10 @@ void ShutDown(void)
     // Do some custom action.
     // For example, publish a stop message to some other nodes.
     ROS_INFO("It is requested to terminate navigation ...");
-    delete(_ptrDrone);
+    
+    delete(_ptrDrone);    
+    _ofsTragetTrackingLog.close();
+    _ofsAutonomousLandingLog.close();
       
     ROS_INFO("Shutting down navigation ...");
     // All the default sigint handler does is call shutdown()
@@ -70,6 +82,20 @@ void ShutDown(void)
 void SigintHandler(int sig)
 {
     ShutDown();
+}
+
+
+/**
+ *  https://github.com/dji-sdk/Onboard-SDK/blob/3.1/doc/en/ProgrammingGuide.md
+ * Example: 
+ * double roll_rad, pitch_rad, yaw_rad;
+ * quaternionToRPY(drone.attitude_quaternion, roll_rad, pitch_rad, yaw_rad); 
+**/
+ void quaternionToRPY(dji_sdk::AttitudeQuaternion q, double & roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
+{ 
+     roll  = atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2));
+     pitch = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
+     yaw   = atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1));
 }
 
 void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
@@ -94,18 +120,24 @@ float LocalPositionControlHelper(float desired, float current_position)
 }
 
 
-void RunLocalPositionControl(geometry_msgs::Point desired_position, float yaw)
+void RunLocalPositionControl(geometry_msgs::Point desired_position, float desired_yaw_deg)
 {
     DJIDrone& drone = *_ptrDrone;
         
     float setpoint_x = LocalPositionControlHelper(desired_position.x, drone.local_position.x);
     float setpoint_y = LocalPositionControlHelper(desired_position.y, drone.local_position.y);
     float setpoint_z = LocalPositionControlHelper(desired_position.z, drone.local_position.z);
-         
     
-    drone.local_position_control(setpoint_x, setpoint_y, setpoint_z, yaw);
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float current_yaw_deg = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
     
-    ROS_INFO("%f, %f, %f", drone.local_position.x, drone.local_position.y, drone.local_position.z); 
+    float yaw_error_deg = desired_yaw_deg - current_yaw_deg;
+    
+    float setpoint_yaw = (yaw_error_deg < 3) ? desired_yaw_deg  
+                                             : (yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.35 
+                                             : current_yaw_deg + yaw_error_deg * 0.5;
+    
+    drone.local_position_control(setpoint_x, setpoint_y, setpoint_z, setpoint_yaw);
     
 }
 
@@ -487,13 +519,23 @@ void Waypoint_mission_upload(void)
 void TemporaryTest(void)
 {
 
+    DJIDrone& drone = *_ptrDrone;
+    
     geometry_msgs::Point desired_position;
     
     desired_position.x = 5;
     desired_position.y = 3;
     desired_position.z = -0.1;
     
-    RunLocalPositionControl(desired_position, 0);
+    float yawDeg = (float)UasMath::ConvertRad2Deg(atan2(desired_position.x, desired_position.y));
+    
+    
+    RunLocalPositionControl(desired_position, yawDeg);
+    
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+     
+    ROS_INFO("%f, %f, %f, %f", drone.local_position.x, drone.local_position.y, drone.local_position.z, yaw); 
 
 }
 
@@ -581,10 +623,6 @@ geometry_msgs::PointStamped GetTargetOffsetFromUAV( geometry_msgs::Point& tagPos
     output.point.z = targetOffsetFromUAV[2][0];
     
     return output;
-    
-    //outputDistance[0][0] = targetOffsetFromUAV[0][0];
-    //outputDistance[1][0] = targetOffsetFromUAV[1][0];
-    //outputDistance[2][0] = targetOffsetFromUAV[2][0];
    
 } ///end GetTargetOffsetFromUAV()
 
@@ -636,34 +674,26 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 	tag.pose.pose.position.y *= -1;
 
     // double targetOffsetFromUAV[3][1];
-    geometry_msgs::PointStamped targetoffset = GetTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal);
+    _msgTargetDistance = GetTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal);
 
     _msgTargetLocalPosition.header.stamp = ros::Time::now();
     // drone.local_position.x means northing
     // drone.local_position.y means easting
-    _msgTargetLocalPosition.point.x = drone.local_position.x + targetoffset.point.x;
-    _msgTargetLocalPosition.point.y = drone.local_position.y + targetoffset.point.y;    
+    _msgTargetLocalPosition.point.x = drone.local_position.x + _msgTargetDistance.point.x;
+    _msgTargetLocalPosition.point.y = drone.local_position.y + _msgTargetDistance.point.y;    
     _msgTargetLocalPosition.point.z = 0;
 
     _TargetLocalPositionPub.publish(_msgTargetLocalPosition);
 
 
-    _toTargetDistance.x = targetoffset.point.x;
-	_toTargetDistance.y = targetoffset.point.y;
-	_toTargetDistance.z = targetoffset.point.z;
+    _toTargetDistance.x = _msgTargetDistance.point.x;
+	_toTargetDistance.y = _msgTargetDistance.point.y;
+	_toTargetDistance.z = _msgTargetDistance.point.z;
 
     _bIsTargetBeingTracked = true;
 
+    /*
 
-    //Create message
-    // geometry_msgs::PointStamped msgToTargetDistance;
-    // msgToTargetDistance.header.stamp = ros::Time::now();
-    // msgToTargetDistance.point.x = targetoffset.point.x;
-    // msgToTargetDistance.point.y = targetoffset.point.y;	
-    // msgToTargetDistance.point.z = drone.global_position.height;
-
-    //_ToTargetDistancePub.publish(msgToTargetDistance);   
-      
     std::stringstream ss ;
     
     ss  << std::fixed << std::setprecision(7) << std::endl
@@ -671,9 +701,9 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         << "Tag Distance(x,y,z): "  << x << ","
                                     << y << ","
                                     << z << "," << std::endl
-        << "To Target Distance(Northing,Easting,Height): " 	<< targetoffset.point.x << ","
-                                    						<< targetoffset.point.y << ","
-                                    						<< targetoffset.point.z << "," << std::endl                                
+        << "To Target Distance(Northing,Easting,Height): " 	<< _msgTargetDistance.point.x << ","
+                                    						<< _msgTargetDistance.point.y << ","
+                                    						<< _msgTargetDistance.point.z << "," << std::endl                                
         << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
 										<< drone.gimbal.pitch << ","
 										<< drone.gimbal.roll << "," << std::endl
@@ -685,7 +715,19 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 											 << _msgTargetLocalPosition.point.y << ","
 											 << _msgTargetLocalPosition.point.z << "," << std::endl;											               
     ROS_INFO("%s", ss.str().c_str());
-	
+	*/
+    
+    
+    _ofsTragetTrackingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
+                        << ros::Time::now().toSec() << "," 
+                        << x << "," << y << "," << z << ","  // tag distance
+                        << _msgTargetDistance.point.x << ","
+                        << _msgTargetDistance.point.y << ","
+                        << _msgTargetDistance.point.z << "," // target distance
+                        << _msgTargetLocalPosition.point.x << ","
+						<< _msgTargetLocalPosition.point.y << ","
+						<< _msgTargetLocalPosition.point.z << std::endl; // target local position
+  
 }
 
 
@@ -734,9 +776,69 @@ void RunTimeCriticalTasks()
     {
         RunTargetSearch();
     }    
-    
-
 }
+
+
+void RunAutonomousLanding()
+{
+
+	DJIDrone& drone = *_ptrDrone;
+
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    if (bIsDroneLanded)
+    {
+        if (!_bIsDroneLandingPrinted)
+        { 
+            ROS_INFO("The drone has landed!");     
+            _bIsDroneLandingPrinted = true;
+            _bIsTestInitiated = false;
+        }
+        return;
+    }
+    
+    float target_x = _msgTargetLocalPosition.point.x;
+    float target_y = _msgTargetLocalPosition.point.y;
+    float drone_x = drone.local_position.x;
+    float drone_y = drone.local_position.y; 
+    float drone_z = drone.local_position.z; 
+        
+    float limitRadius = 1;
+    float limitRadius_square = limitRadius*limitRadius;
+    
+    float distance_square = _msgTargetDistance.point.x*_msgTargetDistance.point.x  
+                          + _msgTargetDistance.point.y*_msgTargetDistance.point.y;
+       
+    bool bIsReadyToLand = distance_square < limitRadius_square;
+
+
+    geometry_msgs::Point desired_position;
+    
+    desired_position.x = _msgTargetLocalPosition.point.x;
+    desired_position.y = _msgTargetLocalPosition.point.y;
+    desired_position.z = bIsReadyToLand ? -0.1 : drone_z;
+            
+    float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(desired_position.x, desired_position.y));
+        
+    RunLocalPositionControl(desired_position, desired_yaw);
+    
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+            
+    _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
+                            << ros::Time::now().toSec() << "," 
+                            <<  _msgUltraSonic.ranges[0] << ","
+                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                            << distance_square << ","                   // distance squared
+                            << _msgTargetLocalPosition.point.x << "," 
+                            << _msgTargetLocalPosition.point.y << ","
+                            << _msgTargetLocalPosition.point.z << ","   // target local position
+                            << drone.local_position.x << ","
+                            << drone.local_position.y << ","
+                            << drone.local_position.z << ","
+                            << yaw << std::endl;                             // drone local position
+            
+}
+
 
 
 void timerCallback(const ros::TimerEvent&)
@@ -757,6 +859,7 @@ void timerCallback(const ros::TimerEvent&)
     switch (_nNavigationTask)
     {
         case 21: 
+            RunAutonomousLanding();
             break;
          
         case 22: 
@@ -876,7 +979,7 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
             break;
          
         case 21: 
-            ROS_INFO_STREAM("Draw Circle Sample - Not implemented.");
+            ROS_INFO_STREAM("Autonomous Tracking and Landing.");
             break;
          
         case 22: 
@@ -931,10 +1034,27 @@ int main(int argc, char **argv)
     // Initialize global variables
     _ptrDrone = new DJIDrone(nh);
  
+ 
+    // Log files
+ 
+    std::stringstream ss;
+    ss << DEFAULT_TARGET_TRACKING_LOG_FILE_NAME << ros::WallTime::now() << ".log";
+    _ofsTragetTrackingLog.open(ss.str());
+    ROS_ASSERT_MSG(_ofsTragetTrackingLog, "Failed to open file %s", ss.str().c_str());
+
+    _ofsTragetTrackingLog << "#Time,TagDistance(x,y,z),TargetDistance(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
+    
+    ss.str("");
+    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME << ros::WallTime::now() << ".log";
+    _ofsAutonomousLandingLog.open(ss.str());
+    ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
+
+    _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TargetLocalPosition(x,y,z),DroneLocation(x,y,z,yaw)" << std::endl;
+
+
+    // Ultrasonic 
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
-   
-   
         
     // Subscribers    
 	int numMessagesToBuffer = 10;
