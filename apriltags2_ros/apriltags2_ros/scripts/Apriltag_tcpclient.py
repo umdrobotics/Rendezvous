@@ -7,19 +7,13 @@ from apriltags2_ros.msg import AprilTagDetectionArray, AprilTagDetection
 import socket
 import re
 
-import logging
-from io import FileIO, BufferedWriter
+import time
 
 TCP_IP = '192.168.1.17'
 TCP_PORT = 9999
 BUFFER_SIZE = 1024
 
-logger = logging.getLogger('Client_')
-fileHandler_message = logging.StreamHandler(BufferedWriter(FileIO("Client_" + time.strftime("%Y%m%d-%H%M%S") + ".log", "w")))
-logger.addHandler(fileHandler_message)
-formatter_message = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
-fileHandler_message.setFormatter(formatter_message)
-logger.setLevel(logging.DEBUG)
+counter = 0
 
 
 
@@ -40,13 +34,17 @@ print("Connected to server! Start receiving data.")
 
 # Start processing data and publish msg
 def TimerCallback(event):  
-
+	
+    global counter
+    counter += 1
+	
     data = s.recv(BUFFER_SIZE)
+    print(time.time(), data, counter)
 
 
     # Deal with exceptions
-    if not data:    continue
-    if not ("###" in data and "!!!" in data):     continue
+    if not data:    return
+    if not ("###" in data and "!!!" in data):     return
 
 
     TagDetection = AprilTagDetection()
@@ -60,7 +58,7 @@ def TimerCallback(event):
     firstMsg = data[indicesMsgHead[0]+3 : indicesMsgEnd[0]]
     indicesComma = [m.start() for m in re.finditer(",", firstMsg)]
 
-    if len(indicesComma) != 6:  continue
+    if len(indicesComma) != 6:  return
 
     TagDetection.pose.pose.pose.position.x    = float(firstMsg[0 : indicesComma[0]])
     TagDetection.pose.pose.pose.position.y    = float(firstMsg[indicesComma[0]+1 : indicesComma[1]])
@@ -71,15 +69,15 @@ def TimerCallback(event):
     TagDetection.pose.pose.pose.orientation.w = float(firstMsg[indicesComma[5]+1 : -1])
     vecTagDetections.detections.append(TagDetection)
     pub1.publish(vecTagDetections)
-    rospy.loginfo(vecTagDetections)
+    #~ rospy.loginfo(vecTagDetections)
 
 
 
-dTimeStep = 0.033
+dTimeStep = 0.03
 rospy.Timer(rospy.Duration(dTimeStep), TimerCallback)
 
 rospy.spin()
 conn.close()
-logging.shutdown()
+
 
 
