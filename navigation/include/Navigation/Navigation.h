@@ -10,7 +10,7 @@ class DJIDrone;
 
 class Navigation {
 
-public: // methode
+public: // methods
 
     Navigation();
     
@@ -24,13 +24,14 @@ public: // methode
 
 private: // members
 	
-    	DJIDrone* m_ptrDrone;
+    DJIDrone* m_ptrDrone;
 	std::ofstream m_ofslog;
 	
 	
 private: // methods
 	
 	void DisplayMainMenu(void);
+    void DrawCircleExample(void);
     
 	
 private: // NOT IMPLEMENTED

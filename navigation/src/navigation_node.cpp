@@ -34,11 +34,13 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "navigation_node");
     ros::NodeHandle nh;
-    
+
+    signal(SIGINT, SigintHandler);
+        
     Navigation navigator(nh);    
     navigator.RunNavigation();
         
-    signal(SIGINT, SigintHandler);
+
     
     ros::spin();
              
