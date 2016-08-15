@@ -40,6 +40,10 @@ qtcreator-*
 
 *~
 
+# ROS tutorials
+beginner_tutorials/
+
+
 # Emacs
 .#*
 
