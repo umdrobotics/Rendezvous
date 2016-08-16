@@ -27,8 +27,8 @@ cv::KalmanFilter GLOBAL_KALMAN_FILTER;
 // or else we'll need to simultaneously publish to and subscribe from the node that does the PID calculations.
 //Because of that, I'm placing the PID control within this node for now. 
 PIDController* GLOBAL_ROLL_CONTROLLER = new PIDController();
-PIDcontroller* GLOBAL_PITCH_CONTROLLER = new PIDController();
-PIDcontroller* GLOBAL_YAW_CONTROLLER = new PIDController();
+PIDController* GLOBAL_PITCH_CONTROLLER = new PIDController();
+PIDController* GLOBAL_YAW_CONTROLLER = new PIDController();
 double GLOBAL_ROLL_DJI_UNITS =0.0;
 double GLOBAL_PITCH_DJI_UNITS =0.0;
 double GLOBAL_YAW_DJI_UNITS =0.0;
@@ -97,7 +97,7 @@ double degreesToRadians(double angle_degrees)
  
 double degreesToDjiUnits(double angle_degrees)
  {
-       return (10.0*angle_degrees); );
+       return (10.0*angle_degrees); 
  }
 double djiUnitsToDegrees(double angle_dji)
  {

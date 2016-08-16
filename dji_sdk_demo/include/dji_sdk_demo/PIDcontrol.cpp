@@ -35,6 +35,6 @@ class PIDController {
 double getRequiredVelocityPID(double desiredAngle_djiUnits, double currentAngle_djiUnits, double latest_dt ,PIDController * pidInstance)
 	{
 		double currentError = desiredAngle_djiUnits - currentAngle_djiUnits;
-		return pidInstance.calculateDesiredVelocity(currentError, latest_dt);
+		return (*pidInstance).calculateDesiredVelocity(currentError, latest_dt);
 	
 	}
