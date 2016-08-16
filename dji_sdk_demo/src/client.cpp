@@ -1,6 +1,8 @@
-#include <dji_sdk_demo/kalmanPhysics.cpp> 
+#include <dji_sdk_demo/kalmanPhysics.cpp>  //need to figure out how to put this in the main folder instead of include
                volatile int degs =0; // for debugging gimbal control
              volatile int GIMBAL_TEST_SIGN = 1; //for debugging gimbal control
+
+#include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
 
 #define YAW_RELATIVE_TO_BODY true // if gimbal yaw command is relative to the body, this is true, if it's relative to the inertial frame, it's false
 ///Begin global tracking variables
@@ -19,6 +21,18 @@ const double CAMERA_Y_MULTIPLIER = -1.0 ; // since we want camera frame y to be 
 bool IS_TRACKING; //have we found that the target yet?
 
 cv::KalmanFilter GLOBAL_KALMAN_FILTER; 
+
+
+//Note: The angle control system needs to have access to the DJIDrone* object to send the gimbal commands
+// or else we'll need to simultaneously publish to and subscribe from the node that does the PID calculations.
+//Because of that, I'm placing the PID control within this node for now. 
+PIDController* GLOBAL_ROLL_CONTROLLER = new PIDController();
+PIDcontroller* GLOBAL_PITCH_CONTROLLER = new PIDController();
+PIDcontroller* GLOBAL_YAW_CONTROLLER = new PIDController();
+double GLOBAL_ROLL_DJI_UNITS =0.0;
+double GLOBAL_PITCH_DJI_UNITS =0.0;
+double GLOBAL_YAW_DJI_UNITS =0.0;
+
 
 ///End global tracking variables
 
@@ -80,8 +94,16 @@ double degreesToRadians(double angle_degrees)
  {
        return ( (M_PI*angle_degrees)/ (1.0*180.0) );
  }
-
-
+ 
+double degreesToDjiUnits(double angle_degrees)
+ {
+       return (10.0*angle_degrees); );
+ }
+double djiUnitsToDegrees(double angle_dji)
+ {
+       return ( (angle_dji)/ (10.0) );
+ }
+ 
 //I think this is how you get the yaw of the quadcopter body
  //this method is based off the documentation for onboard-sdk  on Github https://github.com/dji-sdk/Onboard-SDK/blob/3.1/doc/en/ProgrammingGuide.md
  void quaternionToRPY(   dji_sdk::AttitudeQuaternion q, double & roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
@@ -701,9 +723,14 @@ if (YAW_RELATIVE_TO_BODY == true)
       //now actually send the command 
        //DJI::onboardSDK::Camera::setGimbalAngle(desiredGimbalState); */ //I can't quite figure out how to use this, so let's use this instead
      cout <<"calculated camera angle (tenths of a degree): " << " Roll : " <<  radiansToDjiUnits(roll_rads) <<  " Pitch : " << radiansToDjiUnits(pitch_rads) <<  " Yaw : " <<   radiansToDjiUnits(yaw_rads);
-      drone->gimbal_angle_control(radiansToDjiUnits(roll_rads), radiansToDjiUnits(pitch_rads), radiansToDjiUnits(yaw_rads), desiredDuration, desiredControlMode);
+ 
+    //drone->gimbal_angle_control(radiansToDjiUnits(roll_rads), radiansToDjiUnits(pitch_rads), radiansToDjiUnits(yaw_rads), desiredDuration, desiredControlMode);
+     //skip the angle control and let a PID control (outside this function loop) handle it
+	 GLOBAL_ROLL_DJI_UNITS = radiansToDjiUnits(roll_rads); 
+	 GLOBAL_PITCH_DJI_UNITS = radiansToDjiUnits(pitch_rads);
+	 GLOBAL_YAW_DJI_UNITS = radiansToDjiUnits(yaw_rads);
  //then I think we're done with this step
-
+         
    }
 
   else // if no detections then we can't track it
@@ -722,9 +749,19 @@ ros::spin();
 }
 void listenOptionForTracking(ros::NodeHandle& n)
 {
+
 ros::Subscriber sub = n.subscribe(AprilTagsTopicTracking, numMessagesToBuffer, apriltagCheckCallbackForTracking);
 printf("\n After the callback line");
 ros::spin(); 
+//I believe that spin tests if there are any outstanding messages then stops. So putting the following underneath it
+//should result in near-constant PID control between spins
+double defaultTimeStep = 0.01; //since near constant control, use a small numbers
+dji_sdk::Gimbal currentAngle = drone->gimbal;
+double rollSpeedDesired  = getRequiredVelocityPID(GLOBAL_ROLL_DJI_UNITS, degreesToDjiUnits(currentAngle.roll),defaultTimeStep, GLOBAL_ROLL_CONTROLLER);
+double pitchSpeedDesired  = getRequiredVelocityPID(GLOBAL_PITCH_DJI_UNITS, degreesToDjiUnits(currentAngle.pitch),defaultTimeStep, GLOBAL_PITCH_CONTROLLER);
+double yawSpeedDesired  = getRequiredVelocityPID(GLOBAL_YAW_DJI_UNITS, degreesToDjiUnits(currentAngle.yaw),defaultTimeStep, GLOBAL_YAW_CONTROLLER);
+drone->gimbal_speed_control(rollSpeedDesired, pitchSpeedDesired, yawSpeedDesired);
+
 }
 
 
