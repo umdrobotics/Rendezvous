@@ -1,20 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(dji_sdk_demo)
 
-#for kalman filter
-#find_package(PkgConfig)
-
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   dji_sdk
-  cv_bridge
 )
-
-#for Kalman filters
-#pkg_check_modules(BFL REQUIRED bfl)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -29,10 +22,6 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 ################################################
 ## Declare ROS messages, services and actions ##
 ################################################
-
-#For kalman filters
-#message("BFL include dirs:" ${BFL_INCLUDE_DIRS})
-#message("BFL library dirs:" ${BFL_LIBRARY_DIRS})
 
 ## To declare and build messages, services or actions from within this
 ## package, follow these steps:
@@ -111,7 +100,7 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  INCLUDE_DIRS include
+#  INCLUDE_DIRS include
 #  LIBRARIES dji_sdk_demo
 #  CATKIN_DEPENDS dji_sdk roscpp 
 #  DEPENDS dji_sdk
@@ -123,10 +112,9 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(include)
+# include_directories(include)
 include_directories(
  	${catkin_INCLUDE_DIRS}
-      #  ${BFL_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -146,10 +134,6 @@ include_directories(
 ## same as for the library above
 # add_dependencies(dji_sdk_demo_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-
-#for kalman filters
-#link_directories(${BFL_LIBRARY_DIRS})
-
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(dji_sdk_demo_node
 #   ${catkin_LIBRARIES}
@@ -158,11 +142,6 @@ add_executable(dji_sdk_client src/client.cpp)
 target_link_libraries(dji_sdk_client
   ${catkin_LIBRARIES}
 )
-#for kalman filter
-#target_link_libraries(dji_sdk_client
-#  ${BFL_LIBRARIES}
-#)
-
 add_dependencies(dji_sdk_client dji_sdk_generate_messages_cpp)
 
 #############
