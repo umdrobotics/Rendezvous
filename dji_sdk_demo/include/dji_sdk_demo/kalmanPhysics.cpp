@@ -95,7 +95,20 @@ return prediction;
 
 }
 
+cv::Mat /*void*/ targetEstimateWithoutMeasurement(KalmanFilter KF, float dt)
+{
 
+
+//now update dt
+KF.transitionMatrix.at<float>(0,2) = dt;
+KF.transitionMatrix.at<float>(1,3) = dt;
+
+Mat_<float> prediction(2,2);  
+ prediction = KF.predict();
+return prediction; 
+
+
+}
  
 
 

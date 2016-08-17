@@ -19,6 +19,9 @@ double LATEST_TARGET_Z_CAMERA;
 const double CAMERA_Y_MULTIPLIER = -1.0 ; // since we want camera frame y to be above the camera, but it treats this as negative y
 
 bool IS_TRACKING; //have we found that the target yet?
+const int FRAMES_UNTIL_TARGET_LOST = 5; //can go 5 frames before the target is lost and the kalman filter resets
+int FRAMES_WITHOUT_TARGET = 0; 
+
 
 cv::KalmanFilter GLOBAL_KALMAN_FILTER; 
 
@@ -602,6 +605,7 @@ ROS_INFO("\n That's what I Heard");
 // let's assume that if there are multiple tags, we only want to deal with the first one.
 if (numTags > 0 )
   {
+  FRAMES_WITHOUT_TARGET = 0; //we've found the target again
   apriltags_ros::AprilTagDetection current=found.at(0);
   current.pose.pose.position.y = CAMERA_Y_MULTIPLIER * current.pose.pose.position.y;  //since we want to ensure up, relative to the camera, is treated as positive y in the camera frame  
 
@@ -735,8 +739,22 @@ if (YAW_RELATIVE_TO_BODY == true)
 
   else // if no detections then we can't track it
     {
+	 
     //my concern is that by declaring it false every time there isn't one, we might end up never tracking it
     //IS_TRACKING = false; //couldn't find one so we're obviously not tracking yet. 
+	   if(IS_TRACKING == true)
+	      {
+		     FRAME_WITHOUT_TARGET ++ ; 
+	        if(FRAMES_WITHOUT_TARGET >= FRAMES_UNTIL_TARGET_LOST)
+					{
+					 IS_TRACKING = false; 
+					  FRAMES_WITHOUT_TARGET = 0;
+					}
+			else
+					{
+				     targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
+					}	
+		  }
      }
 }
 
