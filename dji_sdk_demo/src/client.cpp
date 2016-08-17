@@ -714,10 +714,10 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
   {
   FRAMES_WITHOUT_TARGET = 0; //we've found the target again
   
-  latestHeader = current.pose.header; 
   
   apriltags_ros::AprilTagDetection current=found.at(0);
   current.pose.pose.position.y = CAMERA_Y_MULTIPLIER * current.pose.pose.position.y;  //since we want to ensure up, relative to the camera, is treated as positive y in the camera frame  
+  latestHeader = current.pose.header; 
 
 //update the global variables containing the coordinates (in the camera frame remember) (
   LATEST_TARGET_X_CAMERA = current.pose.pose.position.x;
