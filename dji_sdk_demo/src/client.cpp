@@ -1584,13 +1584,15 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
 				drone->check_version(); //TODO need to find a way to get the return value from this
 				drone->request_sdk_permission_control(); //TODO need to find a way to get the return value from this
 				drone->takeoff(); //TODO need to find a way to get the return value from this
+				while(drone->GlobalPosition.height< 1.5) //set low in case it doesn't reach the full 2 meters 
+				    {ros::Duration(0.1).sleep(); } //let it reach the right height
 				ros::Duration(3.0).sleep(); //3 seconds to stabilize after taking off
 				printf ("Starting to listen for AprilTags on %s", AprilTagsTopicTracking );
 				//listenOption(*nh);
 				char waitKeyChar; 
 				listenOptionForTracking(*nh); 
-				k = cv::waitKey(1);
-				if (k == 'q' || k == 'Q') //attempt to allow this to be exited by pressing q. Still need to test
+				waitKeyChar = cv::waitKey(1);
+				if (waitKeyChar == 'q' || waitKeyChar == 'Q') //attempt to allow this to be exited by pressing q. Still need to test
 				   {break;}
             default:
                 break;
