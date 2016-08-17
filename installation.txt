@@ -1,0 +1,142 @@
+1. Install ROS
+
+a. go to https://developer.dji.com/onboard-sdk/documentation/github-platform-docs/ROS/README.html
+
+b. Click on Install ROS and its dependencies. It will direct you to
+http://wiki.ros.org/ROS/Tutorials/InstallingandConfiguringROSEnvironment. Or just go to http://wiki.ros.org/indigo/Installation/Ubuntu
+
+c. Follow the step in the webpage to install ROS Indigo:
+
+$ sudo sh -c 'echo "deb http://packages.ros.org/ros/ubuntu $(lsb_release -sc) main" > /etc/apt/sources.list.d/ros-latest.list'
+$ sudo apt-key adv --keyserver hkp://ha.pool.sks-keyservers.net --recv-key 0xB01FA116
+$ sudo apt-get update
+$ sudo apt-get install ros-indigo-desktop 
+# There is an error for $ sudo apt-get install ros-indigo-desktop-full
+
+$ sudo rosdep init
+$ rosdep update
+$ echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
+$ source ~/.bashrc
+$ sudo apt-get install python-rosinstall
+
+2. 
+
+a. Go back to 1(a) and go to "1. The Follow steps (3) and (5) in the Setup section of the Quick Start guide"
+
+b. Enable Flight Controller API control
+
+c. Onboard Application Registration was already done
+<param name="app_id" type="int" value="1029080"/>
+<param name="enc_key" type="string" value="a7ca9a24b3536e091c3d00dda7ce74a3edb4196a8329c376eb798d77e50466b7"/>
+
+3. Create catkin_ws
+
+$ roscore &
+$ source /opt/ros/indigo/setup.bash
+$ mkdir -p ~/catkin_ws/src
+$ cd ~/catkin_ws/
+$ catkin_make
+$ source devel/setup.bash
+
+$ mv src src2
+$ git clone https://github.com/umdrobotics/Rendezvous.git ./src
+$ rm -rf src2
+$ cd src
+$ cp history.inputrc ~/.inputrc
+$ echo "source /home/ubuntu/catkin_ws/devel/setup.bash" >> ~/.bashrc
+$ echo 'PS1='"'"'\[\e]0;\w\a\]\n\[\e[36m\]\u@Mani51 \[\e[33m\]\w\[\e[0m\]\n\$ '"'" >> .bashrc
+
+$ sudo su
+$ cd ~
+$ cp /home/ubuntu/.inputrc .
+$ echo "source /opt/ros/indigo/setup.bash" >> ~/.bashrc
+$ echo "source /home/ubuntu/catkin_ws/devel/setup.bash" >> ~/.bashrc
+$ echo 'PS1='"'"'\[\e]0;\w\a\]\n\[\e[36m\]\u@Mani51 \[\e[33m\]\w\[\e[0m\]\n\$ '"'" >> .bashrc
+
+
+4. 
+
+a. Update core launch file dji_sdk/launch/sdk_manifold.launch with information below: 
+<launch>
+	<node pkg="dji_sdk" type="dji_sdk_node" name="dji_sdk" output="screen">
+		<!-- node parameters -->
+                <param name="drone_version" type="string" value="M100"/>
+		<param name="serial_name" type="string" value="/dev/ttyTHS1"/>
+		<param name="baud_rate" type="int" value="230400"/>
+		<param name="app_id" type="int" value="1029080"/>
+		<param name="app_version" type="int" value="1"/>
+		<param name="app_bundle_id" type="string" value="Welcome to use dji-sdk"/>
+		<param name="enc_key" type="string" value="a7ca9a24b3536e091c3d00dda7ce74a3edb4196a8329c376eb798d77e50466b7"/>
+		<param name="groundstation_enable" type="int" value="1"/>
+	</node>
+</launch>
+
+b. 
+$ roscore &
+$ cd ~/catkin_ws
+$ source devel/setup.bash
+$ catkin_make
+$ roslaunch dji_sdk sdk_manifold.launch 
+If you have the following error at the end of the terminal
+"STATUS activateCallback,line 503: New device, please link DJIGO to your remote controller and try again,"
+
+then restart DJI Go and relaunch sdk_manifold.launch
+
+You need to have on the terminal
+Broadcast call back received 
+STATUS activateCallback,line 496: Activated successfully
+
+
+5. 
+
+$ sudo apt-get install ros-indigo-usb-cam
+$ sudo apt-get install ros-indigo-apriltags
+$ sudo apt-get install ros-indigo-apriltags-ros
+$ sudo apt-get install ros-indigo-tf
+$ sudo apt-get install ros-indigo-cv-bridge
+$ sudo apt-get install ros-indigo-image-proc
+$ sudo apt-get install ros-indigo-image-view
+
+$ cd ~/Download
+$ git clone https://github.com/RIVeR-Lab/apriltags_ros.git
+copy apriltags and apriltags_ros to ~/catkin_ws/src
+
+$cd ~/catkin_ws/src/apriltags_ros/launch
+Create apriltags_ros-test.launch with the following text
+
+<launch>
+ <node ns="dji_sdk" pkg = "apriltags_ros" type="apriltag_detector_node" name="apriltag_detector" output="screen" >
+ <remap from="image_rect" to="/dji_sdk/image_mono"/> 
+<rosparam param ="tag_descriptions">[
+{id: 0, size: 0.163513},
+{id: 1, size: 0.163513, frame_id: a_frame},
+{id: 2, size: 0.163513},
+{id: 3, size: 0.163513},
+{id: 4, size: 0.163513},
+{id: 5, size: 0.163513}]
+</rosparam>
+</node>
+</launch>
+
+
+$ cd ~/catkin_ws
+$ catkin_make
+
+
+6. Install Guidance-SDK-ROS
+
+a. Go to https://github.com/dji-sdk/Guidance-SDK-ROS and read "How to use".
+
+ATTR{idVendor}==\"fff0\", ATTR{idProduct}==\"d009\", MODE=\"0666\"" > /etc/udev/rules.d/51-guidance.rules'
+
+b. Clone the repo to the catkin workspace source directory catkin_ws/src and then
+
+cd ~/catkin_ws
+catkin_make
+rosrun guidance guidanceNode
+rosrun guidance guidanceNodeTest
+
+
+
+
+
