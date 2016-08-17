@@ -592,7 +592,7 @@ ROS_INFO("\n That's what I Heard");
 
 
 ////////Turned this piece into a function so it could also easily be called when there is not a target detection, only a prediction
-void handleTargetPrediction(cv::Mat targetLocPrediction ,std::string targetUtmZone ,dji_sdk::GlobalPosition copterState ,DJIDrone* drone ){
+void handleTargetPrediction(cv::Mat targetLocPrediction ,std::string targetUtmZone ,dji_sdk::GlobalPosition copterState ,std_msgs::Header latestHeader ,DJIDrone* drone ){
  ///following line is just to test basic gimbal control, has nothing to do with rest of code
      // drone->gimbal_angle_control(0, /*-500.0*/-300.0 -0.0,  8, 1); printf("tested gimbal"); //this line has confirmed that we don't need to call sleep after executing a gimbal command
  double predictedNorth = targetLocPrediction.at<float>(0,0); //access element 0,0 ie x
@@ -774,7 +774,7 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
   IS_TRACKING = true;
 
   //
-  handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , drone);
+  handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone);
 	 
    }
 
@@ -798,7 +798,7 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
 					 cv::Mat targetLocPrediction = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
 					 dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
-					 handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , drone); 					 
+					 handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone); 					 
 					}	
 		  }
      }
