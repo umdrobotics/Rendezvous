@@ -175,7 +175,7 @@ void pidCallback(const geometry_msgs::PointStamped::ConstPtr& desiredAngleMessag
 	
 }
 
-void controlGimbal(ros::NodeHandle& n, char[] angleTopic, int numMessagesToBuffer)
+void controlGimbal(ros::NodeHandle& n, char[] angleTopic, int numMessagesToBuffer, DJIDrone* drone)
 {
 	  ros::Subscriber sub = n.subscribe(angleTopic, numMessagesToBuffer, pidCallback);
 	 char waitKeyChar = 0; //initialize to prevent errors 
@@ -825,7 +825,7 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
 
 				printf ("Starting to listen for angle on %s", DesiredAngleTopic );
 				int defaultMessagesToBuffer = 1;
-				controlGimbal(*nh, cDesiredAngleTopic, defaultMessagesToBuffer) ;
+				controlGimbal(*nh, cDesiredAngleTopic, defaultMessagesToBuffer, drone) ;
 				cout << "done with pid test";
 
             default:

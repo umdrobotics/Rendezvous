@@ -585,100 +585,19 @@ ROS_INFO("\n That's what I Heard");
 
 }
 
-void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArray /*sensor_msgs::ImageConstPtr&*/ tag_detection_array)
-{
-//sensor_msgs::Image rgb = *tag_detection_array; //have to use this to access the data, can't use the ConstPtr for that
-apriltags_ros::AprilTagDetectionArray aprilTagsMessage;
-aprilTagsMessage = tag_detection_array;
-std::vector<apriltags_ros::AprilTagDetection> found;
-found = aprilTagsMessage.detections;
-int numTags = found.size();
 
-//printf("\n I heard [%d] tags", numTags);
-/*for(int i=0; i<numTags; i++)
- 	{
-        apriltags_ros::AprilTagDetection current=found.at(i);
-         int id = current.id;
-         printf("\n found id %d", id);
-         printf(" with position x %lf y %lf z%lf ", current.pose.pose.position.x, current.pose.pose.position.y, current.pose.pose.position.z);//lf is long double which I think is 64-bit double. Need to use "pose.pose" since the AprilTagDetection contains a "PoseStamped" which then contains a stamp and a pose
-        //if(i==0){waypointBasedOnApriltags(id, drone);}
-         }
-ROS_INFO("\n That's what I Heard");
-//ros::Duration(0.5).sleep(); // sleep for half a second*/
-
-// let's assume that if there are multiple tags, we only want to deal with the first one.
-if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
-  {
-  FRAMES_WITHOUT_TARGET = 0; //we've found the target again
-  apriltags_ros::AprilTagDetection current=found.at(0);
-  current.pose.pose.position.y = CAMERA_Y_MULTIPLIER * current.pose.pose.position.y;  //since we want to ensure up, relative to the camera, is treated as positive y in the camera frame  
-
-//update the global variables containing the coordinates (in the camera frame remember) (
-  LATEST_TARGET_X_CAMERA = current.pose.pose.position.x;
-  LATEST_TARGET_Y_CAMERA =  current.pose.pose.position.y; 
-  LATEST_TARGET_Z_CAMERA = current.pose.pose.position.z;
-//Need to use "pose.pose" since the AprilTagDetection contains a "PoseStamped" which then contains a stamp and a pose
-  // TODO make sure that your variables can handle this calculation
-   //ros::time tStamp = current.pose.header.stamp;//this gives an error for some reason
-   double currentTime = current.pose.header.stamp.nsec/1000000000.0 + current.pose.header.stamp.sec;
-  //figure out elapsed time between detections, necessary for kalman filtering
-   LATEST_DT = currentTime - LATEST_TIMESTAMP ;
- //be sure to keep track of time
-   LATEST_TIMESTAMP = currentTime;
-  
-//now begin calculations to figure out target position in northings and eastings
-     dji_sdk::Gimbal gimbalState = drone->gimbal;//DJI::onboardSDK::GimbalData gimbalState = (drone->gimbal).getGimbal();
-     dji_sdk::GlobalPosition copterState = drone->global_position; //DJI::onboardSDK::PositionData copterState = drone->global_position; //DJI::onboardSDK::Flight::getPosition();
-     UTMobject latestTargetLocation = targetDistanceMetersToUTM( //TODO TODO TODO convert roll pitch and yaw from the degrees they are in now into radians. Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
-			current.pose.pose.position , 	      				degreesToRadians(gimbalState.roll), 
-			degreesToRadians(gimbalState.pitch), 
-			degreesToRadians(bodyFrameToInertial_yaw(gimbalState.yaw,drone))// since yaw is relative to body, not inertial frame, we need to convert//degreesToRadians(gimbalState.yaw) 
-			,copterState.latitude 
-			,copterState.longitude 
-			,copterState.altitude //TODO decide if we should use .height instead
-			);
-
-//recall that x is north, y is east, and we need these values to pass the Kalman filter
-//temporarily, let' just use the camera offset so it has small numbers to work with
-    double targetX = std::get<northingIndex>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<northingIndex>(latestTargetLocation);
-   double targetY = std::get<eastingIndex>(latestTargetLocation); //LATEST_TARGET_Y_CAMERA; //std::get<eastingIndex>(latestTargetLocation);
-  cv::Mat targetLocPrediction;
-
-  if(! ( IS_TRACKING) )
-   {
-
-     
-     GLOBAL_KALMAN_FILTER = initializeKalmanFilter(LATEST_DT, targetX ,targetY ); 
-       targetLocPrediction = GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
-
-    // String stall;
-    // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
-    // cin>> stall; 
-    }
-
- else
-    {
-     
-       
-      targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY); 
-
-      cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
-     cout<<"dt: "<<LATEST_DT <<"\n";
-     }
-  IS_TRACKING = true;
-
+////////Turned this piece into a function so it could also easily be called when there is not a target detection, only a prediction
+void handleTargetPrediction(cv::Mat targetLocPrediction ,std::string targetUtmZone ,dji_sdk::GlobalPosition copterState ,DJIDrone* drone ){
  ///following line is just to test basic gimbal control, has nothing to do with rest of code
      // drone->gimbal_angle_control(0, /*-500.0*/-300.0 -0.0,  8, 1); printf("tested gimbal"); //this line has confirmed that we don't need to call sleep after executing a gimbal command
-
-  
  double predictedNorth = targetLocPrediction.at<float>(0,0); //access element 0,0 ie x
  double predictedEast = targetLocPrediction.at<float>(0,1); //access element 0,1 ie y
 UTMobject predictedTargetUTM; //will need this for later
 std::get<northingIndex>(predictedTargetUTM) = predictedNorth;
 std::get<eastingIndex>(predictedTargetUTM) = predictedEast;
-std::get<designatorIndex>(predictedTargetUTM) = std::get<designatorIndex>(latestTargetLocation);//I think it's safe to assume we'll stay in the same UTM zone the whole time, hence use the same designator index
+std::get<designatorIndex>(predictedTargetUTM) = targetUtmZone;
 
-  std::pair<double, double> targetLocPredictionGPS = UTMtoGPS(predictedNorth, predictedEast, std::get<designatorIndex>(latestTargetLocation)); //I think it's safe to assume we'll stay in the same UTM zone the whole time, hence use the same designator index
+  std::pair<double, double> targetLocPredictionGPS = UTMtoGPS(predictedNorth, predictedEast, targetUtmZone); 
 UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude);  
 printf("CALLBACK: drone position is lat %f long %f alti %f, in easting  and northing %f %f ", copterState.latitude, copterState.longitude, copterState.altitude, std::get<eastingIndex>(actualCopterUTM), std::get<northingIndex>(actualCopterUTM));   
 
@@ -753,6 +672,100 @@ if (YAW_RELATIVE_TO_BODY == true)
 	 desiredAngle.point.yawIndex = GLOBAL_YAW_DJI_UNITS;
 	  desiredAngle.header = current.header ; //send the same time stamp information that was on the apriltags message to the PID node
 	 GLOBAL_ANGLE_PUBLISHER.publish(desiredAngle);
+}
+//end handleTargetPrediction
+
+
+
+
+
+void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArray /*sensor_msgs::ImageConstPtr&*/ tag_detection_array)
+{
+	
+UTMobject latestTargetLocation; //must declare before the if statements so it can be used for further estimates (by recording the UTM designator zone) if the target is lost	
+	
+//sensor_msgs::Image rgb = *tag_detection_array; //have to use this to access the data, can't use the ConstPtr for that
+apriltags_ros::AprilTagDetectionArray aprilTagsMessage;
+aprilTagsMessage = tag_detection_array;
+std::vector<apriltags_ros::AprilTagDetection> found;
+found = aprilTagsMessage.detections;
+int numTags = found.size();
+
+//printf("\n I heard [%d] tags", numTags);
+/*for(int i=0; i<numTags; i++)
+ 	{
+        apriltags_ros::AprilTagDetection current=found.at(i);
+         int id = current.id;
+         printf("\n found id %d", id);
+         printf(" with position x %lf y %lf z%lf ", current.pose.pose.position.x, current.pose.pose.position.y, current.pose.pose.position.z);//lf is long double which I think is 64-bit double. Need to use "pose.pose" since the AprilTagDetection contains a "PoseStamped" which then contains a stamp and a pose
+        //if(i==0){waypointBasedOnApriltags(id, drone);}
+         }
+ROS_INFO("\n That's what I Heard");
+//ros::Duration(0.5).sleep(); // sleep for half a second*/
+
+// let's assume that if there are multiple tags, we only want to deal with the first one.
+if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
+  {
+  FRAMES_WITHOUT_TARGET = 0; //we've found the target again
+  apriltags_ros::AprilTagDetection current=found.at(0);
+  current.pose.pose.position.y = CAMERA_Y_MULTIPLIER * current.pose.pose.position.y;  //since we want to ensure up, relative to the camera, is treated as positive y in the camera frame  
+
+//update the global variables containing the coordinates (in the camera frame remember) (
+  LATEST_TARGET_X_CAMERA = current.pose.pose.position.x;
+  LATEST_TARGET_Y_CAMERA =  current.pose.pose.position.y; 
+  LATEST_TARGET_Z_CAMERA = current.pose.pose.position.z;
+//Need to use "pose.pose" since the AprilTagDetection contains a "PoseStamped" which then contains a stamp and a pose
+  // TODO make sure that your variables can handle this calculation
+   //ros::time tStamp = current.pose.header.stamp;//this gives an error for some reason
+   double currentTime = current.pose.header.stamp.nsec/1000000000.0 + current.pose.header.stamp.sec;
+  //figure out elapsed time between detections, necessary for kalman filtering
+   LATEST_DT = currentTime - LATEST_TIMESTAMP ;
+ //be sure to keep track of time
+   LATEST_TIMESTAMP = currentTime;
+  
+//now begin calculations to figure out target position in northings and eastings
+     dji_sdk::Gimbal gimbalState = drone->gimbal;//DJI::onboardSDK::GimbalData gimbalState = (drone->gimbal).getGimbal();
+     dji_sdk::GlobalPosition copterState = drone->global_position; //DJI::onboardSDK::PositionData copterState = drone->global_position; //DJI::onboardSDK::Flight::getPosition();
+      latestTargetLocation = targetDistanceMetersToUTM( //TODO TODO TODO convert roll pitch and yaw from the degrees they are in now into radians. Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
+			current.pose.pose.position , 	      				degreesToRadians(gimbalState.roll), 
+			degreesToRadians(gimbalState.pitch), 
+			degreesToRadians(bodyFrameToInertial_yaw(gimbalState.yaw,drone))// since yaw is relative to body, not inertial frame, we need to convert//degreesToRadians(gimbalState.yaw) 
+			,copterState.latitude 
+			,copterState.longitude 
+			,copterState.altitude //TODO decide if we should use .height instead
+			);
+
+//recall that x is north, y is east, and we need these values to pass the Kalman filter
+//temporarily, let' just use the camera offset so it has small numbers to work with
+    double targetX = std::get<northingIndex>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<northingIndex>(latestTargetLocation);
+   double targetY = std::get<eastingIndex>(latestTargetLocation); //LATEST_TARGET_Y_CAMERA; //std::get<eastingIndex>(latestTargetLocation);
+  cv::Mat targetLocPrediction;
+
+  if(! ( IS_TRACKING) )
+   {
+
+     
+     GLOBAL_KALMAN_FILTER = initializeKalmanFilter(LATEST_DT, targetX ,targetY ); 
+       targetLocPrediction = GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
+
+    // String stall;
+    // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
+    // cin>> stall; 
+    }
+
+ else
+    {
+     
+       
+      targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY); 
+
+      cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
+     cout<<"dt: "<<LATEST_DT <<"\n";
+     }
+  IS_TRACKING = true;
+
+  //
+  handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , drone);
 	 
    }
 
@@ -771,7 +784,12 @@ if (YAW_RELATIVE_TO_BODY == true)
 					}
 			else
 					{
-				     targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
+						//
+				     
+					 cv::Mat targetLocPrediction = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
+					 dji_sdk::GlobalPosition copterState = drone->GlobalPosition;
+					 
+					 handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , drone); 					 
 					}	
 		  }
      }
