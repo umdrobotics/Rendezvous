@@ -37,6 +37,10 @@ double GLOBAL_PITCH_DJI_UNITS =0.0;
 double GLOBAL_YAW_DJI_UNITS =0.0;
 
 
+//if we want to publish a new message whenever a new apriltag is detected, it might be best to publish the angles from within the apriltag subscriber callback
+//that means we need a global publisher variable
+ros::Publisher GLOBAL_ANGLE_PUBLISHER = NULL ; //initialize to prevent errors
+
 ///End global tracking variables
 
 
@@ -603,7 +607,7 @@ ROS_INFO("\n That's what I Heard");
 //ros::Duration(0.5).sleep(); // sleep for half a second*/
 
 // let's assume that if there are multiple tags, we only want to deal with the first one.
-if (numTags > 0 )
+if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
   {
   FRAMES_WITHOUT_TARGET = 0; //we've found the target again
   apriltags_ros::AprilTagDetection current=found.at(0);
@@ -734,7 +738,22 @@ if (YAW_RELATIVE_TO_BODY == true)
 	 GLOBAL_PITCH_DJI_UNITS = radiansToDjiUnits(pitch_rads);
 	 GLOBAL_YAW_DJI_UNITS = radiansToDjiUnits(yaw_rads);
  //then I think we're done with this step
-         
+     
+     // if we want to use a separate nod for PID calculations, need to publish them here
+	 //the following link provides a good guide: http://answers.ros.org/question/48727/publisher-and-subscriber-in-the-same-node/
+	 //for simplicity, I'm going to send the desired angle in the form of a pointStamped message (point with timestamp)
+	//I will translate the indices according to their standard order, ie, since x comes before y and roll comes before pitch.
+	// roll will be the x element and pitch will be the y element
+	#define rollIndex x
+	#define pitchIndex  y
+	#define yawIndex z
+     geometry_msgs::PointStamped desiredAngle ;	
+     desiredAngle.point.rollIndex = GLOBAL_ROLL_DJI_UNITS;
+	 desiredAngle.point.pitchIndex = GLOBAL_PITCH_DJI_UNITS;
+	 desiredAngle.point.yawIndex = GLOBAL_YAW_DJI_UNITS;
+	  desiredAngle.header = current.header ; //send the same time stamp information that was on the apriltags message to the PID node
+	 GLOBAL_ANGLE_PUBLISHER.publish(desiredAngle);
+	 
    }
 
   else // if no detections then we can't track it
@@ -1580,7 +1599,7 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
 				//hotpoint_task = drone->mission_hotpoint_download();
 				//replace this with testing if it can read AprilTags stuff:
 				//dummyTest(); //REMOVE before actual use!
-				
+				GLOBAL_ANGLE_PUBLISHER = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/desired_angle", 2); // queue size of 2 seems reasonable
 				drone->check_version(); //TODO need to find a way to get the return value from this
 				drone->request_sdk_permission_control(); //TODO need to find a way to get the return value from this
 				drone->takeoff(); //TODO need to find a way to get the return value from this
