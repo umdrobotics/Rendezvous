@@ -160,7 +160,7 @@ void pidCallback(const geometry_msgs::PointStamped::ConstPtr& desiredAngleMessag
 	#define pitchIndex  y
 	#define yawIndex z
 	geometry_msgs::PointStamped current;
-	current = desiredAngleMessage;
+	current = *desiredAngleMessage;
    
    double currentTime = current.header.stamp.nsec/1000000000.0 + current.header.stamp.sec;
    LATEST_DT = currentTime - LATEST_TIMESTAMP ;
@@ -176,7 +176,7 @@ void pidCallback(const geometry_msgs::PointStamped::ConstPtr& desiredAngleMessag
 	
 }
 
-void controlGimbal(ros::NodeHandle& n, char[] angleTopic, int numMessagesToBuffer, DJIDrone* drone)
+void controlGimbal(ros::NodeHandle& n, string angleTopic, int numMessagesToBuffer, DJIDrone* drone)
 {
 	  ros::Subscriber sub = n.subscribe(angleTopic, numMessagesToBuffer, pidCallback);
 	 char waitKeyChar = 0; //initialize to prevent errors 
@@ -187,7 +187,7 @@ void controlGimbal(ros::NodeHandle& n, char[] angleTopic, int numMessagesToBuffe
 		ros::spinOnce();
 		if(RECIEVED_FIRST_MESSAGE == true)
 		{
-			
+			double defaultTimeStep = 0.1; //may need to make it smaller
 			dji_sdk::Gimbal currentAngle = drone->gimbal;
 			double rollSpeedDesired  = getRequiredVelocityPID(GLOBAL_ROLL_DJI_UNITS, degreesToDjiUnits(currentAngle.roll),defaultTimeStep, GLOBAL_ROLL_CONTROLLER);
 			double pitchSpeedDesired  = getRequiredVelocityPID(GLOBAL_PITCH_DJI_UNITS, degreesToDjiUnits(currentAngle.pitch),defaultTimeStep, GLOBAL_PITCH_CONTROLLER);
@@ -200,6 +200,9 @@ void controlGimbal(ros::NodeHandle& n, char[] angleTopic, int numMessagesToBuffe
 	   {break;}	
 	}
 }
+
+using namespace DJI::onboardSDK;
+
 static void Display_Main_Menu(void)
 {
     printf("\r\n");
@@ -825,8 +828,8 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
 			case '0':
 
 				printf ("Starting to listen for angle on %s", DesiredAngleTopic );
-				int defaultMessagesToBuffer = 1;
-				controlGimbal(*nh, cDesiredAngleTopic, defaultMessagesToBuffer, drone) ;
+				//int numDefaultMessagesToBuffer = 1;
+				controlGimbal(*nh, DesiredAngleTopic, 1, drone) ;
 				cout << "done with pid test";
 
             default:
