@@ -56,7 +56,7 @@ bool RECIEVED_FIRST_MESSAGE = false;
 
 //begin includes and definitions for geolocalization
 #include <math.h> //used for sine and cosine for rotation matrix when geolocalizing target
-#include <dji_sdk_demo/conversions.h> //provides GPS-UTM conversions
+#include <angle_pid_node/conversions.h> //provides GPS-UTM conversions
 //end includes for integration with AprilTags
 #include <tuple>
 
