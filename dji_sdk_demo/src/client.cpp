@@ -4,6 +4,9 @@
 
 #include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
 
+#include <ros/ros.h> // need to put this before the global publisher
+
+
 #define YAW_RELATIVE_TO_BODY true // if gimbal yaw command is relative to the body, this is true, if it's relative to the inertial frame, it's false
 ///Begin global tracking variables
 //These variables need to be global so tha Apriltag Detection Callback can access them
@@ -39,12 +42,13 @@ double GLOBAL_YAW_DJI_UNITS =0.0;
 
 //if we want to publish a new message whenever a new apriltag is detected, it might be best to publish the angles from within the apriltag subscriber callback
 //that means we need a global publisher variable
-ros::Publisher GLOBAL_ANGLE_PUBLISHER = NULL ; //initialize to prevent errors
+ros::Publisher GLOBAL_ANGLE_PUBLISHER;
+//doesn't seem to let me set it as a null pointer for some reason
+//*GLOBAL_ANGLE_PUBLISHER = NULL ; //initialize to prevent errors = NULL ; //initialize to prevent errors 
 
 ///End global tracking variables
 
 
-#include <ros/ros.h>
 #include <stdio.h>
 #include <dji_sdk/dji_drone.h>
 #include <cstdlib>
@@ -55,6 +59,7 @@ ros::Publisher GLOBAL_ANGLE_PUBLISHER = NULL ; //initialize to prevent errors
 //instructions on how to get Catkin to see them are here:
 // http://answers.ros.org/question/206257/catkin-use-ros-message-from-another-package/
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/image_encodings.h>
 #include <apriltags_ros/AprilTagDetection.h>
@@ -599,11 +604,11 @@ std::get<designatorIndex>(predictedTargetUTM) = targetUtmZone;
 
   std::pair<double, double> targetLocPredictionGPS = UTMtoGPS(predictedNorth, predictedEast, targetUtmZone); 
 UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude);  
-printf("CALLBACK: drone position is lat %f long %f alti %f, in easting  and northing %f %f ", copterState.latitude, copterState.longitude, copterState.altitude, std::get<eastingIndex>(actualCopterUTM), std::get<northingIndex>(actualCopterUTM));   
+//printf("CALLBACK: drone position is lat %f long %f alti %f, in easting  and northing %f %f ", copterState.latitude, copterState.longitude, copterState.altitude, std::get<eastingIndex>(actualCopterUTM), std::get<northingIndex>(actualCopterUTM));   
 
 //printf("\n and camera is roll %f pitch %f yaw %f and target distance from camera is x %f y %f z %f", gimbalState.roll, gimbalState.pitch, gimbalState.yaw,LATEST_TARGET_X_CAMERA, LATEST_TARGET_Y_CAMERA, LATEST_TARGET_Z_CAMERA);
 
-printf("\n and target location predicted is lat %f long %f in UTM easting %f northing %f actual easting and northing calculated were %f -- %f \n\n", targetLocPredictionGPS.latitudeIndex,   targetLocPredictionGPS.longitudeIndex, predictedEast, predictedNorth,targetY, targetX )  ;
+//printf("\n and target location predicted is lat %f long %f in UTM easting %f northing %f actual easting and northing calculated were %f -- %f \n\n", targetLocPredictionGPS.latitudeIndex,   targetLocPredictionGPS.longitudeIndex, predictedEast, predictedNorth,targetY, targetX )  ;
 //     cout<<"\ntotal prediction" << targetLocPrediction <<"\n";
 //     cout<<"\nverify each element" << " 1: " << targetLocPrediction.at<float>(0,0) << " 2: " << targetLocPrediction.at<float>(0,1)  << " 3: " << targetLocPrediction.at<float>(1,0) << " 4: " << targetLocPrediction.at<float>(1,1)  <<"\n";
 
@@ -670,7 +675,7 @@ if (YAW_RELATIVE_TO_BODY == true)
      desiredAngle.point.rollIndex = GLOBAL_ROLL_DJI_UNITS;
 	 desiredAngle.point.pitchIndex = GLOBAL_PITCH_DJI_UNITS;
 	 desiredAngle.point.yawIndex = GLOBAL_YAW_DJI_UNITS;
-	  desiredAngle.header = current.header ; //send the same time stamp information that was on the apriltags message to the PID node
+	  desiredAngle.header = latestHeader ; //send the same time stamp information that was on the apriltags message to the PID node
 	 GLOBAL_ANGLE_PUBLISHER.publish(desiredAngle);
 }
 //end handleTargetPrediction
@@ -684,6 +689,7 @@ void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArra
 	
 UTMobject latestTargetLocation; //must declare before the if statements so it can be used for further estimates (by recording the UTM designator zone) if the target is lost	
 	
+std_msgs::Header latestHeader ; //declare outside the if statements so it can be used at the end	
 //sensor_msgs::Image rgb = *tag_detection_array; //have to use this to access the data, can't use the ConstPtr for that
 apriltags_ros::AprilTagDetectionArray aprilTagsMessage;
 aprilTagsMessage = tag_detection_array;
@@ -707,6 +713,9 @@ ROS_INFO("\n That's what I Heard");
 if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
   {
   FRAMES_WITHOUT_TARGET = 0; //we've found the target again
+  
+  latestHeader = current.pose.header; 
+  
   apriltags_ros::AprilTagDetection current=found.at(0);
   current.pose.pose.position.y = CAMERA_Y_MULTIPLIER * current.pose.pose.position.y;  //since we want to ensure up, relative to the camera, is treated as positive y in the camera frame  
 
@@ -776,7 +785,7 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
     //IS_TRACKING = false; //couldn't find one so we're obviously not tracking yet. 
 	   if(IS_TRACKING == true)
 	      {
-		     FRAME_WITHOUT_TARGET ++ ; 
+		     FRAMES_WITHOUT_TARGET ++ ; 
 	        if(FRAMES_WITHOUT_TARGET >= FRAMES_UNTIL_TARGET_LOST)
 					{
 					 IS_TRACKING = false; 
@@ -787,7 +796,7 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
 						//
 				     
 					 cv::Mat targetLocPrediction = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
-					 dji_sdk::GlobalPosition copterState = drone->GlobalPosition;
+					 dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
 					 handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , drone); 					 
 					}	
@@ -1617,11 +1626,11 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
 				//hotpoint_task = drone->mission_hotpoint_download();
 				//replace this with testing if it can read AprilTags stuff:
 				//dummyTest(); //REMOVE before actual use!
-				GLOBAL_ANGLE_PUBLISHER = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/desired_angle", 2); // queue size of 2 seems reasonable
+				GLOBAL_ANGLE_PUBLISHER = (*nh).advertise<geometry_msgs::PointStamped>("/dji_sdk/desired_angle", 2); // queue size of 2 seems reasonable
 				drone->check_version(); //TODO need to find a way to get the return value from this
 				drone->request_sdk_permission_control(); //TODO need to find a way to get the return value from this
 				drone->takeoff(); //TODO need to find a way to get the return value from this
-				while(drone->GlobalPosition.height< 1.5) //set low in case it doesn't reach the full 2 meters 
+				while(drone->global_position.height< 1.5) //set low in case it doesn't reach the full 2 meters 
 				    {ros::Duration(0.1).sleep(); } //let it reach the right height
 				ros::Duration(3.0).sleep(); //3 seconds to stabilize after taking off
 				printf ("Starting to listen for AprilTags on %s", AprilTagsTopicTracking );

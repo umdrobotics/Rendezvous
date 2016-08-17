@@ -45,6 +45,7 @@ bool RECIEVED_FIRST_MESSAGE = false;
 //instructions on how to get Catkin to see them are here:
 // http://answers.ros.org/question/206257/catkin-use-ros-message-from-another-package/
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/image_encodings.h>
 #include <apriltags_ros/AprilTagDetection.h>
