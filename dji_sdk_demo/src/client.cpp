@@ -1560,11 +1560,11 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
 				break;
 			case '0':
 				//hotpoint_task = drone->mission_hotpoint_download();
-         //replace this with testing if it can read AprilTags stuff:
-  //dummyTest(); //REMOVE before actual use!
-  printf ("Starting to listen for AprilTags on %s", AprilTagsTopicTracking );
-  //listenOption(*nh);
-  listenOptionForTracking(*nh); 
+				//replace this with testing if it can read AprilTags stuff:
+				//dummyTest(); //REMOVE before actual use!
+				printf ("Starting to listen for AprilTags on %s", AprilTagsTopicTracking );
+				//listenOption(*nh);
+				listenOptionForTracking(*nh); 
             default:
                 break;
         }
