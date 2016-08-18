@@ -43,10 +43,11 @@ double limitAngleTo175Degs_DjiUnits(double angle_djiUnits)
   //NOTE: I assume that the desired and current angles are already between +- 180
 bool needToUniwndGimbal (double desiredAngle_DjiUnits ,double currentAngle_DjiUnits ,int startingSign/*make positive if you started traveling in positive direction, negative in negative direction, 0 if not outside of a small range from start*/ ,double tolerance_DjiUnits, bool verbose) //tolerance is how close to the 180 -180 dividing line you want to get. So a tolerance of 50 (50 DjiUnits, 5 degrees) would consider that zone to be between 175 and -175 (as in 175 to 180 then -180 to -175, only a 10 degree zone)
     {   
-       
-      if(verbose)
-            {cout <<"bool1 :" << (bool)(startingSign >=1) << " bool2A :" <<  (bool)(abs(currentAngle_DjiUnits) > 1800 - tolerance_DjiUnits) << " bool2B :" << (bool)(currentAngle_DjiUnits < -1.0*(900-tolerance_DjiUnits)) << " bool3 :" << (bool)( -900 <= desiredAngle_DjiUnits && desiredAngle_DjiUnits <=900) << "\n";  }
 
+      if(verbose)
+            {cout <<"desired angle (tenths of degree" << desiredAngle_DjiUnits <<" bool1 :" << (bool)(startingSign >=1) << " bool2A :" <<  (bool)(abs(currentAngle_DjiUnits) > 1800 - tolerance_DjiUnits) << " bool2B :" << (bool)(currentAngle_DjiUnits < -1.0*(900-tolerance_DjiUnits)) << " bool3 :" << (bool)( -900 <= desiredAngle_DjiUnits && desiredAngle_DjiUnits <=900) << "\n";  }
+
+//note: based on testing in python, a negative speed in yaw is always counterclockwise (from the drone's perspective)
       if (startingSign >=1 && (  (abs(currentAngle_DjiUnits) > 1800 - tolerance_DjiUnits) || currentAngle_DjiUnits < -1.0*(900-tolerance_DjiUnits) )&& ( -900 <= desiredAngle_DjiUnits && desiredAngle_DjiUnits <=900)  )
         {return true;}
       else if (startingSign <= -1 && (  (abs(currentAngle_DjiUnits) > 1800 - tolerance_DjiUnits) || currentAngle_DjiUnits > (900-tolerance_DjiUnits) )&& ( -900 <= desiredAngle_DjiUnits && desiredAngle_DjiUnits <=900)  )
@@ -92,12 +93,35 @@ double getRequiredVelocityPID(double desiredAngle_djiUnits, double currentAngle_
 	
 	}
 
-double getRequiredVelocityPID_yaw(double desiredAngle_djiUnits, double currentAngle_djiUnits, int signOfMovement/*make positive if you started traveling in positive direction, negative otherwise*/ ,double tolerance_DjiUnits ,double latest_dt ,PIDController * pidInstance)
+double getRequiredVelocityPID_yaw(double desiredAngle_djiUnits, double currentAngle_djiUnits, int signOfMovement/*make positive if you started traveling in positive direction, negative otherwise*/ ,bool& isUnwinding, double tolerance_DjiUnits ,double latest_dt ,PIDController * pidInstance)
 	{
+//bool testt =false;
+//note: based on testing in python, a negative speed in yaw is always counterclockwise (from the drone's perspective)
 		double currentError = desiredAngle_djiUnits - currentAngle_djiUnits;
-        if (needToUniwndGimbal (desiredAngle_djiUnits ,currentAngle_djiUnits, signOfMovement, tolerance_DjiUnits, false) == false)
+        bool needToUnwind = needToUniwndGimbal (desiredAngle_djiUnits ,currentAngle_djiUnits, signOfMovement, tolerance_DjiUnits, false);
+        if (needToUnwind == false && isUnwinding == false)
             {currentError = limitAngleToPi_DjiUnits(currentError);} //uncomment this if you aren't limiting the angles to avoid rotations of more than 180 degrees
- 
-		return (*pidInstance).calculateDesiredVelocity(currentError, latest_dt);
+
+        else if(needToUnwind == true || isUnwinding == true) //the isUnwinding prevents it from ceasing to unwind partway through, which causes oscillations 
+            {    //testt = true;
+                if(isUnwinding == false)
+                    {isUnwinding = true;}
+
+
+                if (signOfMovement >= 1 && needToUnwind == true)
+                        {while(currentError >= 0.0) 
+                            {currentError -= 3600;}
+                        testt=true;
+                        }
+               else if (signOfMovement <= -1)
+                        {while(currentError <= 0.0) 
+                            {currentError += 3600;}
+                        }             
+              //if it's gone too far. Too far and sign = 1 means it's gone too far clockwise, too far and sign = -1 means it's gone too far counterclockwise. So if the starting sign was 1, we want to always return a negative value if it's gone too far. If the starting sign was -1, we want to always return a positive value if it's gone too far.  With the current set up, sign of the error is the sign of velocity, so we'd always want a negative error if starting sign was 1. 
+            }
+
+		double requiredVelocity =  (*pidInstance).calculateDesiredVelocity(currentError, latest_dt);
+        //if(testt){requiredVelocity = -1.0*abs(requiredVelocity);}
+        return requiredVelocity;
 	
 	}

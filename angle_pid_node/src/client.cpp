@@ -189,7 +189,7 @@ void pidCallback(const geometry_msgs::PointStamped::ConstPtr& desiredAngleMessag
    LATEST_TIMESTAMP = currentTime;
    
     if(RECIEVED_FIRST_MESSAGE)
-            {cout <<"threshold " << GIMBAL_THRESHOLD_FOR_CALLBACK_DEGREES  << " Crossed it?"<< CROSSED_THRESHOLD << " starting sign " <<GIMBAL_STARTING_SIGN << "need to unwind ? " << needToUniwndGimbal (current.point.yawIndex ,limitAngleToPi_DjiUnits(degreesToDjiUnits(drone->gimbal.yaw)), GIMBAL_STARTING_SIGN, 50, true)<< "\n" ;}
+            {cout <<"threshold " << GIMBAL_THRESHOLD_FOR_CALLBACK_DEGREES  << " Crossed it?"<< CROSSED_THRESHOLD << " starting sign " <<GIMBAL_STARTING_SIGN << "need to unwind ? " << needToUniwndGimbal (limitAngleToPi_DjiUnits(current.point.yawIndex) ,degreesToDjiUnits(drone->gimbal.yaw), GIMBAL_STARTING_SIGN, 50, true)<< "\n" ;}
 	 RECIEVED_FIRST_MESSAGE = true; 
 
 
@@ -209,7 +209,8 @@ void pidCallback(const geometry_msgs::PointStamped::ConstPtr& desiredAngleMessag
 	
 }
 
-
+//need this variable to track when we're done unwinding
+bool IS_UNWINDING = false;
 //now the function to actually control it
 void controlGimbal(ros::NodeHandle& n, string angleTopic, int numMessagesToBuffer, DJIDrone* drone)
 {
@@ -236,6 +237,7 @@ void controlGimbal(ros::NodeHandle& n, string angleTopic, int numMessagesToBuffe
                         {
                         CROSSED_THRESHOLD = false;
                         GIMBAL_STARTING_SIGN = 0; 
+                        IS_UNWINDING = false; 
                         }
                 }
             else if (abs(currentAngle.yaw) >= GIMBAL_THRESHOLD_FOR_CALLBACK_DEGREES && (CROSSED_THRESHOLD == false)) //if we're just starting a large rotation
@@ -249,7 +251,7 @@ void controlGimbal(ros::NodeHandle& n, string angleTopic, int numMessagesToBuffe
 
 			double rollSpeedDesired  = getRequiredVelocityPID(GLOBAL_ROLL_DJI_UNITS, degreesToDjiUnits(currentAngle.roll),defaultTimeStep, GLOBAL_ROLL_CONTROLLER);
 			double pitchSpeedDesired  = getRequiredVelocityPID(GLOBAL_PITCH_DJI_UNITS, degreesToDjiUnits(currentAngle.pitch),defaultTimeStep, GLOBAL_PITCH_CONTROLLER);
-			double yawSpeedDesired  = getRequiredVelocityPID_yaw(GLOBAL_YAW_DJI_UNITS, degreesToDjiUnits(currentAngle.yaw), GIMBAL_STARTING_SIGN ,tolerance_DjiUnits ,defaultTimeStep, GLOBAL_YAW_CONTROLLER);
+			double yawSpeedDesired  = getRequiredVelocityPID_yaw(GLOBAL_YAW_DJI_UNITS, degreesToDjiUnits(currentAngle.yaw), GIMBAL_STARTING_SIGN ,IS_UNWINDING ,tolerance_DjiUnits ,defaultTimeStep, GLOBAL_YAW_CONTROLLER);
  //make sure the command doesn't use too fast of a speed to execute
             rollSpeedDesired = absBound(rollSpeedDesired,SPEED_LIMIT_DJI_UNITS);
             pitchSpeedDesired = absBound(pitchSpeedDesired,SPEED_LIMIT_DJI_UNITS);
