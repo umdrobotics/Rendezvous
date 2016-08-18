@@ -1,0 +1,4 @@
+<launch>
+	<node pkg="angle_pid_node" type="angle_pid_node" name="angle_pid_node" output="screen">
+	</node>
+</launch>
