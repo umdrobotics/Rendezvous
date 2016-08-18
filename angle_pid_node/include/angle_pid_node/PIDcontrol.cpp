@@ -57,6 +57,7 @@ bool needToUniwndGimbal (double desiredAngle_DjiUnits ,double currentAngle_DjiUn
     }
 
 
+
 using namespace std;
   
   
@@ -111,7 +112,7 @@ double getRequiredVelocityPID_yaw(double desiredAngle_djiUnits, double currentAn
                 if (signOfMovement >= 1 && needToUnwind == true)
                         {while(currentError >= 0.0) 
                             {currentError -= 3600;}
-                        testt=true;
+                        //testt=true;
                         }
                else if (signOfMovement <= -1)
                         {while(currentError <= 0.0) 
@@ -125,3 +126,22 @@ double getRequiredVelocityPID_yaw(double desiredAngle_djiUnits, double currentAn
         return requiredVelocity;
 	
 	}
+
+//still need to finish this
+//http://stackoverflow.com/questions/7868936/read-file-line-by-line
+#include <fstream>
+#include <sstream>
+#include <string>
+void setParamsFromFile(PIDController* pidInstance, string fileName, string* listOfParams)
+        {
+        std::ifstream infile(fileName);
+        std::string line;
+        while (std::getline(infile, line))
+            {
+                //process the string
+                //It should do the following:
+                // Check each line for a param name
+                //if the param name is in our list, strip the parameter name from the string, read the remaining value, and then set that parameter for the PID controller
+                ;
+            }
+        }
