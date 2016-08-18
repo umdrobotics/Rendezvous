@@ -1071,7 +1071,7 @@ static void Display_Main_Menu(void)
 	printf("| [17] Arm the Drone            | [36] Mission Hotpoint Download   |\n");	
 	printf("| [18] Disarm the Drone         | [37] Enter Mobile commands mode  |\n");
     printf("| [19] Virtual RC Test           \n");
-    printf("| [a] Geolocalization/Gimbal tests and AprilTag recognition)   |\n");)
+    printf("| [a] Geolocalization/Gimbal tests and AprilTag recognition)   |\n");
     printf("+-----------------------------------------------------------------+\n");
     printf("input a/b/c etc..then press enter key\r\n");
     printf("use `rostopic echo` to query drone status\r\n");

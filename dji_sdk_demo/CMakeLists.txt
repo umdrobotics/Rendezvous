@@ -7,6 +7,7 @@ project(dji_sdk_demo)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   dji_sdk
+  cv_bridge 
 )
 
 ## System dependencies are found with CMake's conventions
@@ -100,10 +101,10 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES dji_sdk_demo
+  INCLUDE_DIRS include
+   LIBRARIES dji_sdk_demo
 #  CATKIN_DEPENDS dji_sdk roscpp 
-#  DEPENDS dji_sdk
+  DEPENDS dji_sdk cv_bridge
 )
 
 ###########
@@ -112,9 +113,10 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-# include_directories(include)
+ include_directories(include)
 include_directories(
  	${catkin_INCLUDE_DIRS}
+
 )
 
 ## Declare a C++ library
