@@ -71,7 +71,14 @@ a. Update core launch file dji_sdk/launch/sdk_manifold.launch with information b
 	</node>
 </launch>
 
-b. 
+b. If you are running DJI SDK ROS on Manifold, skip this subsection and go to (c).
+$ cd ~/catkin_ws/src/dji_sdk_read_cam
+$ echo "" >> CATKIN_IGNORE
+
+catkin_make will not compile dji_sdk_read_cam package. This package works only with DJI Manifold.
+
+
+c.
 $ roscore &
 $ cd ~/catkin_ws
 $ source devel/setup.bash
