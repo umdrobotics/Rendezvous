@@ -159,7 +159,7 @@ double inertialFrameToBody_yaw(double angleToInertial_rads, DJIDrone* dronePoint
          //now keep the angle between -180 and 180 degrees (ie -pi and pi)
         while(angleToBody < -1.0*M_PI) {angleToBody += 2.0*M_PI;}
         while(angleToBody > M_PI) {angleToBody -= 2.0*M_PI;}
-     cout << " desired angle inertial " << angleToInertial_rads<< "body yaw " << yaw_body << "resulting angle for command " <<  angleToBody <<"\n";
+    // cout << " desired angle inertial " << angleToInertial_rads<< "body yaw " << yaw_body << "resulting angle for command " <<  angleToBody <<"\n";
 
        return angleToBody;
     }
@@ -306,7 +306,7 @@ void getGimbalAngleToPointAtTarget_rads
 	,double &roll_rads    //This is an output variable
 )
 {
-	printf("\nCAUTION: Gimbal angle calculation assumes target and quadcopter are in same UTM zones. \n Also, assumes that positive pitch is up, and positive yaw is from north to east \n");
+	//printf("\nCAUTION: Gimbal angle calculation assumes target and quadcopter are in same UTM zones. \n Also, assumes that positive pitch is up, and positive yaw is from north to east \n");
   //compute displacements in northing and easting (signed)
 	double deltaNorth = std::get<northingIndex>(targetLocation_UTM) - std::get<northingIndex>(quadcopterLocation_UTM) ;
  	double deltaEast = std::get<eastingIndex>(targetLocation_UTM) - std::get<eastingIndex>(quadcopterLocation_UTM); 
@@ -350,7 +350,7 @@ void getTargetOffsetFromUAV
 	double yaw = cameraYawToGround_radians;
 	double pitch = cameraPitchToGround_radians;
 	double roll = cameraRollToGround_radians;
-       printf("\n confirm that roll pitch yaw is respectively %f %f %f \n", roll, pitch, yaw); 
+       //printf("\n confirm that roll pitch yaw is respectively %f %f %f \n", roll, pitch, yaw); 
       double cameraRotationMatrix[3][3] = 
 		{
 			{	cos(yaw)*cos(pitch),
@@ -634,7 +634,7 @@ if (YAW_RELATIVE_TO_BODY == true)
         desiredGimbalState.duration = desiredDuration ; 
       //now actually send the command 
        //DJI::onboardSDK::Camera::setGimbalAngle(desiredGimbalState); */ //I can't quite figure out how to use this, so let's use this instead
-     cout <<"calculated camera angle (tenths of a degree): " << " Roll : " <<  radiansToDjiUnits(roll_rads) <<  " Pitch : " << radiansToDjiUnits(pitch_rads) <<  " Yaw : " <<   radiansToDjiUnits(yaw_rads);
+     //cout <<"calculated camera angle (tenths of a degree): " << " Roll : " <<  radiansToDjiUnits(roll_rads) <<  " Pitch : " << radiansToDjiUnits(pitch_rads) <<  " Yaw : " <<   radiansToDjiUnits(yaw_rads);
  
     //drone->gimbal_angle_control(radiansToDjiUnits(roll_rads), radiansToDjiUnits(pitch_rads), radiansToDjiUnits(yaw_rads), desiredDuration, desiredControlMode);
      //skip the angle control and let a PID control (outside this function loop) handle it
@@ -724,6 +724,10 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
 			,copterState.altitude //TODO decide if we should use .height instead
 			);
 
+double debugAr[3][1]; 
+getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.roll), degreesToRadians(gimbalState.pitch), degreesToRadians(gimbalState.yaw), debugAr);
+
+
 //recall that x is north, y is east, and we need these values to pass the Kalman filter
 //temporarily, let' just use the camera offset so it has small numbers to work with
     double targetX = std::get<northingIndex>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<northingIndex>(latestTargetLocation);
@@ -736,10 +740,10 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
 
      
      GLOBAL_KALMAN_FILTER = initializeKalmanFilter(LATEST_DT, targetX ,targetY ); 
-	 GLOBAL_KALMAN_FILTER_DIST = initializeKalmanFilter(LATEST_DT, LATEST_TARGET_X_CAMERA, LATEST_TARGET_Z_CAMERA); //track side-side distance and distance from camera for debugging
+	 GLOBAL_KALMAN_FILTER_DIST = initializeKalmanFilter(LATEST_DT, debugAr[0][0], debugAr[2][0]); //track side-side distance and distance from camera for debugging
        targetLocPrediction = GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
 		targetXandZFromCamera = GLOBAL_KALMAN_FILTER_DIST.predict();
-		 cout <<"prediction wihtout measurement (x and z) " << targetXandZFromCamera <<"\n";
+		 cout <<"prediction dist from camera initial (x and z) " << targetXandZFromCamera <<"\n";
     // String stall;
     // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
     // cin>> stall; 
@@ -750,7 +754,7 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
      
        
       targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY); 
-	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, LATEST_TARGET_X_CAMERA, LATEST_TARGET_Z_CAMERA); 
+	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); 
      // cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
     // cout<<"dt: "<<LATEST_DT <<"\n";
 			 cout <<"prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
@@ -1044,7 +1048,7 @@ static void Display_Main_Menu(void)
 	printf("| [17] Arm the Drone            | [36] Mission Hotpoint Download   |\n");	
 	printf("| [18] Disarm the Drone         | [37] Enter Mobile commands mode  |\n");
     printf("| [19] Virtual RC Test           \n");
-    printf("| [a] Geolocalization/Gimbal tests and AprilTag recognition)   |\n");
+    printf("| [54] Geolocalization/Gimbal tests and AprilTag recognition)   |\n");
     printf("+-----------------------------------------------------------------+\n");
     printf("input a/b/c etc..then press enter key\r\n");
     printf("use `rostopic echo` to query drone status\r\n");
@@ -1120,7 +1124,7 @@ int main(int argc, char *argv[])
         std::cout << "Enter Input Val: ";
         std::cin >> temp32;
 
-        if(temp32>0 && temp32<38)
+        if(temp32>0 && temp32<38 || temp32 >= 54) //start ours at 54 to make it distinct from DJI's
         {
             main_operate_code = temp32;         
         }
@@ -1740,7 +1744,7 @@ int main(int argc, char *argv[])
 			case 36:
 				hotpoint_task = drone->mission_hotpoint_download();
 
-            case 'a':
+            case 54: //replace with number so it works, but different number so we know it's not DJI's 
 
 				//replace this with testing if it can read AprilTags stuff:
 				//dummyTest(); //REMOVE before actual use!
@@ -1748,10 +1752,10 @@ int main(int argc, char *argv[])
 				drone->check_version(); //TODO need to find a way to get the return value from this
 				drone->request_sdk_permission_control(); //TODO need to find a way to get the return value from this
 				drone->takeoff(); //TODO need to find a way to get the return value from this
-				while(drone->global_position.height< 1.5) //set low in case it doesn't reach the full 2 meters 
-				{
-                    ros::Duration(0.1).sleep(); 
-                } //let it reach the right height
+				//while(drone->global_position.height< 1.5) //set low in case it doesn't reach the full 2 meters 
+				//{
+                //    ros::Duration(0.1).sleep(); 
+                //} //let it reach the right height
 				
                 ros::Duration(3.0).sleep(); //3 seconds to stabilize after taking off
 				printf ("Starting to listen for AprilTags on %s", AprilTagsTopicTracking );
