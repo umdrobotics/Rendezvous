@@ -348,81 +348,19 @@ dji_sdk::Waypoint targetDistanceMetersToLongitude
        // relative to the ground (NED frame just like UTM)
        //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
         quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
-        printf("UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
-      //so now we have the camera offset from ground (meters), the camera rotation, and the target offset from camera. We need to convert this to camera offset from ground (ie, from center of UTM coordinates)
-     //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
-    //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
-      
+        printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
 
-      //rotation matrix will be calculated based on instructions here: http://planning.cs.uiuc.edu/node102.html
-//first, rename some variables to make calculations more readable
-	double yaw = cameraYawToGround_radians;
-	double pitch = cameraPitchToGround_radians;
-	double roll = cameraRollToGround_radians;
-       printf("\n confirm that roll pitch yaw is respectively %f %f %f \n", roll, pitch, yaw); 
-      double cameraRotationMatrix[3][3] = 
-		{
-			{	cos(yaw)*cos(pitch),
-				 cos(yaw)*sin(pitch)*sin(roll)-sin(yaw)*cos(roll), 
-				cos(yaw)*sin(pitch)*cos(roll) + sin(yaw)*sin(roll)
-			},
-			{  
-				sin(yaw)*cos(pitch),
-				sin(yaw)*sin(pitch)*sin(roll) + cos(yaw)*cos(roll),
-				sin(yaw)*sin(pitch)*cos(roll) - cos(yaw)*sin(roll) 
-			},
-			{
-			 -1.0*sin(pitch),
-		 	cos(pitch)*sin(roll),
-			cos(pitch)*cos(roll)
-			},
-		};
-  //WARNING: These x, y, and z values are relative to the camera frame, NOT THE GROUND FRAME! This is what we want and why we'll multiply by the rotation matrix
-    double targetOffsetFromCamera[3][1] =
-             {
-		{targetDistanceFromCamera_meters.x},	  			{targetDistanceFromCamera_meters.y},	 			{targetDistanceFromCamera_meters.z}
-	     };
-    
-  //perform matrix multiplication 
-  //(recall that you take the dot product of the 1st matrix rows with the 2nd matrix colums)
- //process is very simple since 2nd matrix is a vertical vector
-
-//first, convert from image plane to real-world coordinates
-  double transformMatrix[3][3] = { {0,0,1}, {1,0,0}, {0,-1,0} };
-//now we can determine the distance in the inertial frame
-  double distanceInRealWorld[3][1];
-  
-
-  for (int row = 0; row < 3; row++)
-      {
-	double sum = 0;
-	for (int column = 0; column < 3; column++)
-		{
-		sum += transformMatrix[row][column] * targetOffsetFromCamera [column][0]; 
-		}
-        distanceInRealWorld[row][0] = sum;
-	} 
-   //end matrix multiplication
-
-// now we can determine the actual distance from the UAV, by accounting for the camera's orientation
-  double targetOffsetFromUAV[3][1];
-  for (int row = 0; row < 3; row++)
-      {
-	double sum = 0;
-	for (int column = 0; column < 3; column++)
-		{
-		sum += cameraRotationMatrix[row][column] * distanceInRealWorld [column][0]; 
-		}
-        targetOffsetFromUAV[row][0] = sum;
-	} /*
- targetOffsetFromUAV[0][0] = cameraRotationMatrix[0][0]*distanceInRealWorld[0][0] + cameraRotationMatrix[0][1]*distanceInRealWorld[1][0] +cameraRotationMatrix[0][2]*distanceInRealWorld[2][0] ;
-targetOffsetFromUAV[1][0] = cameraRotationMatrix[1][0]*distanceInRealWorld[0][0] + cameraRotationMatrix[1][1]*distanceInRealWorld[1][0] +cameraRotationMatrix[1][2]*distanceInRealWorld[2][0] ;
-targetOffsetFromUAV[2][0] = cameraRotationMatrix[2][0]*distanceInRealWorld[0][0] + cameraRotationMatrix[2][1]*distanceInRealWorld[1][0] +cameraRotationMatrix[2][2]*distanceInRealWorld[2][0] ;*/
-   //end matrix multiplication
-    
-    // we have the offset of the target from the UAV in an NED coordinate system (which is used by UTM)
-    //we also have the UAV position in UTM
-    //thus, we can find the UTM position of the target 
+		
+		double  targetOffsetFromUAV[3][1];
+	  getTargetOffsetFromUAV(
+	                           targetDistanceFromCamera_meters 
+							   ,cameraRollToGround_radians 
+							   ,cameraPitchToGround_radians 
+							   ,cameraYawToGround_radians
+							   ,targetOffsetFromUAV   ///THIS IS AN OUTPUT VARIABlE THAT WILL BE MODIFIED
+							);		
+		
+		
     UTMobject targetLocation2D_UTM;
 //it's reasonable to assume we don't cross zones
     std::get<designatorIndex>(targetLocation2D_UTM) = std::get<designatorIndex>(quadcopterLocation2D_UTM) ; 
@@ -453,29 +391,19 @@ printf("target GPS location is lat %f long %f ", targetLocation2D_GPS.latitudeIn
 
 
 
-UTMobject targetDistanceMetersToUTM
+void getTargetOffsetFromUAV 
      (
-	geometry_msgs::Point targetDistanceFromCamera_meters, 	      float cameraRollToGround_radians, 
+	geometry_msgs::Point targetDistanceFromCamera_meters, 	     
+	float cameraRollToGround_radians, 
 	float cameraPitchToGround_radians, 
-	float cameraYawToGround_radians 
-	,double currentQuadcopterLatitude 
-	,double currentQuadcopterLongitude 
-	,float currentQuadcopterAltitude_meters
+	float cameraYawToGround_radians,
+	double[3][1] outputDistance; //THIS IS AN OUTPUT VARIABLE!
      )
 {
 	
-        UTMobject quadcopterLocation2D_UTM;
-       //we have the magnitude of the offset in each direction
-       // and we know the camera's roll, pitc, yaw,
-       // relative to the ground (NED frame just like UTM)
-       //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
-        quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
-        printf("UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
-      //so now we have the camera offset from ground (meters), the camera rotation, and the target offset from camera. We need to convert this to camera offset from ground (ie, from center of UTM coordinates)
-     //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
-    //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
-      
 
+      
+//////yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
       //rotation matrix will be calculated based on instructions here: http://planning.cs.uiuc.edu/node102.html
 //first, rename some variables to make calculations more readable
 	double yaw = cameraYawToGround_radians;
@@ -536,15 +464,47 @@ UTMobject targetDistanceMetersToUTM
 		sum += cameraRotationMatrix[row][column] * distanceInRealWorld [column][0]; 
 		}
         targetOffsetFromUAV[row][0] = sum;
-	} /*
- targetOffsetFromUAV[0][0] = cameraRotationMatrix[0][0]*distanceInRealWorld[0][0] + cameraRotationMatrix[0][1]*distanceInRealWorld[1][0] +cameraRotationMatrix[0][2]*distanceInRealWorld[2][0] ;
-targetOffsetFromUAV[1][0] = cameraRotationMatrix[1][0]*distanceInRealWorld[0][0] + cameraRotationMatrix[1][1]*distanceInRealWorld[1][0] +cameraRotationMatrix[1][2]*distanceInRealWorld[2][0] ;
-targetOffsetFromUAV[2][0] = cameraRotationMatrix[2][0]*distanceInRealWorld[0][0] + cameraRotationMatrix[2][1]*distanceInRealWorld[1][0] +cameraRotationMatrix[2][2]*distanceInRealWorld[2][0] ;*/
-   //end matrix multiplication
-    
-    // we have the offset of the target from the UAV in an NED coordinate system (which is used by UTM)
-    //we also have the UAV position in UTM
-    //thus, we can find the UTM position of the target 
+	} 
+	
+	outputDistance[0][0] = targetOffsetFromUAV[0][0];
+	outputDistance[1][0] = targetOffsetFromUAV[1][0];
+	outputDistance[2][0] = targetOffsetFromUAV[2][0];
+
+   
+} ///end ffuncition
+
+UTMobject targetDistanceMetersToUTM
+     (
+	geometry_msgs::Point targetDistanceFromCamera_meters, 	      float cameraRollToGround_radians, 
+	float cameraPitchToGround_radians, 
+	float cameraYawToGround_radians 
+	,double currentQuadcopterLatitude 
+	,double currentQuadcopterLongitude 
+	,float currentQuadcopterAltitude_meters
+     )
+{
+	
+        UTMobject quadcopterLocation2D_UTM;
+       //we have the magnitude of the offset in each direction
+       // and we know the camera's roll, pitc, yaw,
+       // relative to the ground (NED frame just like UTM)
+       //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
+        quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
+        printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
+      //so now we have the camera offset from ground (meters), the camera rotation, and the target offset from camera. We need to convert this to camera offset from ground (ie, from center of UTM coordinates)
+     //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
+    //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
+      
+       double targetOffsetFromUAV[3][1];
+	  getTargetOffsetFromUAV(
+	                           targetDistanceFromCamera_meters 
+							   ,cameraRollToGround_radians 
+							   ,cameraPitchToGround_radians 
+							   ,cameraYawToGround_radians
+							   ,targetOffsetFromUAV   ///THIS IS AN OUTPUT VARIABlE THAT WILL BE MODIFIED
+							);
+        cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
+	  
     UTMobject targetLocation2D_UTM;
 //it's reasonable to assume we don't cross zones
     std::get<designatorIndex>(targetLocation2D_UTM) = std::get<designatorIndex>(quadcopterLocation2D_UTM) ; 
@@ -563,6 +523,8 @@ printf("\n target location UTM is easting %f northing %f zone  %s \n", std::get<
   return targetLocation2D_UTM;
    
 } ///end ffuncition
+
+
 void goToTargetEstimate(DJIDrone* drone, float latitude, float longitude, float altitude)
 { 
 dji_sdk::Waypoint targetEstimate; 
