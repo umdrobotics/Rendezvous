@@ -1,5 +1,20 @@
-
+#include <string>
+#include <sstream> //stringstream, for turning all PID controller params into a string for ROS
 #include <stdlib.h>    //for absolute value
+ #include "std_msgs/String.h" //for publishing to ROS
+ #include "ros/ros.h"
+ 
+ bool pidPublisherInitialized = false; 
+ ros::Publisher PID_PARAM_PUBLISHER; //for debugging and general info
+
+ void initializePidPublisher()
+ {
+  ros::init("", "", "pidParamInfo");
+  ros::NodeHandle n;
+  GLOBAL_ANGLE_PUBLISHER = (n).advertise<std_msgs::String>("/dji_sdk/pidParams", 2); // queue size of 2 seems reasonable
+  pidPublisherInitialized = true; 
+ }
+ 
  
 //if it receives a command like "go to angle 181 degrees", when it reaches 180.1,
 //it will change the sensor measure from 180.1 to -179.9
@@ -64,6 +79,10 @@ using namespace std;
 
 class PIDController {
  public: //declare everything public right now for convenience
+   
+    const static double min_Kp = 0.1 ; //can't assign a value lower than this in order to rpevent user errors
+	std::string pidId = "NO ID ASSIGNED"; //assign this on creation for debugging on ROS
+ 
 	double Kp = 3.0; //initial guess of 0.5 was somewhat slow, try 0.8 was whippy, 2 works well, try 4 for more speed
 	double Kd = 0.0; //initial guess
 	double Ki = 0.0; //initial guess was 0.0
@@ -85,6 +104,17 @@ class PIDController {
 													return (Ki*accumulatedError + Kd*derivative + Kp*error);
 													}
 
+	std::string publishAllParamValues()
+			{
+			 if(pidPublisherInitialized == true)
+				{			
+					std::stringstream ss;
+					ss << "PID controller params " << "ID: " << pidId << " Kp: " << Kp << " Kd: " << Kd << " Ki " << Ki << " deadzone " << deadZone_DjiUnits << " \n ";
+					std::string messageString = ss.str();
+					GLOBAL_ANGLE_PUBLISHER.publish(messageString);
+				}
+			}
+													
 };
 double getRequiredVelocityPID(double desiredAngle_djiUnits, double currentAngle_djiUnits ,double latest_dt ,PIDController * pidInstance)
 	{
@@ -127,17 +157,88 @@ double getRequiredVelocityPID_yaw(double desiredAngle_djiUnits, double currentAn
 	
 	}
 
-//still need to finish this
+	
+void setParamFromString(PIDController* pidInstance, std::string param, double paramVal)
+{
+  std::transform(param.begin(), param.end(), param.begin(), ::tolower); //converts to lowercase for ease of analysis
+  if(param.compare("kp")	 == 0 ) //the std::string::compare method returns 0 if the strings are equal
+	{ 
+	  if(paramVal >= PIDController.min_Kp) //this shouldn't be 0, and we want some gaurantee of that
+		{(*pidInstance).kp = paramVal;}
+	  
+	}
+  else if(param.compare("kd")	 == 0 )
+	{
+	  (*pidInstance).kd = paramVal;
+	  
+	}
+  else if(param.compare("ki")	 == 0 )
+	{
+	  (*pidInstance).ki = paramVal;
+	  
+	}
+	else if(param.compare("deadzone")	 == 0 )
+	{
+	  (*pidInstance).deadZone_DjiUnits = paramVal;
+	  
+	}
+	else if(param.compare("deadzone_djiunits")	 == 0 )
+	{
+	  (*pidInstance).deadZone_DjiUnits = paramVal;
+	  
+	}
+	else if(param.compare("placeholder")	 == 0 ) //change this to add future parameters
+	{
+	  ;
+	  
+	}
+}
+//Intended to read parameters from a text file in a format like the following:
+//(beginning of file here)
+// Kp: 3.0*\
+// Kd: 1.50
+// Deadzone: 10.350
+// (end of file here)
 //http://stackoverflow.com/questions/7868936/read-file-line-by-line
 #include <fstream>
 #include <sstream>
-#include <string>
-void setParamsFromFile(PIDController* pidInstance, string fileName, string* listOfParams)
+ #include <vector>
+ #include <algorithm>    // std::transform
+#include<cstring> //std::strlen
+void setParamsFromFile(PIDController* pidInstance, std::string fileName, std::vector<std::string> listOfParams)
         {
+		char charsToRemove[] = ":;,"; //formatting characters that could occur that you wish to remove	
         std::ifstream infile(fileName);
         std::string line;
         while (std::getline(infile, line))
             {
+				std::transform(line.begin(), line.end(), line.begin(), ::tolower); //converts to lowercase for ease of analysis
+
+				for (unsigned int i=0; i<listOfParams.size(); i++)
+					{		
+						int paramPositionInString = line.find(listOfParams.at(i));
+						if( paramPositionInString != std::string::npos)
+						{
+							std::string valString = line.substr( paramPositionInString+(listOfParams.at(i)).length() ); // so in a string like  "Kp: 5" this would result in ": 5".
+							//To remove the colon and the whitespace, use the methods found here: http://stackoverflow.com/questions/5891610/how-to-remove-characters-from-a-string
+							//and here: http://stackoverflow.com/questions/83439/remove-spaces-from-stdstring-in-c
+							 valString.erase(remove_if(valString.begin(), valString.end(), isspace), valString.end()); //removes whitespace
+							 std::string noSpaces =  valString ; //now that whitespaces are removed, put this as a new variable for easier debugging
+							  for ( int i = 0; i < std::strlen(charsToRemove); ++i)
+							    {noSpaces.erase (std::remove(noSpaces.begin(), noSpaces.end(), charsToRemove[i]), noSpaces.end());} //removes the colon and comma and some other symbols if present
+							try
+								  {
+									double paramVal = stod(noSpaces);// parses string for valid double, but may return 0.0 if it's invalid
+									assignParameterByString(pidInstance, listOfParams.at(i), paramVal);
+								    }
+							catch(...) //catch(...) means it will catch any exception
+									{
+										
+									 std::cout<<"unable to read double in paramater " << 	listOfParams.at(i) <<"\n";
+									}
+							break;//end the for loop
+						}
+					}
                 //process the string
                 //It should do the following:
                 // Check each line for a param name
@@ -145,3 +246,91 @@ void setParamsFromFile(PIDController* pidInstance, string fileName, string* list
                 ;
             }
         }
+		
+//string reading verified with the following code on http://cpp.sh
+/*
+// Example program
+#include <iostream>
+#include <string>
+#include <algorithm>    // std::transform
+
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <stdio.h>
+#include<cstring>
+std::vector<std::string> listOfParams;
+
+
+void setParamsFromFile( std::string line, std::vector<std::string> listOfParams)
+        {
+
+
+		char charsToRemove[] = ":;,"; //formatting characters that could occur that you wish to remove	
+        //std::ifstream infile(fileName);
+        //std::string line;
+        //while (std::getline(infile, line))
+        //    {
+				std::transform(line.begin(), line.end(), line.begin(), ::tolower); //converts to lowercase for ease of analysis
+
+				for (unsigned int i=0; i<listOfParams.size(); i++)
+					{		
+						int paramPositionInString = line.find(listOfParams.at(i));
+						if( paramPositionInString != std::string::npos)
+						{
+						    std::cout <<"unprocessed string " <<line <<" \n";
+							std::string valString = line.substr( paramPositionInString+(listOfParams.at(i)).length() ); // so in a string like  "Kp: 5" this would result in ": 5".
+							//To remove the colon and the whitespace, use the methods found here: http://stackoverflow.com/questions/5891610/how-to-remove-characters-from-a-string
+							//and here: http://stackoverflow.com/questions/83439/remove-spaces-from-stdstring-in-c
+							  valString.erase(remove_if(valString.begin(), valString.end(), isspace), valString.end()); //removes whitespace
+							std::string noSpaces =valString;
+							std::cout <<"without whitespace " << noSpaces <<" \\ " << valString << "\n";
+							  for ( int i = 0; i < std::strlen(charsToRemove); ++i)
+							    {noSpaces.erase (std::remove(noSpaces.begin(), noSpaces.end(), charsToRemove[i]), noSpaces.end());} 
+							std::cout <<"processed string " << noSpaces <<" \n";
+							try
+								  {
+									double paramVal = stod(noSpaces);// parses string for valid double, but may return 0.0 if it's invalid
+								std::cout <<"parameteR "<<listOfParams.at(i) << " should be : " << paramVal <<"\n";
+								    }
+							catch(...) //catch(...) means it will catch any exception
+									{
+										
+									 std::cout<<"unable to read double in paramater " << 	listOfParams.at(i) <<"\n";
+									}
+							break;//end the for loop
+						}
+					}
+                //process the string
+                //It should do the following:
+                // Check each line for a param name
+                //if the param name is in our list, strip the parameter name from the string, read the remaining value, and then set that parameter for the PID controller
+                ;
+            //}
+        }
+
+
+int main()
+{   
+listOfParams.push_back("kp");
+listOfParams.push_back("deadzone");
+std::string str1 = "DeadZoNe: 5"; //test alternate capitalizations
+std::string str2 = "kp : 7 "; //test extra whitespaces
+std::string str3 = "kp, :72.884  "; //test if comma is typed instead of colon, and also if it's a decimal
+std::string str4 = "notAParameter : 0.44"; // test if nonexistant parameter is entered 
+std::string str5 = "kp : 0.0"; // test if it's 0
+
+setParamsFromFile(str1 ,listOfParams);
+setParamsFromFile(str2 ,listOfParams);
+setParamsFromFile(str3 ,listOfParams);
+setParamsFromFile(str4 ,listOfParams);
+setParamsFromFile(str5 ,listOfParams);
+
+std::string q = " 0.44 , ";
+std::cout << "stod " << stod(q) << "\n"; //demonstrates the stod function
+  
+}
+
+*/
+		

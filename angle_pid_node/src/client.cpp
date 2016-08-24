@@ -28,6 +28,9 @@ PIDController* GLOBAL_YAW_CONTROLLER = new PIDController();
 double GLOBAL_ROLL_DJI_UNITS =0.0;
 double GLOBAL_PITCH_DJI_UNITS =0.0;
 double GLOBAL_YAW_DJI_UNITS =0.0;
+GLOBAL_ROLL_CONTROLLER.pidId = "ROLL_CONTROLLER";
+GLOBAL_PITCH_CONTROLLER.pidId = "PITCH_CONTROLLER";
+GLOBAL_YAW_CONTROLLER.pidId = "YAW_CONTROLLER";
 
 
 //no need to expend any processing power if you haven't gotten a message yet
@@ -891,7 +894,7 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
 				}
 				break;
 			case '0':
-
+				initializePidPublisher(); // found in PIDControl.cpp. This enables debugging info on the params to be published
 				printf ("Starting to listen for angle on %s", DesiredAngleTopic );
 				//int numDefaultMessagesToBuffer = 1;
 				controlGimbal(*nh, DesiredAngleTopic, 1, drone) ;
