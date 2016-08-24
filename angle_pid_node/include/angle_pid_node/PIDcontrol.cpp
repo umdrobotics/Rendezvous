@@ -1,17 +1,26 @@
+ #include "ros/ros.h" //note this must come before including 
 #include <string>
 #include <sstream> //stringstream, for turning all PID controller params into a string for ROS
 #include <stdlib.h>    //for absolute value
+#include <ctype.h> //for isspace
+
+ #include <fstream>
+#include <sstream>
+ #include <vector>
+ #include <algorithm>    // std::transform
+#include<cstring> //std::strlen
  #include "std_msgs/String.h" //for publishing to ROS
- #include "ros/ros.h"
- 
  bool pidPublisherInitialized = false; 
  ros::Publisher PID_PARAM_PUBLISHER; //for debugging and general info
 
  void initializePidPublisher()
  {
-  ros::init("", "", "pidParamInfo");
+   int argc = 0;
+   char *argv[1]; *argv = NULL; //change later if you wish to add arguments
+
+  ros::init(argc, argv, "pidParamInfo");
   ros::NodeHandle n;
-  GLOBAL_ANGLE_PUBLISHER = (n).advertise<std_msgs::String>("/dji_sdk/pidParams", 2); // queue size of 2 seems reasonable
+  PID_PARAM_PUBLISHER = (n).advertise<std_msgs::String>("/dji_sdk/pidParams", 2); // queue size of 2 seems reasonable
   pidPublisherInitialized = true; 
  }
  
@@ -80,7 +89,7 @@ using namespace std;
 class PIDController {
  public: //declare everything public right now for convenience
    
-    const static double min_Kp = 0.1 ; //can't assign a value lower than this in order to rpevent user errors
+     static constexpr double min_Kp = 0.125 ; //can't assign a value lower than this in order to rpevent user errors. Use 0.125 since it can be represented precivesly using floats
 	std::string pidId = "NO ID ASSIGNED"; //assign this on creation for debugging on ROS
  
 	double Kp = 3.0; //initial guess of 0.5 was somewhat slow, try 0.8 was whippy, 2 works well, try 4 for more speed
@@ -111,7 +120,9 @@ class PIDController {
 					std::stringstream ss;
 					ss << "PID controller params " << "ID: " << pidId << " Kp: " << Kp << " Kd: " << Kd << " Ki " << Ki << " deadzone " << deadZone_DjiUnits << " \n ";
 					std::string messageString = ss.str();
-					GLOBAL_ANGLE_PUBLISHER.publish(messageString);
+                    std_msgs::String msg;
+                    msg.data = messageString;
+					PID_PARAM_PUBLISHER.publish(msg);
 				}
 			}
 													
@@ -163,18 +174,18 @@ void setParamFromString(PIDController* pidInstance, std::string param, double pa
   std::transform(param.begin(), param.end(), param.begin(), ::tolower); //converts to lowercase for ease of analysis
   if(param.compare("kp")	 == 0 ) //the std::string::compare method returns 0 if the strings are equal
 	{ 
-	  if(paramVal >= PIDController.min_Kp) //this shouldn't be 0, and we want some gaurantee of that
-		{(*pidInstance).kp = paramVal;}
+	  if(paramVal >= (PIDController::min_Kp)) //this shouldn't be 0, and we want some gaurantee of that
+		{(*pidInstance).Kp = paramVal;}
 	  
 	}
   else if(param.compare("kd")	 == 0 )
 	{
-	  (*pidInstance).kd = paramVal;
+	  (*pidInstance).Kd = paramVal;
 	  
 	}
   else if(param.compare("ki")	 == 0 )
 	{
-	  (*pidInstance).ki = paramVal;
+	  (*pidInstance).Ki = paramVal;
 	  
 	}
 	else if(param.compare("deadzone")	 == 0 )
@@ -200,11 +211,7 @@ void setParamFromString(PIDController* pidInstance, std::string param, double pa
 // Deadzone: 10.350
 // (end of file here)
 //http://stackoverflow.com/questions/7868936/read-file-line-by-line
-#include <fstream>
-#include <sstream>
- #include <vector>
- #include <algorithm>    // std::transform
-#include<cstring> //std::strlen
+
 void setParamsFromFile(PIDController* pidInstance, std::string fileName, std::vector<std::string> listOfParams)
         {
 		char charsToRemove[] = ":;,"; //formatting characters that could occur that you wish to remove	
@@ -222,14 +229,17 @@ void setParamsFromFile(PIDController* pidInstance, std::string fileName, std::ve
 							std::string valString = line.substr( paramPositionInString+(listOfParams.at(i)).length() ); // so in a string like  "Kp: 5" this would result in ": 5".
 							//To remove the colon and the whitespace, use the methods found here: http://stackoverflow.com/questions/5891610/how-to-remove-characters-from-a-string
 							//and here: http://stackoverflow.com/questions/83439/remove-spaces-from-stdstring-in-c
-							 valString.erase(remove_if(valString.begin(), valString.end(), isspace), valString.end()); //removes whitespace
+                        //I had an error resolving std::isspace, the solution is shown here: http://stackoverflow.com/questions/21578544/stdremove-if-and-stdisspace-compile-time-error
+auto myIsspace = [](unsigned char const c) { return std::isspace(c); };
+std::remove_if(valString.begin(), valString.end(), myIsspace); 
+							 valString.erase(std::remove_if(valString.begin(), valString.end(), myIsspace), valString.end()); //removes whitespace
 							 std::string noSpaces =  valString ; //now that whitespaces are removed, put this as a new variable for easier debugging
 							  for ( int i = 0; i < std::strlen(charsToRemove); ++i)
 							    {noSpaces.erase (std::remove(noSpaces.begin(), noSpaces.end(), charsToRemove[i]), noSpaces.end());} //removes the colon and comma and some other symbols if present
 							try
 								  {
 									double paramVal = stod(noSpaces);// parses string for valid double, but may return 0.0 if it's invalid
-									assignParameterByString(pidInstance, listOfParams.at(i), paramVal);
+									setParamFromString(pidInstance, listOfParams.at(i), paramVal);
 								    }
 							catch(...) //catch(...) means it will catch any exception
 									{
