@@ -33,16 +33,16 @@ myFile.close();
 
 
 //Function should be called when you first find the target
-KalmanFilter initializeKalmanFilter(double dt, float targetX, float targetY)
+KalmanFilter initializeKalmanFilter(double dt, double targetX, double targetY)
 {
 //dt = 0.1; //For debugging
 KalmanFilter KF(4, 2, 0); //4-element state vector of object, 2-element measurement vector, 0-element control vector 
 
 //initial state estimates based on first time we see the target
-KF.statePre.at<float>(0,0) = targetX;
-KF.statePre.at<float>(0,1) = targetY;
-KF.statePre.at<float>(1,0) = 0; //x velocity
-KF.statePre.at<float>(1,1) = 0; //y velocity
+KF.statePre.at<double>(0,0) = targetX;
+KF.statePre.at<double>(0,1) = targetY;
+KF.statePre.at<double>(1,0) = 0; //x velocity
+KF.statePre.at<double>(1,1) = 0; //y velocity
 
 //set up measurement matrix
 setIdentity(KF.measurementMatrix);
@@ -53,7 +53,7 @@ setIdentity(KF.measurementNoiseCov, Scalar::all(10));
 setIdentity(KF.errorCovPost, Scalar::all(.1));
 
 //set up the transition matrix
-KF.transitionMatrix = *(Mat_<float>(4, 4) << 1,0,dt,0,   0,1,0,dt,  0,0,1,0,  0,0,0,1);
+KF.transitionMatrix = *(Mat_<double>(4, 4) << 1,0,dt,0,   0,1,0,dt,  0,0,1,0,  0,0,0,1);
 
  return KF; //keep going calculations with this kalman filter
 }
@@ -79,31 +79,31 @@ measurement(1) = yMeasured;
 //try this based on this: http://www.robot-home.it/blog/en/software/ball-tracker-con-filtro-di-kalman/
 // update dt, call predict,  measure, correct(measured)
 //since we have measurements going into this, we'll go: correct, update dt, call predict
-Mat_<float> measurement(2,1); 
+Mat_<double> measurement(2,1); 
 measurement(0) = xMeasured;
 measurement(1) = yMeasured;
 KF.correct(measurement);
 
 //now update dt
-KF.transitionMatrix.at<float>(0,2) = dt;
-KF.transitionMatrix.at<float>(1,3) = dt;
+KF.transitionMatrix.at<double>(0,2) = dt;
+KF.transitionMatrix.at<double>(1,3) = dt;
 
-Mat_<float> prediction(2,2);  
+Mat_<double> prediction(2,2);  
  prediction = KF.predict();
 return prediction; 
 
 
 }
 
-cv::Mat /*void*/ targetEstimateWithoutMeasurement(KalmanFilter KF, float dt)
+cv::Mat /*void*/ targetEstimateWithoutMeasurement(KalmanFilter KF, double dt)
 {
 
 
 //now update dt
-KF.transitionMatrix.at<float>(0,2) = dt;
-KF.transitionMatrix.at<float>(1,3) = dt;
+KF.transitionMatrix.at<double>(0,2) = dt;
+KF.transitionMatrix.at<double>(1,3) = dt;
 
-Mat_<float> prediction(2,2);  
+Mat_<double> prediction(2,2);  
  prediction = KF.predict();
 return prediction; 
 

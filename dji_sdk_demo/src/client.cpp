@@ -27,7 +27,7 @@
 #include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
 
 
-#define YAW_RELATIVE_TO_BODY true // if gimbal yaw command is relative to the body, this is true, if it's relative to the inertial frame, it's false
+#define YAW_RELATIVE_TO_BODY false // if gimbal yaw command is relative to the body, this is true, if it's relative to the inertial frame, it's false
 ///Begin global tracking variables
 //These variables need to be global so tha Apriltag Detection Callback can access them
 
@@ -327,6 +327,8 @@ void getGimbalAngleToPointAtTarget_rads
  //yaw_rads = acos( deltaNorth / distance_Meters );
  //turns out acos can't be used, since it doesn't do enough to specify the quadrant. Use
  yaw_rads = atan2( deltaEast, deltaNorth); //remember north is the x axis, east is the y axis
+  cout <<"\n atan2 of y x " << deltaEast <<" " <<deltaNorth << " quadcopter east north " << std::get<eastingIndex>(quadcopterLocation_UTM) << " "<< std::get<northingIndex>(quadcopterLocation_UTM) <<  "    target east north " <<std::get<eastingIndex>(targetLocation_UTM) <<" " << std::get<northingIndex>(targetLocation_UTM)<<  "\n"; 
+  
   
 }
 
@@ -432,7 +434,7 @@ dji_sdk::Waypoint targetDistanceMetersToLongitude
        // relative to the ground (NED frame just like UTM)
        //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
         quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
-        printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
+        //printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
 
 		
 		double  targetOffsetFromUAV[3][1];
@@ -492,7 +494,7 @@ UTMobject targetDistanceMetersToUTM
        // relative to the ground (NED frame just like UTM)
        //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
         quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
-        printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
+        //printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
       //so now we have the camera offset from ground (meters), the camera rotation, and the target offset from camera. We need to convert this to camera offset from ground (ie, from center of UTM coordinates)
      //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
     //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
@@ -505,7 +507,7 @@ UTMobject targetDistanceMetersToUTM
 							   ,cameraYawToGround_radians
 							   ,targetOffsetFromUAV   ///THIS IS AN OUTPUT VARIABlE THAT WILL BE MODIFIED
 							);
-        cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
+        //cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
 	  
     UTMobject targetLocation2D_UTM;
 //it's reasonable to assume we don't cross zones
@@ -616,7 +618,7 @@ UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude
     );
 #define NO_PITCH 1 // this is to avoid pitch during testing on the bench
 #ifdef NO_PITCH
-pitch_rads*=0; 
+pitch_rads = degreesToRadians(-10); //small pitch so calculations still make sense
 #endif 
 if (YAW_RELATIVE_TO_BODY == true)
   {yaw_rads = inertialFrameToBody_yaw(yaw_rads, drone);}
@@ -666,6 +668,7 @@ if (YAW_RELATIVE_TO_BODY == true)
 
 void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArray /*sensor_msgs::ImageConstPtr&*/ tag_detection_array)
 {
+
 	
 UTMobject latestTargetLocation; //must declare before the if statements so it can be used for further estimates (by recording the UTM designator zone) if the target is lost	
 	
@@ -741,9 +744,12 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
      
      GLOBAL_KALMAN_FILTER = initializeKalmanFilter(LATEST_DT, targetX ,targetY ); 
 	 GLOBAL_KALMAN_FILTER_DIST = initializeKalmanFilter(LATEST_DT, debugAr[0][0], debugAr[2][0]); //track side-side distance and distance from camera for debugging
-       targetLocPrediction = GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
-		targetXandZFromCamera = GLOBAL_KALMAN_FILTER_DIST.predict();
-		 cout <<"prediction dist from camera initial (x and z) " << targetXandZFromCamera <<"\n";
+
+
+
+       targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY);//GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
+		targetXandZFromCamera = 	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); //GLOBAL_KALMAN_FILTER_DIST.predict();
+		 cout <<"real x z: " << debugAr[0][0] << " " << debugAr[2][0] <<" prediction dist from camera initial (x and z) " << targetXandZFromCamera <<"\n";
     // String stall;
     // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
     // cin>> stall; 
@@ -751,19 +757,19 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 
  else
     {
-     
+
        
       targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY); 
 	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); 
      // cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
     // cout<<"dt: "<<LATEST_DT <<"\n";
-			 cout <<"prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
+			 cout <<"real x z: " << debugAr[0][0] << " " << debugAr[2][0] <<" prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
 
      }
   IS_TRACKING = true;
 
-  //
-  handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone);
+ 
+                handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone);
 	 
    }
 
@@ -787,7 +793,8 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 					 cv::Mat targetLocPrediction = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
 					 dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
-					 handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone); 
+
+					handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone); 
 					 cv::Mat targetXandZFromCamera = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT);
 			           cout <<" without measurement  prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
 					 
