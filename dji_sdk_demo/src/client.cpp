@@ -337,9 +337,9 @@ void getGimbalAngleToPointAtTarget_rads
 void getTargetOffsetFromUAV 
      (
 	geometry_msgs::Point targetDistanceFromCamera_meters, 	     
-	float cameraRollToGround_radians, 
-	float cameraPitchToGround_radians, 
-	float cameraYawToGround_radians,
+	double cameraRollToGround_radians, 
+	double cameraPitchToGround_radians, 
+	double cameraYawToGround_radians,
 	double outputDistance[3][1] //THIS IS AN OUTPUT VARIABLE!
      )
 {
@@ -419,12 +419,12 @@ void getTargetOffsetFromUAV
 
 dji_sdk::Waypoint targetDistanceMetersToLongitude
      (
-	geometry_msgs::Point targetDistanceFromCamera_meters, 	      float cameraRollToGround_radians, 
-	float cameraPitchToGround_radians, 
-	float cameraYawToGround_radians 
+	geometry_msgs::Point targetDistanceFromCamera_meters, 	      double cameraRollToGround_radians, 
+	double cameraPitchToGround_radians, 
+	double cameraYawToGround_radians 
 	,double currentQuadcopterLatitude 
 	,double currentQuadcopterLongitude 
-	,float currentQuadcopterAltitude_meters
+	,double currentQuadcopterAltitude_meters
      )
 {
 	
@@ -479,12 +479,12 @@ printf("target GPS location is lat %f long %f ", targetLocation2D_GPS.latitudeIn
 
 UTMobject targetDistanceMetersToUTM
      (
-	geometry_msgs::Point targetDistanceFromCamera_meters, 	      float cameraRollToGround_radians, 
-	float cameraPitchToGround_radians, 
-	float cameraYawToGround_radians 
+	geometry_msgs::Point targetDistanceFromCamera_meters, 	      double cameraRollToGround_radians, 
+	double cameraPitchToGround_radians, 
+	double cameraYawToGround_radians 
 	,double currentQuadcopterLatitude 
 	,double currentQuadcopterLongitude 
-	,float currentQuadcopterAltitude_meters
+	,double currentQuadcopterAltitude_meters
      )
 {
 	
@@ -533,7 +533,7 @@ cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " 
 } ///end ffuncition
 
 
-void goToTargetEstimate(DJIDrone* drone, float latitude, float longitude, float altitude)
+void goToTargetEstimate(DJIDrone* drone, double latitude, double longitude, double altitude)
 { 
 dji_sdk::Waypoint targetEstimate; 
 targetEstimate.latitude = latitude;
@@ -752,14 +752,15 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
   if(! ( IS_TRACKING) )
    {
 
-     
+
      GLOBAL_KALMAN_FILTER = initializeKalmanFilter(LATEST_DT, targetX ,targetY ); 
 	 GLOBAL_KALMAN_FILTER_DIST = initializeKalmanFilter(LATEST_DT, debugAr[0][0], debugAr[2][0]); //track side-side distance and distance from camera for debugging
 
 
 
        targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY);//GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
-		targetXandZFromCamera = 	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); //GLOBAL_KALMAN_FILTER_DIST.predict();
+
+		targetXandZFromCamera   = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); //GLOBAL_KALMAN_FILTER_DIST.predict();
 		 cout <<"real x z: " << debugAr[0][0] << " " << debugAr[2][0] <<" prediction dist from camera initial (x and z) " << targetXandZFromCamera <<"\n";
     // String stall;
     // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
@@ -769,7 +770,7 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
  else
     {
 
-       
+
       targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY); 
 	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); 
      // cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
@@ -791,16 +792,17 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
     //IS_TRACKING = false; //couldn't find one so we're obviously not tracking yet. 
 	   if(IS_TRACKING == true)
 	      {
+
 		     FRAMES_WITHOUT_TARGET ++ ; 
 	        if(FRAMES_WITHOUT_TARGET >= FRAMES_UNTIL_TARGET_LOST)
-					{
+					{ 
 					 IS_TRACKING = false; 
 					  FRAMES_WITHOUT_TARGET = 0;
 					}
 			else
 					{
 						//
-				     
+
 					 cv::Mat targetLocPrediction = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
 					 dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
