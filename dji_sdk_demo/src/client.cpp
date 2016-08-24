@@ -47,6 +47,7 @@ int FRAMES_WITHOUT_TARGET = 0;
 
 
 cv::KalmanFilter GLOBAL_KALMAN_FILTER; 
+cv::KalmanFilter GLOBAL_KALMAN_FILTER_DIS; //for debugging, let's just try to track the apriltag distance 
 
 
 //Note: The angle control system needs to have access to the DJIDrone* object to send the gimbal commands
@@ -764,14 +765,17 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
     double targetX = std::get<northingIndex>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<northingIndex>(latestTargetLocation);
    double targetY = std::get<eastingIndex>(latestTargetLocation); //LATEST_TARGET_Y_CAMERA; //std::get<eastingIndex>(latestTargetLocation);
   cv::Mat targetLocPrediction;
+  cv::Mat targetXandZFromCamera ; //for debugging the kalman filter
 
   if(! ( IS_TRACKING) )
    {
 
      
      GLOBAL_KALMAN_FILTER = initializeKalmanFilter(LATEST_DT, targetX ,targetY ); 
+	 GLOBAL_KALMAN_FILTER_DIST = initializeKalmanFilter(LATEST_DT, LATEST_TARGET_X_CAMERA, LATEST_TARGET_Z_CAMERA); //track side-side distance and distance from camera for debugging
        targetLocPrediction = GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
-
+		targetXandZFromCamera = GLOBAL_KALMAN_FILTER_DIST.predict();
+		 cout <<"prediction wihtout measurement (x and z) " << targetXandZFromCamera <<"\n";
     // String stall;
     // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
     // cin>> stall; 
@@ -782,9 +786,11 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
      
        
       targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY); 
+	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, LATEST_TARGET_X_CAMERA, LATEST_TARGET_Z_CAMERA); 
+     // cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
+    // cout<<"dt: "<<LATEST_DT <<"\n";
+			 cout <<"prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
 
-      cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
-     cout<<"dt: "<<LATEST_DT <<"\n";
      }
   IS_TRACKING = true;
 
@@ -813,7 +819,10 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
 					 cv::Mat targetLocPrediction = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
 					 dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
-					 handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone); 					 
+					 handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone); 
+					 cv::Mat targetXandZFromCamera = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT);
+			           cout <<" without measurement  prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
+					 
 					}	
 		  }
      }
