@@ -524,8 +524,12 @@ printf("\n target offset from UAV is %f x %f y %f z", targetOffsetFromUAV[0][0],
 printf("\n target location UTM is easting %f northing %f zone  %s \n", std::get<eastingIndex>(targetLocation2D_UTM), std::get<northingIndex>(targetLocation2D_UTM), std::get<designatorIndex>(targetLocation2D_UTM).c_str());*/
 //now convert back to GPS coordinates and we can generate a proper waypoint
 
+cout <<"\nOffset from UAV x y z inertial " << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" quadcopter location east north zone " << std::get<eastingIndex>(quadcopterLocation2D_UTM) << " "<< std::get<northingIndex>(quadcopterLocation2D_UTM) <<" "<< std::get<designatorIndex>(quadcopterLocation2D_UTM)  ;
+cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " "<< std::get<northingIndex>(targetLocation2D_UTM) <<" "<< std::get<designatorIndex>(targetLocation2D_UTM) <<" ";
   return targetLocation2D_UTM;
    
+
+
 } ///end ffuncition
 
 
@@ -575,10 +579,14 @@ ROS_INFO("\n That's what I Heard");
 
 ////////Turned this piece into a function so it could also easily be called when there is not a target detection, only a prediction
 void handleTargetPrediction(cv::Mat targetLocPrediction ,std::string targetUtmZone ,dji_sdk::GlobalPosition copterState ,std_msgs::Header latestHeader ,DJIDrone* drone ){
+cout <<"targetLocPrediction " <<targetLocPrediction <<" "; 
+
  ///following line is just to test basic gimbal control, has nothing to do with rest of code
      // drone->gimbal_angle_control(0, /*-500.0*/-300.0 -0.0,  8, 1); printf("tested gimbal"); //this line has confirmed that we don't need to call sleep after executing a gimbal command
- double predictedNorth = targetLocPrediction.at<float>(0,0); //access element 0,0 ie x
- double predictedEast = targetLocPrediction.at<float>(0,1); //access element 0,1 ie y
+ double predictedNorth = targetLocPrediction.at<double>(0,0); //access element 0,0 ie x
+ double predictedEast = targetLocPrediction.at<double>(0,1); //access element 0,1 ie y
+cout <<" east north zone " << predictedEast<<" "<< predictedNorth<<" "<< targetUtmZone;
+//getting an error like: targetLocPrediction [-0.47096807; 203677.88; -0.00017216911; 3540.2554]  east north zone 1.41522e+26 1.55878e+40 31N
 UTMobject predictedTargetUTM; //will need this for later
 std::get<northingIndex>(predictedTargetUTM) = predictedNorth;
 std::get<eastingIndex>(predictedTargetUTM) = predictedEast;
@@ -603,6 +611,8 @@ UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude
   std::get<northingIndex>(predictedCopterUTM) += LATEST_DT * copterSpeed.vx;
  std::get<eastingIndex>(predictedCopterUTM) += LATEST_DT * copterSpeed.vy;
 
+cout <<"predictions before gimbal " <<"copter e n zone " << std::get<eastingIndex>(predictedCopterUTM)<<" "<< std::get<northingIndex>(predictedCopterUTM)<<" "<< std::get<designatorIndex>(predictedCopterUTM)<<" \n";
+cout << "target e n zone " << std::get<eastingIndex>(predictedTargetUTM)<<" "<< std::get<northingIndex>(predictedTargetUTM)<<" "<< std::get<designatorIndex>(predictedTargetUTM)<<" \n";
   //then need to modify the gimbal angle to have it point appropriately. This will be done with multiple variables that will be modified by a function, rather than an explicit return
    double yaw_rads;
    double pitch_rads;
@@ -718,14 +728,15 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
 //now begin calculations to figure out target position in northings and eastings
      dji_sdk::Gimbal gimbalState = drone->gimbal;//DJI::onboardSDK::GimbalData gimbalState = (drone->gimbal).getGimbal();
      dji_sdk::GlobalPosition copterState = drone->global_position; //DJI::onboardSDK::PositionData copterState = drone->global_position; //DJI::onboardSDK::Flight::getPosition();
-      latestTargetLocation = targetDistanceMetersToUTM( //TODO TODO TODO convert roll pitch and yaw from the degrees they are in now into radians. Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
+      latestTargetLocation = targetDistanceMetersToUTM( // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
 			current.pose.pose.position , 	      				degreesToRadians(gimbalState.roll), 
 			degreesToRadians(gimbalState.pitch), 
-			degreesToRadians(bodyFrameToInertial_yaw(gimbalState.yaw,drone))// since yaw is relative to body, not inertial frame, we need to convert//degreesToRadians(gimbalState.yaw) 
+			degreesToRadians(gimbalState.yaw/*bodyFrameToInertial_yaw(gimbalState.yaw,drone)*/)// since yaw is relative to body, not inertial frame, we need to convert//degreesToRadians(gimbalState.yaw) 
 			,copterState.latitude 
 			,copterState.longitude 
 			,copterState.altitude //TODO decide if we should use .height instead
 			);
+cout <<" verify result e,n,zone "<< std::get<eastingIndex>(latestTargetLocation) << " "<< std::get<northingIndex>(latestTargetLocation) <<" "<< std::get<designatorIndex>(latestTargetLocation)  <<"\n";
 
 double debugAr[3][1]; 
 getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.roll), degreesToRadians(gimbalState.pitch), degreesToRadians(gimbalState.yaw), debugAr);
