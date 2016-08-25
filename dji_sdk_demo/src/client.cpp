@@ -79,7 +79,11 @@ ros::Publisher GLOBAL_ANGLE_PUBLISHER;
 #include<vector>
 #include <image_transport/image_transport.h>
 
-
+void ezExit() //shuts the program down quickly for testing purposes
+{
+#include <assert.h>
+assert(1==0);
+}
 
 void goToTargetEstimate(DJIDrone* drone, double latitude, double longitude, double altitude)
 { 
@@ -1105,7 +1109,9 @@ int main(int argc, char *argv[])
             case 54: //replace with number so it works, but different number so we know it's not DJI's 
 
 				//replace this with testing if it can read AprilTags stuff:
-				//dummyTest(); //REMOVE before actual use!
+				//dummyTest(); //REMOVE before actual use! 
+	crudeTest(); 
+
 				GLOBAL_ANGLE_PUBLISHER = (*nh).advertise<geometry_msgs::PointStamped>("/dji_sdk/desired_angle", 2); // queue size of 2 seems reasonable
 				drone->check_version(); //TODO need to find a way to get the return value from this
 				drone->request_sdk_permission_control(); //TODO need to find a way to get the return value from this
@@ -1117,6 +1123,7 @@ int main(int argc, char *argv[])
 				
                 ros::Duration(3.0).sleep(); //3 seconds to stabilize after taking off
 				printf ("Starting to listen for AprilTags on %s", AprilTagsTopicTracking );
+		ezExit();
 				//listenOption(*nh);
 				
                 char waitKeyChar; 

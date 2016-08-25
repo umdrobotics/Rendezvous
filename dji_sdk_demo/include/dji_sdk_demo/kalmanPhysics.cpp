@@ -39,10 +39,17 @@ KalmanFilter initializeKalmanFilter(double dt, double targetX, double targetY)
 KalmanFilter KF(4, 2, 0, CV_64F); //4-element state vector of object, 2-element measurement vector, 0-element control vector 
 
 //initial state estimates based on first time we see the target
-KF.statePre.at<double>(0,0) = targetX;
-KF.statePre.at<double>(0,1) = targetY;
-KF.statePre.at<double>(1,0) = 0; //x velocity
-KF.statePre.at<double>(1,1) = 0; //y velocity
+//IMPORTANT NOTE: The following sets element 0 to 8, sets element 1 to 7, overrides element 1 as 6, and then sets element 2 to 5. It somehow adds the columns and rows rather than doing a proper i,j access 
+//KF.statePre.at<double>(0,0) = 8;
+//KF.statePre.at<double>(0,1) = 7;
+//KF.statePre.at<double>(1,0) = 6; 
+//KF.statePre.at<double>(1,1) = 5; 
+// The following approach ACTUALLY WORKS
+//and this discussion is relevant to it http://stackoverflow.com/questions/8184053/accessing-elements-of-a-cvmat-with-atfloati-j-is-it-x-y-or-row-col
+KF.statePre.at<double>(0) = targetX;
+KF.statePre.at<double>(1) = targetY;
+KF.statePre.at<double>(2) = 0; //x velocity
+KF.statePre.at<double>(3) = 0; //y velocity
 
 //set up measurement matrix
 setIdentity(KF.measurementMatrix);
@@ -55,6 +62,9 @@ setIdentity(KF.errorCovPost, Scalar::all(.1));
 //set up the transition matrix
 KF.transitionMatrix = *(Mat_<double>(4, 4) << 1,0,dt,0,   0,1,0,dt,  0,0,1,0,  0,0,0,1);
 
+cout <<" initial KF: transitionMatrix: " << KF.transitionMatrix <<"\n";
+cout <<" initial KF: measurementMatrix: " << KF.measurementMatrix <<"\n";
+cout <<" initial KF: pre-state: " << KF.statePre <<"\n";
  return KF; //keep going calculations with this kalman filter
 }
 
@@ -63,18 +73,7 @@ KF.transitionMatrix = *(Mat_<double>(4, 4) << 1,0,dt,0,   0,1,0,dt,  0,0,1,0,  0
 cv::Mat /*void*/ targetTrackStep(KalmanFilter KF, double dt, double xMeasured, double yMeasured)
 {
 //dt = 0.1; //For debugging
-/* Mat prediction = KF.predict();
- Point predictPt(prediction.at<float>(0,0),prediction.at<float>(0,1));
 
-//now update the matrix to reflect the time taken on this last measurement
-//KF.transitionMatrix = *(Mat_<float>(4, 4) << 1,0,dt,0,   0,1,0,dt,  0,0,1,0,  0,0,0,1); //I'm concerned this may end up erasing data so the estimate's always 0
-
-Mat_<float> measurement(2,1); 
-measurement.setTo(Scalar(0)); //to make sure it's not filled with garbage values
-measurement(0) = xMeasured;
-measurement(1) = yMeasured;
-
- Mat estimated = KF.correct(measurement);*/
 
 //try this based on this: http://www.robot-home.it/blog/en/software/ball-tracker-con-filtro-di-kalman/
 // update dt, call predict,  measure, correct(measured)
@@ -89,9 +88,13 @@ measurement(1) = yMeasured;
 
 KF.correct(measurement);
 
+cout <<"measurement : " <<measurement <<"\n";
+
 //now update dt
 KF.transitionMatrix.at<double>(0,2) = dt;
 KF.transitionMatrix.at<double>(1,3) = dt;
+
+cout <<"updated transition matrix " <<  KF.transitionMatrix <<"\n";
 
 Mat_<double> prediction(2,2);  
  prediction = KF.predict();
@@ -100,6 +103,7 @@ return prediction;
 
 
 }
+
 
 cv::Mat /*void*/ targetEstimateWithoutMeasurement(KalmanFilter KF, double dt)
 {
@@ -117,7 +121,39 @@ return prediction;
 }
  
 
+void crudeTest()
+{
+double actualX[]={2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06};
+double actualY[]={803811,803811,803811,803811,803811,803811,803811,803811,803811,803811};
 
+double ts[] = {0.5, 0.6, 0.7, 0.4, 0.5, 0.8, 1.4, 1.2, 0.6, 0.87};
+
+KalmanFilter mykf = initializeKalmanFilter(ts[0], actualX[0], actualY[0]);
+cv::Mat targetLocPrediction = targetTrackStep(mykf, ts[0], actualX[0], actualY[0]);
+cout <<"initial " <<targetLocPrediction<<"\n";
+for (int i = 1; i< 10; i++)
+{
+ targetLocPrediction = targetTrackStep(mykf, ts[i], actualX[i], actualY[i]);
+cout <<"prediction number "<<i <<" : " <<targetLocPrediction<<"\n";
+}
+
+cout <<"now redo with x and y flipped \n";
+double notY[]={2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06,2.49527e+06};
+ double notX[]={803811,803811,803811,803811,803811,803811,803811,803811,803811,803811};
+
+
+
+ mykf = initializeKalmanFilter(ts[0], notX[0], notY[0]);
+ targetLocPrediction = targetTrackStep(mykf, ts[0], notX[0], notY[0]);
+cout <<"initial " <<targetLocPrediction<<"\n";
+for (int i = 1; i< 10; i++)
+{
+ targetLocPrediction = targetTrackStep(mykf, ts[i], notX[i], notY[i]);
+cout <<"prediction number "<<i <<" : " <<targetLocPrediction<<"\n";
+}
+
+//return void;
+}
 
 
 

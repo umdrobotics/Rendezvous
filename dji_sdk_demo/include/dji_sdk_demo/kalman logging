@@ -1,0 +1,140 @@
+ initial KF: transitionMatrix: [1, 0, 0.5, 0;
+  0, 1, 0, 0.5;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+ initial KF: measurementMatrix: [1, 0, 0, 0;
+  0, 1, 0, 0]
+ initial KF: pre-state: [2495270; 0; 0; 0]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.5, 0;
+  0, 1, 0, 0.5;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+initial [2495270; 0; 0; 0]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.6, 0;
+  0, 1, 0, 0.6;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 1 : [2495270; 8.038029619703803; 0; 0]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.7, 0;
+  0, 1, 0, 0.7;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 2 : [2495270; 30.38314424051741; 0; 4.822703956491174]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.4, 0;
+  0, 1, 0, 0.4;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 3 : [2495270; 80.37506191940301; 0; 20.89734957403291]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.5, 0;
+  0, 1, 0, 0.5;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 4 : [2495270; 170.0607909793885; 0; 46.61349871512223]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.8, 0;
+  0, 1, 0, 0.8;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 5 : [2495270; 348.9183244555085; 0; 88.39338756726826]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 1.4, 0;
+  0, 1, 0, 1.4;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 6 : [2495270; 784.7519287634781; 0; 162.2805935777611]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 1.2, 0;
+  0, 1, 0, 1.2;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 7 : [2495270; 1666.336203958182; 0; 303.4766993830178]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.6, 0;
+  0, 1, 0, 0.6;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 8 : [2495270; 2916.362943003499; 0; 511.6110340958784]
+measurement : [2495270; 803811]
+updated transition matrix [1, 0, 0.87, 0;
+  0, 1, 0, 0.87;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 9 : [2495270; 4795.475386699449; 0; 757.4355630271472]
+now redo with x and y flipped 
+ initial KF: transitionMatrix: [1, 0, 0.5, 0;
+  0, 1, 0, 0.5;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+ initial KF: measurementMatrix: [1, 0, 0, 0;
+  0, 1, 0, 0]
+ initial KF: pre-state: [803811; 0; 0; 0]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.5, 0;
+  0, 1, 0, 0.5;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+initial [803811; 0; 0; 0]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.6, 0;
+  0, 1, 0, 0.6;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 1 : [803811; 24.95245047549525; 0; 0]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.7, 0;
+  0, 1, 0, 0.7;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 2 : [803811; 94.31837624645081; 0; 14.97111696843379]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.4, 0;
+  0, 1, 0, 0.4;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 3 : [803811; 249.5082559900633; 0; 64.87162961392305]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.5, 0;
+  0, 1, 0, 0.5;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 4 : [803811; 527.9196103401653; 0; 144.7022558025245]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.8, 0;
+  0, 1, 0, 0.8;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 5 : [803811; 1083.146943080023; 0; 274.3995394377254]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 1.4, 0;
+  0, 1, 0, 1.4;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 6 : [803811; 2436.10493671478; 0; 503.7675482629373]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 1.2, 0;
+  0, 1, 0, 1.2;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 7 : [803811; 5172.806467752659; 0; 942.0825339158865]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.6, 0;
+  0, 1, 0, 0.6;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 8 : [803811; 9053.263715958528; 0; 1588.193822986277]
+measurement : [803811; 2495270]
+updated transition matrix [1, 0, 0.87, 0;
+  0, 1, 0, 0.87;
+  0, 0, 1, 0;
+  0, 0, 0, 1]
+prediction number 9 : [803811; 14886.5913357363; 0; 2351.30675911968]
+
+
+
+SESSION 2
+
