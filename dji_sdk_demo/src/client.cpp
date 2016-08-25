@@ -19,7 +19,7 @@
 #include <actionlib/client/terminal_state.h>
 
 
-
+#include <dji_sdk_demo/kalmanWebsite.cpp>
 #include <dji_sdk_demo/kalmanPhysics.cpp>  //need to figure out how to put this in the main folder instead of include
                volatile int degs =0; // for debugging gimbal control
              volatile int GIMBAL_TEST_SIGN = 1; //for debugging gimbal control
@@ -253,13 +253,13 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
   if(! ( IS_TRACKING) )
    {
 
-
-     GLOBAL_KALMAN_FILTER = initializeKalmanFilter(LATEST_DT, targetX ,targetY ); 
+     bool firstDetection = true;
+     GLOBAL_KALMAN_FILTER = initializeKalmanFilterWeb(); 
 	 GLOBAL_KALMAN_FILTER_DIST = initializeKalmanFilter(LATEST_DT, debugAr[0][0], debugAr[2][0]); //track side-side distance and distance from camera for debugging
 
 
 
-       targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY);//GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
+       targetLocPrediction = loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, firstDetection);//GLOBAL_KALMAN_FILTER.predict() ; //TODO TODO make sure this isn't causing a double calculation or something!
 
 		targetXandZFromCamera   = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); //GLOBAL_KALMAN_FILTER_DIST.predict();
 		 cout <<"real x z: " << debugAr[0][0] << " " << debugAr[2][0] <<" prediction dist from camera initial (x and z) " << targetXandZFromCamera <<"\n";
@@ -271,8 +271,8 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
  else
     {
 
-
-      targetLocPrediction = targetTrackStep(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY); 
+    bool firstDetection = false;
+      targetLocPrediction =  loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, firstDetection); 
 	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); 
      // cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
     // cout<<"dt: "<<LATEST_DT <<"\n";
@@ -304,12 +304,12 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 					{
 						//
 
-					 cv::Mat targetLocPrediction = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
+					 cv::Mat targetLocPrediction = loopStepWebWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);//targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
 					 dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
 
 					handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone); 
-					 cv::Mat targetXandZFromCamera = targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT);
+					 cv::Mat targetXandZFromCamera = loopStepWebWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);//targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT);
 			           cout <<" without measurement  prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
 					 
 					}	
@@ -1110,7 +1110,10 @@ int main(int argc, char *argv[])
 
 				//replace this with testing if it can read AprilTags stuff:
 				//dummyTest(); //REMOVE before actual use! 
-	crudeTest(); 
+	//crudeTestWeb(); 
+	expTestWeb();
+	cout <<"\n exp test finished\n";
+	sineTestWeb(); 
 
 				GLOBAL_ANGLE_PUBLISHER = (*nh).advertise<geometry_msgs::PointStamped>("/dji_sdk/desired_angle", 2); // queue size of 2 seems reasonable
 				drone->check_version(); //TODO need to find a way to get the return value from this

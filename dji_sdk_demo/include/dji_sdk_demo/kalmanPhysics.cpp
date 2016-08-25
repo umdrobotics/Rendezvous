@@ -155,7 +155,22 @@ cout <<"prediction number "<<i <<" : " <<targetLocPrediction<<"\n";
 //return void;
 }
 
+double expTest()
+{
+double quads[]={1, 16, 81, 256, 625, 1296, 2401, 4096, 6561, 10000};
+double sqrts[]={1, 1.4142, 1.7321, 2, 2.2361 ,2.4495 ,2.6458, 2.8284, 3, 3.1623};
 
+double ts[] = {0.5, 0.6, 0.7, 0.4, 0.5, 0.8, 1.4, 1.2, 0.6, 0.87};
+
+KalmanFilter mykf = initializeKalmanFilter(ts[0], quads[0], sqrts[0]);
+cv::Mat targetLocPrediction = targetTrackStep(mykf, ts[0], quads[0], sqrts[0]);
+cout <<"initial " <<targetLocPrediction<<"\n";
+for (int i = 1; i< 10; i++)
+{
+ targetLocPrediction = targetTrackStep(mykf, ts[i], quads[i], sqrts[i]);
+cout <<"prediction number "<<i <<" : " <<targetLocPrediction<<"\n";
+}
+}
 
 
 
