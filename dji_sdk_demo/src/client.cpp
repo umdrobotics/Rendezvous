@@ -106,7 +106,9 @@ drone->waypoint_navigation_send_request(loneWaypoint);
 
 }
 
-
+ros::NodeHandle* nh;
+DJIDrone* drone;
+#define AprilTagsTopicTracking "dji_sdk/tag_detections"
 
 
 ////////Turned this piece into a function so it could also easily be called when there is not a target detection, only a prediction
@@ -321,12 +323,7 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 }
 
 #define numMessagesToBuffer 1 //10
-void listenOption(ros::NodeHandle& n)
-{
-ros::Subscriber sub = n.subscribe(AprilTagsTopic, numMessagesToBuffer, apriltagCheckCallback);
-printf("\n After the callback line");
-ros::spin(); 
-}
+
 void listenOptionForTracking(ros::NodeHandle& n)
 {
 
