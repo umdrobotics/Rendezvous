@@ -1113,7 +1113,7 @@ int main(int argc, char *argv[])
 	//crudeTestWeb(); 
 	expTestWeb();
 	cout <<"\n exp test finished\n";
-	sineTestWeb(); 
+	trigTestWeb(); 
 
 				GLOBAL_ANGLE_PUBLISHER = (*nh).advertise<geometry_msgs::PointStamped>("/dji_sdk/desired_angle", 2); // queue size of 2 seems reasonable
 				drone->check_version(); //TODO need to find a way to get the return value from this
