@@ -1126,7 +1126,7 @@ int main(int argc, char *argv[])
 				
                 ros::Duration(3.0).sleep(); //3 seconds to stabilize after taking off
 				printf ("Starting to listen for AprilTags on %s", AprilTagsTopicTracking );
-		ezExit();
+		//ezExit();
 				//listenOption(*nh);
 				
                 char waitKeyChar; 
@@ -1136,7 +1136,7 @@ int main(int argc, char *argv[])
 				{
                     break;
                 }
-            
+                 ezExit(); 
             default:
                 break;
         }
