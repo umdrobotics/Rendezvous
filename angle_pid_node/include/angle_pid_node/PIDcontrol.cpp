@@ -218,9 +218,11 @@ void setParamsFromFile(PIDController* pidInstance, std::string fileName, std::ve
         {
 		char charsToRemove[] = ":;,"; //formatting characters that could occur that you wish to remove	
         std::ifstream infile(fileName);
+
         std::string line;
         while (std::getline(infile, line))
             {
+
 				std::transform(line.begin(), line.end(), line.begin(), ::tolower); //converts to lowercase for ease of analysis
 
 				for (unsigned int i=0; i<listOfParams.size(); i++)

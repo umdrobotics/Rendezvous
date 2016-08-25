@@ -1,5 +1,5 @@
 //publisher and subscriber in same node described here: http://answers.ros.org/question/48727/publisher-and-subscriber-in-the-same-node/
-#include <ros/package.h>
+#include <ros/package.h> //note: need to add roslib as a dependancy in cmakelists.txt and manifest.xml to use this include
 #include "opencv2/highgui/highgui.hpp"
 
                volatile int degs =0; // for debugging gimbal control
@@ -205,7 +205,10 @@ void pidCallback(const geometry_msgs::PointStamped::ConstPtr& desiredAngleMessag
    GLOBAL_PITCH_DJI_UNITS = limitAngleToPi_DjiUnits(current.point.pitchIndex);
    GLOBAL_YAW_DJI_UNITS = limitAngleToPi_DjiUnits(current.point.yawIndex);
    
-
+//put the publishing here so that it isn't constantly publishing
+(*GLOBAL_ROLL_CONTROLLER).publishAllParamValues();
+		(*GLOBAL_PITCH_CONTROLLER).publishAllParamValues();
+		(*GLOBAL_YAW_CONTROLLER).publishAllParamValues();
 	
 }
 
@@ -220,9 +223,7 @@ void controlGimbal(ros::NodeHandle& n, string angleTopic, int numMessagesToBuffe
 
 	while (ros::ok() && ! (waitKeyChar == 'q' || waitKeyChar == 'Q' ))
 	{
-		(*GLOBAL_ROLL_CONTROLLER).publishAllParamValues();
-		(*GLOBAL_PITCH_CONTROLLER).publishAllParamValues();
-		(*GLOBAL_YAW_CONTROLLER).publishAllParamValues();
+		
 		ros::spinOnce();
 		if(RECIEVED_FIRST_MESSAGE == true)
 		{
@@ -899,6 +900,8 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
                 (*GLOBAL_YAW_CONTROLLER).pidId = "YAW_CONTROLLER";
 
 		setParamsFromFile(GLOBAL_ROLL_CONTROLLER,  PID_PARAM_FILE, (*GLOBAL_ROLL_CONTROLLER).listOfParams);
+		setParamsFromFile(GLOBAL_PITCH_CONTROLLER,  PID_PARAM_FILE, (*GLOBAL_PITCH_CONTROLLER).listOfParams);
+		setParamsFromFile(GLOBAL_YAW_CONTROLLER,  PID_PARAM_FILE, (*GLOBAL_YAW_CONTROLLER).listOfParams);
 				initializePidPublisher(); // found in PIDControl.cpp. This enables debugging info on the params to be published
 				printf ("Starting to listen for angle on %s", DesiredAngleTopic );
 				//int numDefaultMessagesToBuffer = 1;
