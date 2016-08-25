@@ -170,9 +170,13 @@ cv::Mat loopStepWeb(cv::KalmanFilter kf, double dT, double xIn, double yIn, bool
 return state ;
 } ///end function
 
-cv::Mat loopStepWebWithoutMeasurement(cv::KalmanFilter kf, double dT )
-{ ////ayyyyyyyyyyyy
-
+cv::Mat loopStepWebWithoutMeasurement(cv::KalmanFilter kf, double dT , cv::Mat latestState)
+{ 
+     //for some reason, if we just assign kf.statePost = latestState directly, it crashes
+    kf.statePost.at<double>(0) = latestState.at<double>(0); 
+    kf.statePost.at<double>(1) = latestState.at<double>(1); 
+    kf.statePost.at<double>(2) = latestState.at<double>(2); 
+    kf.statePost.at<double>(3) = latestState.at<double>(3); 
 
         // [1 0 dt 0]
 	// [0 1 0 dt]
