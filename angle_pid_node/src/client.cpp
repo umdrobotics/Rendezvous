@@ -1,7 +1,7 @@
 //publisher and subscriber in same node described here: http://answers.ros.org/question/48727/publisher-and-subscriber-in-the-same-node/
+#include <ros/package.h>
+#include "opencv2/highgui/highgui.hpp"
 
-
-#include <angle_pid_node/kalmanPhysics.cpp>  //need to figure out how to put this in the main folder instead of include
                volatile int degs =0; // for debugging gimbal control
              volatile int GIMBAL_TEST_SIGN = 1; //for debugging gimbal control
 
@@ -15,7 +15,7 @@
 double LATEST_TIMESTAMP;
 double LATEST_DT; //the time interval
 
-
+std::string PID_PARAM_FILE = ros::package::getPath("angle_pid_node") + "/include/angle_pid_node/PIDparams.txt";
 
 
 
@@ -220,6 +220,9 @@ void controlGimbal(ros::NodeHandle& n, string angleTopic, int numMessagesToBuffe
 
 	while (ros::ok() && ! (waitKeyChar == 'q' || waitKeyChar == 'Q' ))
 	{
+		(*GLOBAL_ROLL_CONTROLLER).publishAllParamValues();
+		(*GLOBAL_PITCH_CONTROLLER).publishAllParamValues();
+		(*GLOBAL_YAW_CONTROLLER).publishAllParamValues();
 		ros::spinOnce();
 		if(RECIEVED_FIRST_MESSAGE == true)
 		{
@@ -895,6 +898,7 @@ printf("\n and camera is roll %f pitch %f yaw %f ", drone->gimbal.roll, drone->g
                 (*GLOBAL_PITCH_CONTROLLER).pidId = "PITCH_CONTROLLER";
                 (*GLOBAL_YAW_CONTROLLER).pidId = "YAW_CONTROLLER";
 
+		setParamsFromFile(GLOBAL_ROLL_CONTROLLER,  PID_PARAM_FILE, (*GLOBAL_ROLL_CONTROLLER).listOfParams);
 				initializePidPublisher(); // found in PIDControl.cpp. This enables debugging info on the params to be published
 				printf ("Starting to listen for angle on %s", DesiredAngleTopic );
 				//int numDefaultMessagesToBuffer = 1;

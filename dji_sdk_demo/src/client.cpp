@@ -51,12 +51,7 @@ cv::KalmanFilter GLOBAL_KALMAN_FILTER;
 cv::KalmanFilter GLOBAL_KALMAN_FILTER_DIST; //for debugging, let's just try to track the apriltag distance 
 
 
-//Note: The angle control system needs to have access to the DJIDrone* object to send the gimbal commands
-// or else we'll need to simultaneously publish to and subscribe from the node that does the PID calculations.
-//Because of that, I'm placing the PID control within this node for now. 
-PIDController* GLOBAL_ROLL_CONTROLLER = new PIDController();
-PIDController* GLOBAL_PITCH_CONTROLLER = new PIDController();
-PIDController* GLOBAL_YAW_CONTROLLER = new PIDController();
+//these are for sending the desired angle to the PID controller node
 double GLOBAL_ROLL_DJI_UNITS =0.0;
 double GLOBAL_PITCH_DJI_UNITS =0.0;
 double GLOBAL_YAW_DJI_UNITS =0.0;
@@ -84,10 +79,6 @@ ros::Publisher GLOBAL_ANGLE_PUBLISHER;
 #include<vector>
 #include <image_transport/image_transport.h>
 
-/////GIMBAL CALCULATIONS BEGAN HERE//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-/////GIMBAL CALCULATIONS ENDED HERE//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
 void goToTargetEstimate(DJIDrone* drone, double latitude, double longitude, double altitude)
@@ -330,14 +321,7 @@ void listenOptionForTracking(ros::NodeHandle& n)
 ros::Subscriber sub = n.subscribe(AprilTagsTopicTracking, numMessagesToBuffer, apriltagCheckCallbackForTracking);
 printf("\n After the callback line");
 ros::spin(); 
-//I believe that spin tests if there are any outstanding messages then stops. So putting the following underneath it
-//should result in near-constant PID control between spins
-double defaultTimeStep = 0.01; //since near constant control, use a small numbers
-dji_sdk::Gimbal currentAngle = drone->gimbal;
-double rollSpeedDesired  = getRequiredVelocityPID(GLOBAL_ROLL_DJI_UNITS, degreesToDjiUnits(currentAngle.roll),defaultTimeStep, GLOBAL_ROLL_CONTROLLER);
-double pitchSpeedDesired  = getRequiredVelocityPID(GLOBAL_PITCH_DJI_UNITS, degreesToDjiUnits(currentAngle.pitch),defaultTimeStep, GLOBAL_PITCH_CONTROLLER);
-double yawSpeedDesired  = getRequiredVelocityPID(GLOBAL_YAW_DJI_UNITS, degreesToDjiUnits(currentAngle.yaw),defaultTimeStep, GLOBAL_YAW_CONTROLLER);
-drone->gimbal_speed_control(rollSpeedDesired, pitchSpeedDesired, yawSpeedDesired);
+
 
 }
 

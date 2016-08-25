@@ -69,7 +69,7 @@ bool needToUniwndGimbal (double desiredAngle_DjiUnits ,double currentAngle_DjiUn
     {   
 
       if(verbose)
-            {cout <<"desired angle (tenths of degree" << desiredAngle_DjiUnits <<" bool1 :" << (bool)(startingSign >=1) << " bool2A :" <<  (bool)(abs(currentAngle_DjiUnits) > 1800 - tolerance_DjiUnits) << " bool2B :" << (bool)(currentAngle_DjiUnits < -1.0*(900-tolerance_DjiUnits)) << " bool3 :" << (bool)( -900 <= desiredAngle_DjiUnits && desiredAngle_DjiUnits <=900) << "\n";  }
+            {std::cout <<"desired angle (tenths of degree" << desiredAngle_DjiUnits <<" bool1 :" << (bool)(startingSign >=1) << " bool2A :" <<  (bool)(abs(currentAngle_DjiUnits) > 1800 - tolerance_DjiUnits) << " bool2B :" << (bool)(currentAngle_DjiUnits < -1.0*(900-tolerance_DjiUnits)) << " bool3 :" << (bool)( -900 <= desiredAngle_DjiUnits && desiredAngle_DjiUnits <=900) << "\n";  }
 
 //note: based on testing in python, a negative speed in yaw is always counterclockwise (from the drone's perspective)
       if (startingSign >=1 && (  (abs(currentAngle_DjiUnits) > 1800 - tolerance_DjiUnits) || currentAngle_DjiUnits < -1.0*(900-tolerance_DjiUnits) )&& ( -900 <= desiredAngle_DjiUnits && desiredAngle_DjiUnits <=900)  )
@@ -89,6 +89,8 @@ using namespace std;
 class PIDController {
  public: //declare everything public right now for convenience
    
+      vector<std::string> listOfParams = {"kp", "kd", "ki", "deadzone_djiunits"} ;
+
      static constexpr double min_Kp = 0.125 ; //can't assign a value lower than this in order to rpevent user errors. Use 0.125 since it can be represented precivesly using floats
 	std::string pidId = "NO ID ASSIGNED"; //assign this on creation for debugging on ROS
  
@@ -113,7 +115,7 @@ class PIDController {
 													return (Ki*accumulatedError + Kd*derivative + Kp*error);
 													}
 
-	std::string publishAllParamValues()
+	void publishAllParamValues()
 			{
 			 if(pidPublisherInitialized == true)
 				{			

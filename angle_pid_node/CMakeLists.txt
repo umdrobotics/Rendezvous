@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   dji_sdk
   cv_bridge
+  roslib
 )
 
 #for Kalman filters
@@ -115,6 +116,7 @@ catkin_package(
 #  LIBRARIES dji_sdk_demo
 #  CATKIN_DEPENDS dji_sdk roscpp 
 #  DEPENDS dji_sdk
+   CATKIN_DEPENDS roslib roscpp
 )
 
 ###########
