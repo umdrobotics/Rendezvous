@@ -389,12 +389,15 @@ printf("target GPS location is lat %f long %f ", targetLocation2D_GPS.latitudeIn
 
 UTMobject targetDistanceMetersToUTM
      (
-	geometry_msgs::Point targetDistanceFromCamera_meters, 	      double cameraRollToGround_radians, 
+	geometry_msgs::Point targetDistanceFromCamera_meters, 	     
+	double cameraRollToGround_radians, 
 	double cameraPitchToGround_radians, 
 	double cameraYawToGround_radians 
 	,double currentQuadcopterLatitude 
 	,double currentQuadcopterLongitude 
 	,double currentQuadcopterAltitude_meters
+	
+	
      )
 {
 	
@@ -439,6 +442,67 @@ cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " 
 } ///end function
 
 
+UTMobject targetDistanceMetersToUTM_WithHeightDifference // this version also places the quadcopter height above the target in an output variable
+     (
+	geometry_msgs::Point targetDistanceFromCamera_meters, 	     
+	double cameraRollToGround_radians, 
+	double cameraPitchToGround_radians, 
+	double cameraYawToGround_radians 
+	,double currentQuadcopterLatitude 
+	,double currentQuadcopterLongitude 
+	,double currentQuadcopterAltitude_meters
+	
+	double & copterHeightAboveTarget_meters //THIS IS AN OUTPUT VARIABLE TO BE MODIFIED
+     )
+	 
+{
+	
+        UTMobject quadcopterLocation2D_UTM;
+       //we have the magnitude of the offset in each direction
+       // and we know the camera's roll, pitc, yaw,
+       // relative to the ground (NED frame just like UTM)
+       //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
+        quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
+        //printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
+      //so now we have the camera offset from ground (meters), the camera rotation, and the target offset from camera. We need to convert this to camera offset from ground (ie, from center of UTM coordinates)
+     //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
+    //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
+      
+       double targetOffsetFromUAV[3][1];
+	  getTargetOffsetFromUAV(
+	                           targetDistanceFromCamera_meters 
+							   ,cameraRollToGround_radians 
+							   ,cameraPitchToGround_radians 
+							   ,cameraYawToGround_radians
+							   ,targetOffsetFromUAV   ///THIS IS AN OUTPUT VARIABlE THAT WILL BE MODIFIED
+							);
+        //cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
+	  
+    UTMobject targetLocation2D_UTM;
+//it's reasonable to assume we don't cross zones
+    std::get<designatorIndex>(targetLocation2D_UTM) = std::get<designatorIndex>(quadcopterLocation2D_UTM) ; 
+    //printf("CAUTION: target assumed to be in same UTM zone as quadcopter, zone: %s", std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str());
+    //can still use the UTMobject since we don't care about the Z offset because we'll handle altitude separately
+      std::get<eastingIndex>(targetLocation2D_UTM) = std::get<eastingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[1][0];//targetLocation2D_UTM.first = quadcopterLocation2D_UTM.first + targetOffsetFromUAV[0][0];
+      //targetLocation2D_UTM.second = quadcopterLocation2D_UTM.second + targetOffsetFromUAV[1][0];
+      std::get<northingIndex>(targetLocation2D_UTM) = std::get<northingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[0][0]; 
+
+//now convert back to GPS coordinates and we can generate a proper waypoint
+
+cout <<"\nOffset from UAV x y z inertial " << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" quadcopter location east north zone " << std::get<eastingIndex>(quadcopterLocation2D_UTM) << " "<< std::get<northingIndex>(quadcopterLocation2D_UTM) <<" "<< std::get<designatorIndex>(quadcopterLocation2D_UTM)  ;
+cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " "<< std::get<northingIndex>(targetLocation2D_UTM) <<" "<< std::get<designatorIndex>(targetLocation2D_UTM) <<" ";
+  
+  copterHeightAboveTarget_meters = targetOffsetFromUAV[2][0];
+  return targetLocation2D_UTM;
+   
+
+
+} ///end function
+
+
+
+	 
+	 
 //following function is to test for very basic errors in the geolocalization functions. It will be updated as more functions are added
 void dummyTest_geolocalization()
 {

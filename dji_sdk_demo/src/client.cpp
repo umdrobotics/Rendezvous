@@ -46,6 +46,9 @@ bool IS_TRACKING; //have we found that the target yet?
 const int FRAMES_UNTIL_TARGET_LOST = 5; //can go 5 frames before the target is lost and the kalman filter resets
 int FRAMES_WITHOUT_TARGET = 0; 
 
+// ALTITUDE_AT_LAST_TARGET_SIGHTING and LAST_RECORDED_HEIGHT_ABOVE_TARGET are used for landing
+double ALTITUDE_AT_LAST_TARGET_SIGHTING = 0;
+double LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS = 0;
 
 cv::KalmanFilter GLOBAL_KALMAN_FILTER; 
 cv::KalmanFilter GLOBAL_KALMAN_FILTER_DIST; //for debugging, let's just try to track the apriltag distance 
@@ -216,32 +219,9 @@ DJIDrone* drone;
 #define AprilTagsTopicTracking "dji_sdk/tag_detections"
 
 
-////////Turned this piece into a function so it could also easily be called when there is not a target detection, only a prediction
-void handleTargetPrediction(cv::Mat targetLocPrediction ,std::string targetUtmZone ,dji_sdk::GlobalPosition copterState ,std_msgs::Header latestHeader ,DJIDrone* drone ){
-cout <<"targetLocPrediction " <<targetLocPrediction <<" "; 
 
- double predictedNorth = targetLocPrediction.at<double>(0,0); //access element 0,0 ie x
- double predictedEast = targetLocPrediction.at<double>(0,1); //access element 0,1 ie y
-cout <<" east north zone " << predictedEast<<" "<< predictedNorth<<" "<< targetUtmZone;
-
-UTMobject predictedTargetUTM; //will need this for later
-std::get<northingIndex>(predictedTargetUTM) = predictedNorth;
-std::get<eastingIndex>(predictedTargetUTM) = predictedEast;
-std::get<designatorIndex>(predictedTargetUTM) = targetUtmZone;
-
-  std::pair<double, double> targetLocPredictionGPS = UTMtoGPS(predictedNorth, predictedEast, targetUtmZone); 
-UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude);  
-
-
-  // then need to set quadcopter waypoint accordingly
-  goToTargetEstimate(drone ,targetLocPredictionGPS.latitudeIndex ,targetLocPredictionGPS.longitudeIndex  , copterState.altitude); //assume same altitude kept throughout until landing
-  // then need to to estimate where the quadcopter will actually be
-  dji_sdk::Velocity copterSpeed = drone->velocity; //DJI::onboardSDK::VelocityData copterSpeed = DJI::onboardSDK::Flight::getVelocity(); 
-  UTMobject predictedCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude); 
-           //do a simple velocity times time prediction
-  std::get<northingIndex>(predictedCopterUTM) += LATEST_DT * copterSpeed.vx;
- std::get<eastingIndex>(predictedCopterUTM) += LATEST_DT * copterSpeed.vy;
-
+void handleGimbalPrediction(UTMobject predictedTargetUTM, UTMobject predictedCopterUTM, double desiredAltitude, std_msgs::Header latestHeader ,DJIDrone* drone)
+{
 cout <<"predictions before gimbal " <<"copter e n zone " << std::get<eastingIndex>(predictedCopterUTM)<<" "<< std::get<northingIndex>(predictedCopterUTM)<<" "<< std::get<designatorIndex>(predictedCopterUTM)<<" \n";
 cout << "target e n zone " << std::get<eastingIndex>(predictedTargetUTM)<<" "<< std::get<northingIndex>(predictedTargetUTM)<<" "<< std::get<designatorIndex>(predictedTargetUTM)<<" \n";
  
@@ -252,7 +232,7 @@ cout << "target e n zone " << std::get<eastingIndex>(predictedTargetUTM)<<" "<< 
     getGimbalAngleToPointAtTarget_rads
     (
  	predictedCopterUTM, 
-	copterState.altitude, 
+	desiredAltitude, 
 	predictedTargetUTM
  	,yaw_rads //This is an output variable
 	,pitch_rads //This is an output variable
@@ -292,6 +272,73 @@ if (YAW_RELATIVE_TO_BODY == true)
 	  desiredAngle.header = latestHeader ; //send the same time stamp information that was on the apriltags message to the PID node
 	 GLOBAL_ANGLE_PUBLISHER.publish(desiredAngle);
 }
+
+////////Turned this piece into a function so it could also easily be called when there is not a target detection, only a prediction
+void handleTargetPrediction(cv::Mat targetLocPrediction ,std::string targetUtmZone ,dji_sdk::GlobalPosition copterState ,std_msgs::Header latestHeader ,DJIDrone* drone ,bool shouldIDescend ){
+cout <<"targetLocPrediction " <<targetLocPrediction <<" "; 
+
+ double predictedNorth = targetLocPrediction.at<double>(0,0); //access element 0,0 ie x
+ double predictedEast = targetLocPrediction.at<double>(0,1); //access element 0,1 ie y
+cout <<" east north zone " << predictedEast<<" "<< predictedNorth<<" "<< targetUtmZone;
+
+UTMobject predictedTargetUTM; //will need this for later
+std::get<northingIndex>(predictedTargetUTM) = predictedNorth;
+std::get<eastingIndex>(predictedTargetUTM) = predictedEast;
+std::get<designatorIndex>(predictedTargetUTM) = targetUtmZone;
+
+  std::pair<double, double> targetLocPredictionGPS = UTMtoGPS(predictedNorth, predictedEast, targetUtmZone); 
+UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude);  
+
+
+//now we need to descend towards the target (or maybe land)
+
+
+																			
+  UTMobject predictedCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude); 
+  //Now we need to add velocity to it. But we can't simply assume it will carry on it's current velocity vector.
+   //For simplicity, let's assume the same magnitude, but in the direction of the new vector
+    //since predictedCopterUTM variable currently contains the actual copter position, not prediction, we can use this
+   double newCopterAngle_rads = atan2(predictedEast - std::get<eastingIndex>(predictedCopterUTM), predictedNorth - std::get<northingIndex>(predictedCopterUTM));		   
+   double velocityMagnitude = sqrt(copterSpeed.vx * copterSpeed.vx + copterSpeed.vy * copterSpeed.vy);
+   
+   double predictedChangeInCopterEast = sin(newCopterAngle_rads) * LATEST_DT * velocityMagnitude;
+   double predictedChangeInCopterNorth = cos(newCopterAngle_rads) * LATEST_DT * velocityMagnitude;
+   
+   std::get<northingIndex>(predictedCopterUTM) += predictedChangeInCopterNorth;
+   std::get<eastingIndex>(predictedCopterUTM) += predictedChangeInCopterEast;
+
+   //now need to handle if we should descend to the target or not
+   bool shouldIland = false; 
+   double desiredNewAltitude_meters = HandleLanding::getNewAltitudeForDescent(
+																			   predictedNorth - std::get<northingIndex>(predictedCopterUTM)
+																			   ,predictedEast - std::get<eastingIndex>(predictedCopterUTM)
+																			   ,ALTITUDE_AT_LAST_TARGET_SIGHTING
+																			   ,LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS
+																			   
+																			   ,shouldILand
+																			 ) ;
+	if(shouldIDescend != true)
+			{desiredNewAltitude_meters = copterState.altitude; }
+		
+		
+   
+   
+  // then need to set quadcopter waypoint accordingly
+  goToTargetEstimate(drone ,targetLocPredictionGPS.latitudeIndex ,targetLocPredictionGPS.longitudeIndex  , copterState.altitude); //assume same altitude kept throughout until landing
+  // then need to to estimate where the quadcopter will actually be
+  dji_sdk::Velocity copterSpeed = drone->velocity; //DJI::onboardSDK::VelocityData copterSpeed = DJI::onboardSDK::Flight::getVelocity(); 
+
+  if(shouldILand == true)
+   {
+	
+	// THIS WILL ONLY WORK FOR A STATIONARY TARGET!
+	drone->landing();  
+	  
+   }
+
+   handleGimbalPrediction(predictedTargetUTM, predictedCopterUTM, desiredNewAltitude_meters, latestHeader, drone);
+
+}
 //end handleTargetPrediction
 
 
@@ -318,6 +365,9 @@ cv::Mat targetLocPrediction; //must declare outside the if statements so we can 
 // let's assume that if there are multiple tags, we only want to deal with the first one.
 if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
   {
+	  
+    bool firstDetection = true; //assume it's the first detection (and thus that we may need to disregard the information) until proven otherwise
+	  
   FRAMES_WITHOUT_TARGET = 0; //we've found the target again
   
   
@@ -338,22 +388,28 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
  //be sure to keep track of time
    LATEST_TIMESTAMP = currentTime;
   
+
 //now begin calculations to figure out target position in northings and eastings
      dji_sdk::Gimbal gimbalState = drone->gimbal;//DJI::onboardSDK::GimbalData gimbalState = (drone->gimbal).getGimbal();
      dji_sdk::GlobalPosition copterState = drone->global_position; //DJI::onboardSDK::PositionData copterState = drone->global_position; //DJI::onboardSDK::Flight::getPosition();
-      latestTargetLocation = targetDistanceMetersToUTM( // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
+	 //need to keep track of the altitude and height above target for when we land
+     ALTITUDE_AT_LAST_TARGET_SIGHTING = copterState.altitude
+      latestTargetLocation = targetDistanceMetersToUTM_WithHeightDifference( // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
 			current.pose.pose.position , 	      				degreesToRadians(gimbalState.roll), 
 			degreesToRadians(gimbalState.pitch), 
 			degreesToRadians(gimbalState.yaw/*bodyFrameToInertial_yaw(gimbalState.yaw,drone)*/)// since yaw is relative to body, not inertial frame, we need to convert//degreesToRadians(gimbalState.yaw) 
 			,copterState.latitude 
 			,copterState.longitude 
 			,copterState.altitude //TODO decide if we should use .height instead
+			
+			,LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS // THIS IS AN OUTPUT VARIABLE
 			);
 cout <<" verify result e,n,zone "<< std::get<eastingIndex>(latestTargetLocation) << " "<< std::get<northingIndex>(latestTargetLocation) <<" "<< std::get<designatorIndex>(latestTargetLocation)  <<"\n";
 
 double debugAr[3][1]; 
 getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.roll), degreesToRadians(gimbalState.pitch), degreesToRadians(gimbalState.yaw), debugAr);
 
+    
 
 //recall that x is north, y is east, and we need these values to pass the Kalman filter
 //temporarily, let' just use the camera offset so it has small numbers to work with
@@ -364,8 +420,10 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 
   if(! ( IS_TRACKING) )
    {
+	   
+	 HandleLanding::pauseDescent();  
 
-     bool firstDetection = true;
+     firstDetection = true;
      GLOBAL_KALMAN_FILTER = initializeKalmanFilterWeb(); 
 	 GLOBAL_KALMAN_FILTER_DIST = initializeKalmanFilter(LATEST_DT, debugAr[0][0], debugAr[2][0]); //track side-side distance and distance from camera for debugging
 
@@ -384,23 +442,29 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
  else
     {
 
-    bool firstDetection = false;
+      firstDetection = false;
       targetLocPrediction =  loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, firstDetection); 
 	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); 
      // cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
     // cout<<"dt: "<<LATEST_DT <<"\n";
 			 cout <<"real x z: " << debugAr[0][0] << " " << debugAr[2][0] <<" prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
+			 
+	  
+
 
      }
-  IS_TRACKING = true;
-
- 
-                handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone);
+     
+	 IS_TRACKING = true;
+     
+     
+	 handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, copterState.altitude, firstDetection);
 	 
    } //closing brace to if(numTags>0)
 
   else // if no detections then we can't track it
     {
+     
+  	 HandleLanding::pauseDescent();  //I don't really want to land based on a kalman filter's estimate, it's too risky
 	 
     //my concern is that by declaring it false every time there isn't one, we might end up never tracking it
     //IS_TRACKING = false; //couldn't find one so we're obviously not tracking yet. 
