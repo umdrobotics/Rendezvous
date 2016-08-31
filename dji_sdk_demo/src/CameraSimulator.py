@@ -27,9 +27,9 @@ def getCameraPlane(altitude, FOV_deg=94.0 ):
 
     # so the boundary on this is objectDistance*tan(theta), and the boundary is from -objectDistance*tan(theta) to objectDistance*tan(theta)
 
-
-    yBoundsCamera = [altitude*-1.0*math.tan(theta),altitude*math.tan(theta) ] 
-    xBoundsCamera = [altitude*-1.0*math.tan(theta),altitude*math.tan(theta) ]
+   #Since trig can take either sign, but the magnitude will be the same on each side, use the abs to be safe
+    yBoundsCamera = [-1.0*abs(altitude*math.tan(theta)),abs(altitude*math.tan(theta)) ] 
+    xBoundsCamera = [-1.0*abs(altitude*math.tan(theta)),abs(altitude*math.tan(theta)) ]
 
     return[xBoundsCamera , yBoundsCamera, "1st element = x bounds, 2nd = y bounds, meters"]
     
@@ -38,10 +38,11 @@ def getCameraBoundsInertial(roll_rads, pitch_rads, yaw_rads, quadNorth, quadEast
      roll=roll_rads
      pitch=pitch_rads
      yaw=yaw_rads
-     
+     #print("roll %f pitch %f yaw %f",roll,pitch,yaw)     
      #so now we need to convert the camera FOV to boundaries in an inertial plane.
      #To do so, we'll need to know the current camera position and rotation, and the transform matrix of the camera
      transformMatrix =  [ [0,0,1], [1,0,0], [0,-1,0] ]
+     #print("transform matrix");print(transformMatrix)
      #now, assuming roll is 0:
      # The camera boundaries will change depending on the camera pitch and yaw
      # Example: If camera is pointing straight ahead (pitch 0, yaw 0), y boundaries on camera are z boundaries  on inertial frame, x bounds are y bounds on inertial frame
@@ -67,7 +68,7 @@ def getCameraBoundsInertial(roll_rads, pitch_rads, yaw_rads, quadNorth, quadEast
             math.cos(pitch)*math.cos(roll)
             ],
         ];
-     
+     #print("rotation matrix") ;print(cameraRotationMatrix)
      boundsCameraFrame = getCameraPlane(altitude)
      xBoundsCameraFrame = boundsCameraFrame[0]
      yBoundsCameraFrame = boundsCameraFrame[1]
@@ -75,22 +76,50 @@ def getCameraBoundsInertial(roll_rads, pitch_rads, yaw_rads, quadNorth, quadEast
      #There's not a z boundary yet but there may be when converting, so need to create a field for that
      lowerBoundsXYZ = [[xBoundsCameraFrame[0]], [yBoundsCameraFrame[0]], [0]]
      upperBoundsXYZ = [[xBoundsCameraFrame[1]], [yBoundsCameraFrame[1]], [0]]
-     
+     #print("lower bounds");print(lowerBoundsXYZ); print("upper bounds"); print(upperBoundsXYZ)
      lowerBoundsXYZinertial = [[0],[0],[0]]
      upperBoundsXYZinertial = [[0],[0],[0]]
-     
+     testMat = [[11],[7],[13]]
+     testMatrix=[[0],[0],[0]]
+
+     lowerBoundsXYZinertialTemp = [[0],[0],[0]]
+     upperBoundsXYZinertialTemp = [[0],[0],[0]]
+     testMatrixTemp=[[0],[0],[0]]
+
      for row in range(0, 3):
         sumLower = 0.0;
         sumUpper = 0.0
+        testSum=0;
         for  column in range(0 ,3):
             sumLower += transformMatrix[row][column] * lowerBoundsXYZ [column][0]; 
             sumUpper += transformMatrix[row][column] * upperBoundsXYZ [column][0]; 
+            #testSum += transformMatrix[row][column] * testMat [column][0]; 
+         #   print("row %d column %d testSum is %d" %(row,column,testSum) )
+            
+           
+        lowerBoundsXYZinertialTemp[row][0] = sumLower;
+        upperBoundsXYZinertialTemp[row][0] = sumUpper
+        #testMatrixTemp[row][0]=testSum
+        #print("lower bounds inertial");print(lowerBoundsXYZinertialTemp);print("upperBounds inertial");print(upperBoundsXYZinertialTemp);
+        #print("testMatrix");print(testMatrixTemp)
 
-        
+
+     for row in range(0, 3):
+        sumLower = 0.0;
+        sumUpper = 0.0
+        testSum=0;
+        for  column in range(0 ,3):
+            sumLower += cameraRotationMatrix[row][column] * lowerBoundsXYZinertialTemp [column][0]; 
+            sumUpper += cameraRotationMatrix[row][column] * upperBoundsXYZinertialTemp [column][0]; 
+            #testSum += cameraRotationMatrix[row][column] * testMatrixTemp [column][0]; 
+      #      print("row %d column %d testSum is %d" %(row,column,testSum) )
+            
+           
         lowerBoundsXYZinertial[row][0] = sumLower;
         upperBoundsXYZinertial[row][0] = sumUpper
-    
-     
+        #testMatrix[row][0]=testSum
+        #print("lower bounds inertial");print(lowerBoundsXYZinertial);print("upperBounds inertial");print(upperBoundsXYZinertial);
+        #print("testMatrix");print(testMatrix)
      #If we have a negative bounds, and a positive bounds, and apply the rotation matrix to it, that will convert the offset to inertial frame
      #But we also need to know where the center of the bounds is in inertial frame (ie, what point does 0,0 on the camera correspond to on inertial frame?)
      #Assuming target is roughly ground level, that can be solved with simple trig
@@ -124,16 +153,23 @@ def getCameraBoundsInertial(roll_rads, pitch_rads, yaw_rads, quadNorth, quadEast
         else:
             pitch = degsToRads(-0.1)
 
-     displacement2D = math.tan(-1.0 * pitch) * altitude
+     displacement2D = math.tan(-1.0 * degsToRads(90)-pitch) * altitude
     
      deltaX = displacement2D * math.cos(yaw)
      deltaY = displacement2D * math.sin(yaw)
      centerX = quadNorth + deltaX
      centerY = quadEast + deltaY
-    
-     yBoundsInertial = [centerY +lowerBoundsXYZinertial[1][0], centerY +upperBoundsXYZinertial[1][0] ]
-     xBoundsInertial = [centerX+lowerBoundsXYZinertial[0][0], centerX +upperBoundsXYZinertial[0][0] ]
-    
+
+     #at this point, there's still some risk that the sign could be messed up, due to the trigonometric transform, so make sure we use the positive and negative appropriately
+     
+     yPositiveOffset = max(lowerBoundsXYZinertial[1][0], upperBoundsXYZinertial[1][0])
+     yNegativeOffset = min(lowerBoundsXYZinertial[1][0], upperBoundsXYZinertial[1][0])
+     xPositiveOffset = max(lowerBoundsXYZinertial[0][0], upperBoundsXYZinertial[0][0])
+     xNegativeOffset = min(lowerBoundsXYZinertial[0][0], upperBoundsXYZinertial[0][0])
+
+     yBoundsInertial = [centerY +yNegativeOffset, centerY + yPositiveOffset ]
+     xBoundsInertial = [centerX + xNegativeOffset, centerX + xPositiveOffset ]
+     
      cameraBoundsInertial = [xBoundsInertial, yBoundsInertial, "1st element: x bounds, 2nd element: y bounds, both in meters on inertial frame"]
      return cameraBoundsInertial
     
@@ -152,7 +188,7 @@ def calculateAprilTagDetection(roll_rads, pitch_rads, yaw_rads, quadNorth, quadE
     #transform^-1 is [ [0,1,0] [0,0,-1] [1,0,0] ]
     #so let's just convert the camera plane into inertial coords, and then we can figure out the camera displacement from there
         
-        a = math.cos(yaw)
+        a = math.cos(yaw)*math.cos(pitch)
         b = math.cos(yaw)*math.sin(pitch)*math.sin(roll)-math.sin(yaw)*math.cos(roll)
         c = math.cos(yaw)*math.sin(pitch)*math.cos(roll) + math.sin(yaw)*math.sin(roll)
         d = math.sin(yaw)*math.cos(pitch)
@@ -196,12 +232,12 @@ def calculateAprilTagDetection(roll_rads, pitch_rads, yaw_rads, quadNorth, quadE
         invRow3 = [ (d*h - e*g)/(a*e*i - a*f*h - b*d*i + b*f*g + c*d*h - c*e*g), -(a*h - b*g)/(a*e*i - a*f*h - b*d*i + b*f*g + c*d*h - c*e*g),  (a*e - b*d)/(a*e*i - a*f*h - b*d*i + b*f*g + c*d*h - c*e*g) ]
         inverseRotationMatrix = [invRow1, invRow2, invRow3] 
     
-        inverseTransformMatrix =  [0,1,0] [0,0,-1] [1,0,0] # converts from inertial frame to camera frame, neglecting the rotation matrix
+        inverseTransformMatrix =  [[0,1,0] ,[0,0,-1] ,[1,0,0]] # converts from inertial frame to camera frame, neglecting the rotation matrix
     
     
     #remember, transform^-1*rotation^-1*disp = cameraDisp
         dispInertial = [[deltaNorth], [deltaEast], [altitude] ]
-        tempMatrix = [[0] [0] [0]] #handle multiplication of dispInertial with rotation^-1
+        tempMatrix = [[0], [0], [0]] #handle multiplication of dispInertial with rotation^-1
         for row in range(0, 3):
             sum = 0.0
             for  column in range(0 ,3):
@@ -209,16 +245,17 @@ def calculateAprilTagDetection(roll_rads, pitch_rads, yaw_rads, quadNorth, quadE
 
         
             tempMatrix[row][0] = sum
-    
+        #print("disp inertial", dispInertial, " and after inverse rotation", tempMatrix)
     # now finish the multiplication through multiplying by inverse transform matrix
-        cameraDisplacement = [[0] [0] [0]]
+        cameraDisplacement = [[0] ,[0], [0]]
         for row in range(0, 3):
             sum = 0.0
             for  column in range(0 ,3):
                 sum += inverseTransformMatrix[row][column] * tempMatrix [column][0]; 
 
             cameraDisplacement[row][0] = sum    
-    
+        #print("disp inerti", dispInertial, " and after both matrix multiplications ", cameraDisplacement)
+
     #convert back to a row vector instead of a column vector before returning, for simplicity 
         cameraDisplacementSimplified = [cameraDisplacement[0][0], cameraDisplacement[1][0],cameraDisplacement[2][0] ]
         return cameraDisplacementSimplified 
@@ -241,6 +278,22 @@ def getApriltagDetection(roll_rads, pitch_rads, yaw_rads, quadNorth, quadEast, a
         return blankDetection
     
     
+
+
+
+
+
+
+    
+    
+pit = degsToRads(-90)
+yaw = degsToRads(90)
+
+tg=getApriltagDetection(0,pit,0,22.0,55.0,10,22.0,55.0)
+tg2=getApriltagDetection(0,pit,yaw,22.0,55.0,10,22.0,55.0)
+tg3=getApriltagDetection(0,pit,0,22.0,55.0,10,22.0,65.0)
+tg4=getApriltagDetection(0,pit,yaw,22.0,55.0,10,22.0,65.0)
+
 
 
 
