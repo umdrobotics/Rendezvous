@@ -1,0 +1,16 @@
+<launch>
+ <node ns="dji_sdk" pkg = "apriltags_ros" type="apriltag_detector_node" name="apriltag_detector" output="screen" >
+ <remap from="image_rect" to="/dji_sdk/image_mono"/> 
+ <remap from="tag_detections" to="/dji_sdk/tag_detections_for_simulator"/> 
+<rosparam param ="tag_descriptions">[
+{id: 0, size: 0.163513},
+{id: 1, size: 0.163513, frame_id: a_frame},
+{id: 2, size: 0.163513},
+{id: 3, size: 0.163513},
+{id: 4, size: 0.163513},
+{id: 5, size: 0.163513}]
+</rosparam>
+</node>
+</launch>
+
+

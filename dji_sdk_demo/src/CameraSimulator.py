@@ -522,32 +522,7 @@ import std_msgs
 import  std_msgs.msg
 
 
-h = std_msgs.msg.Header()#std_msgs.msg.
-#h.stamp = rospy.Time.now() # Note you need to call rospy.init_node() before this will work
-p = Point()#geometry_msgs.
 
-p.x=0
-p.y=0
-p.z=150 
-
-#ps =PointStamped(h,p)  #geometry_msgs.msg.PointStamped(h,p)
-q = Quaternion()
-q.x=0 ;q.y=0; q.z=0; q.w=0;
-
-poseU = Pose(p,q)
-poseS = PoseStamped(h, poseU)
-
-tag = AprilTagDetection()
-tag.size = 0.163513 #default from the launch file
-tag.id = 1 #the tag number I believe
-tag.pose = poseS 
-
-atda = AprilTagDetectionArray()
-atda.detections = [tag] 
-
-#Following 2 lines are kept for instruction but can't use them until we call init_node
-#pub = rospy.Publisher('/dji_sdk/cameraSimulator', AprilTagDetectionArray, queue_size=1)
-#pub.publish(atda)
 
 def maketag(x ,y ,z ): #to use, do something like tagCoords = getAprilTagDetection(arguments here); myTag = maketag(tagCoords[0], tagCoords[1], tagCoords[2])
             h = std_msgs.msg.Header()#std_msgs.msg.
@@ -604,19 +579,19 @@ def apriltagCallback(data):
 	#basically, whenever I detect an Apriltags message, I want to simulate a detection (or not) based on where the camera is and our simulated tag is
 	#Waiting for a physical apriltags message ensures the simulator has the same timing as the camera
     gimbal = GLOBAL_DRONE.gimbal 
-    position = GLOBAL_DRONE.GlobalPosition
+    position = GLOBAL_DRONE.global_position
     quadEasting, quadNorthing, zoneNumber, zoneLetter = from_latlon(position.latitude, position.longitude)
-    detectionCoords = getApriltagDetection(roll,pitch, yaw, quadNorthing, quadEasting, altitude, TARGET_NORTH, TARGET_EAST)
-    mes;
-    if(len(data.detections)>0):	
+    detectionCoords = getApriltagDetection(gimbal.roll,gimbal.pitch, gimbal.yaw, quadNorthing, quadEasting, position.altitude, TARGET_NORTH, TARGET_EAST)
+    mes = AprilTagDetectionArray() #initialize as empty to avoid errors
+    if( (len(data.detections)>0) & (len(detectionCoords)>=3) ):	
         mes = maketagSpecifyHeader(detectionCoords[0], detectionCoords[1], detectionCoords[2], data.detections.pose.header);
-    else:
+    elif(len(detectionCoords)>=3):
 	mes=maketag(detectionCoords[0], detectionCoords[1], detectionCoords[2]);
     if(detectionCoords == []):
         mes = AprilTagDetectionArray() #make it blank if the apriltag was out of view of the camera
-    pub.publish(mes);
+    GLOBAL_PUBLISHER.publish(mes);
 	
-def listener( topic="dji_sdk/tag_detections_for_timing"):
+def listener( topic="dji_sdk/tag_detections_for_simulator"):
 
     # In ROS, nodes are uniquely named. If two nodes with the same
     # node are launched, the previous one is kicked off. The
@@ -635,7 +610,8 @@ def listener( topic="dji_sdk/tag_detections_for_timing"):
             
 def main():
     print("\n\nREMEMBER, NEED TO FEED THE APRILTAGS TOPIC TO THE SIMULATOR, AND HAVE THE SIMULATOR PUBLISH TO dji_sdk/tag_detections !!!! \n\n")
-    pub = rospy.Publisher('/dji_sdk/cameraSimulator', AprilTagDetectionArray, queue_size=1)
+    global GLOBAL_PUBLISHER
+    GLOBAL_PUBLISHER = rospy.Publisher('/dji_sdk/tag_detections', AprilTagDetectionArray, queue_size=1)
     #rospy.init_node('tagPublisher', anonymous=True)
 
     drone = DJIDrone() #this calls a rospy.init_node() function
@@ -651,7 +627,7 @@ def main():
     global TARGET_ZONE_LETTER 
     TARGET_ZONE_LETTER = 'Q'
 	
-    listener("dji_sdk/tag_detections")
+    listener("dji_sdk/tag_detections_for_simulator")
 	#while not rospy.is_shutdown():
     #    rate.sleep()
 
