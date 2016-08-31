@@ -90,8 +90,24 @@ assert(1==0);
 }
 
 
+//If we lose track of the target, we need to stop flying to the waypoints that were given based on that target. The best way to do this is to override the waypoint like this
+void stayInCurrentSpot(DJIDrone* drone)
+{
+dji_sdk::GlobalPosition copterState = drone->global_position;
+dji_sdk::Waypoint currentSpot; 
+currentSpot.latitude = copterState.latitude;
+currentSpot.longitude = copterState.longitude;
+currentSpot.altitude = copterState.altitude;
+currentSpot.heading = 0; //I think this means the aircraft flies straight at it
+currentSpot.staytime = 0; //don't wish to linger there
+
+dji_sdk::WaypointList loneWaypoint; //will only be 1 element in this list
+loneWaypoint.waypoint_list.push_back(currentSpot);
+drone->waypoint_navigation_send_request(loneWaypoint);
+}
+
 //appears to work best if this is a global variable
-dji_sdk::MissionWaypointTask WAYPOINT_TASK_TRACKING;
+
 void goToTargetEstimate(DJIDrone* drone, double latitude, double longitude, double altitude)
 { 
 const float desiredWaypointSpeed = 10.0f;
@@ -109,118 +125,15 @@ targetEstimate.staytime = 0; //don't wish to linger there
 dji_sdk::WaypointList loneWaypoint; //will only be 1 element in this list
 loneWaypoint.waypoint_list.push_back(targetEstimate);
 drone->waypoint_navigation_send_request(loneWaypoint);
-
-
-        
-            
-            /*      //here are all the demonstrated options for the mission in the new way (the MissionWaypoint and MissionWaypointTask classes), about 21 unique parameters
-                    //explained in more detail here: https://developer.dji.com/onboard-sdk/documentation/introduction/ground-station-protocol.html
-				   waypoint_task.velocity_range = 10;
-				   waypoint_task.idle_velocity = 3;
-				   waypoint_task.action_on_finish = 0;                             //0: no action  //1: return to home //2: auto landing //3: return to point 0 //4: infinite mode， no exit
-				   waypoint_task.mission_exec_times = 1;
-				   waypoint_task.yaw_mode = 4;
-                                    //Yaw mode:
-                                        //0: auto mode(point to next waypoint)
-                                        //1: Lock as an initial value
-                                        //2: controlled by RC
-                                        //3: use waypoint's yaw(tgt_yaw)
-                                        //4: same as the starting yaw
-				   waypoint_task.trace_mode = 0;
-                                            //Trace mode
-                                            //0: point to point, after reaching the target waypoint hover, complete waypoints action (if any), then fly to the next waypoint
-                                            //1: Coordinated turn mode, smooth transition between waypoints, no waypoints task
-				    waypoint_task.action_on_rc_lost = 0;
-                                                //Action on rc lost
-                                                //0: exit waypoint and failsafe
-                                                //1: continue the waypoint
-				    waypoint_task.gimbal_pitch_mode = 0;
-                                            //Gimbal pitch mode
-                                            //0: Free mode, no control on gimbal
-                                            //1: Auto mode, Smooth transition between waypoints
-
-    				waypoint.altitude = altitude-=10;   // altitude is published in meters on the ros node, but displayed in feet on the phone simulator
-    				waypoint.damping_distance = 0; /bend length (effective coordinated turn mode only)
-    				waypoint.target_yaw = 0;
-    				waypoint.target_gimbal_pitch = 0;
-    				waypoint.turn_mode = 0;  // 0 is clockwise, 1 counterclockwise
-    				waypoint.has_action = 0;
-                                            //waypoint action flag
-                                             //0: no action
-                                            //1: has action
-    				waypoint.latitude = (orig_lat+=.0001); //in radians
-       				waypoint.longitude = orig_long;        // in radians
-
-
-    				//could not find any info on the following 4 parameters in the documentation
-    				waypoint.action_time_limit = 10;
-    				waypoint.waypoint_action.action_repeat = 1;
-    				waypoint.waypoint_action.command_list[0] = 1;
-    				waypoint.waypoint_action.command_parameter[0] = 1;
-        */
-
-    dji_sdk::MissionWaypoint targetEstimateWP;
- /*   targetEstimateWP.latitude = latitude;
-    targetEstimateWP.longitude = longitude;
-    targetEstimateWP.altitude = altitude;
-    targetEstimateWP.turn_mode = 0;
-    targetEstimateWP.damping_distance = 0;
-    targetEstimateWP.has_action=0;
-    targetEstimateWP.waypoint_action.action_repeat = 1;
-    targetEstimateWP.waypoint_action.command_list[0] = 1;
-    targetEstimateWP.waypoint_action.command_parameter[0] = 1;
-
-
-    WAYPOINT_TASK_TRACKING.velocity_range = 10;
-    WAYPOINT_TASK_TRACKING.idle_velocity = 3;
-    WAYPOINT_TASK_TRACKING.action_on_finish = 0;                             //0: no action  //1: return to home //2: auto landing //3: return to point 0 //4: infinite mode， no exit
-    WAYPOINT_TASK_TRACKING.mission_exec_times = 1;
-    WAYPOINT_TASK_TRACKING.yaw_mode = 2;
-                                    //Yaw mode:
-                                        //0: auto mode(point to next waypoint)
-                                        //1: Lock as an initial value
-                                        //2: controlled by RC
-                                        //3: use waypoint's yaw(tgt_yaw)
-                                        //4: same as the starting yaw
-    WAYPOINT_TASK_TRACKING.trace_mode = 0;
-                                            //Trace mode
-                                            //0: point to point, after reaching the target waypoint hover, complete waypoints action (if any), then fly to the next waypoint
-                                            //1: Coordinated turn mode, smooth transition between waypoints, no waypoints task
-    WAYPOINT_TASK_TRACKING.action_on_rc_lost = 0;
-                                                //Action on rc lost
-                                                //0: exit waypoint and failsafe
-                                                //1: continue the waypoint
-    WAYPOINT_TASK_TRACKING.gimbal_pitch_mode = 0;
-                                            //Gimbal pitch mode
-                                            //0: Free mode, no control on gimbal
-                                            //1: Auto mode, Smooth transition between waypoints
-
-
-// case 28 then case 22 then case 3- then case 25
-drone->mission_cancel();
-//case 22
- WAYPOINT_TASK_TRACKING.mission_waypoint.clear();
- WAYPOINT_TASK_TRACKING.mission_waypoint.push_back(targetEstimateWP); 				
-  drone->mission_waypoint_upload(WAYPOINT_TASK_TRACKING);
-//case 30
-drone->mission_waypoint_set_speed((float)desiredWaypointSpeed);
-//case 25
-drone->mission_start();
-
-*/
-
-
-
+      
 
 }
+
 
 ros::NodeHandle* nh;
 DJIDrone* drone;
 #define AprilTagsTopicTracking "dji_sdk/tag_detections"
-
-
-
-void handleGimbalPrediction(UTMobject predictedTargetUTM, UTMobject predictedCopterUTM, double desiredAltitude, std_msgs::Header latestHeader ,DJIDrone* drone)
+void handleGimbalPrediction(UTMobject predictedTargetUTM, UTMobject predictedCopterUTM, double heightAboveTarget, std_msgs::Header latestHeader ,DJIDrone* drone)
 {
 cout <<"predictions before gimbal " <<"copter e n zone " << std::get<eastingIndex>(predictedCopterUTM)<<" "<< std::get<northingIndex>(predictedCopterUTM)<<" "<< std::get<designatorIndex>(predictedCopterUTM)<<" \n";
 cout << "target e n zone " << std::get<eastingIndex>(predictedTargetUTM)<<" "<< std::get<northingIndex>(predictedTargetUTM)<<" "<< std::get<designatorIndex>(predictedTargetUTM)<<" \n";
@@ -232,17 +145,17 @@ cout << "target e n zone " << std::get<eastingIndex>(predictedTargetUTM)<<" "<< 
     getGimbalAngleToPointAtTarget_rads
     (
  	predictedCopterUTM, 
-	desiredAltitude, 
+	heightAboveTarget, 
 	predictedTargetUTM
  	,yaw_rads //This is an output variable
 	,pitch_rads //This is an output variable
 	,roll_rads    //This is an output variable
     );
 	
-#define NO_PITCH true // this is to avoid pitch during testing on the bench
+/*#define NO_PITCH false // set this to true to avoid pitch during testing on the bench
 #ifdef NO_PITCH
 pitch_rads = degreesToRadians(-10); //small pitch so calculations still make sense
-#endif 
+#endif */
 if (YAW_RELATIVE_TO_BODY == true)
   {yaw_rads = inertialFrameToBody_yaw(yaw_rads, drone);}
 
@@ -325,7 +238,7 @@ UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude
    
    
   // then need to set quadcopter waypoint accordingly
-  goToTargetEstimate(drone ,targetLocPredictionGPS.latitudeIndex ,targetLocPredictionGPS.longitudeIndex  , copterState.altitude); //assume same altitude kept throughout until landing
+  goToTargetEstimate(drone ,targetLocPredictionGPS.latitudeIndex ,targetLocPredictionGPS.longitudeIndex  , desiredNewAltitude_meters); 
   // then need to to estimate where the quadcopter will actually be
 
 
@@ -333,11 +246,15 @@ UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude
    {
 	
 	// THIS WILL ONLY WORK FOR A STATIONARY TARGET!
+   cout <<" \n\n NOTICE!!!! \n ABOUT TO LAND  !!!! \n\n";
 	drone->landing();  
+       cout <<" \n\n NOTICE!!!! \n SENT LANDING COMMAND  !!!! \n\n";
 	  
    }
 
-   handleGimbalPrediction(predictedTargetUTM, predictedCopterUTM, desiredNewAltitude_meters, latestHeader, drone);
+   double estimatedTargetHeight = ALTITUDE_AT_LAST_TARGET_SIGHTING - LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS;
+   double predictedHeightAboveTarget = desiredNewAltitude_meters - estimatedTargetHeight; 
+   handleGimbalPrediction(predictedTargetUTM, predictedCopterUTM, predictedHeightAboveTarget, latestHeader, drone);
 
 }
 //end handleTargetPrediction
@@ -444,7 +361,7 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
     {
 
       firstDetection = false;
-      targetLocPrediction =  loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, firstDetection); 
+      targetLocPrediction =  loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); //use !firstDetection since we don't want to descent until we have multiple detections
 	  targetXandZFromCamera = targetTrackStep(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT, debugAr[0][0], debugAr[2][0]); 
      // cout <<"kalman filter" << "process noise " << GLOBAL_KALMAN_FILTER.processNoiseCov <<"\n measurement Noise " <<  GLOBAL_KALMAN_FILTER.measurementNoiseCov << "\ntransition matrix: "<<GLOBAL_KALMAN_FILTER.transitionMatrix <<"\n";
     // cout<<"dt: "<<LATEST_DT <<"\n";
@@ -458,7 +375,7 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 	 IS_TRACKING = true;
      
      
-	 handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, firstDetection);
+	 handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, !firstDetection);
 	 
    } //closing brace to if(numTags>0)
 
@@ -477,6 +394,7 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 					{ 
 					 IS_TRACKING = false; 
 					  FRAMES_WITHOUT_TARGET = 0;
+                     stayInCurrentSpot(drone);
 					}
 			else
 					{
@@ -487,7 +405,7 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 					 
                     STATE_STORAGE = targetLocPrediction; //so it can be reused for future predictions if needed                
 
-					handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, true); //put true since we don't want to land using a kalman filter prediction without data 
+					handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, false); //put false since we don't want to land using a kalman filter prediction without data 
 
 					 
 					}	
@@ -1302,14 +1220,15 @@ int main(int argc, char *argv[])
 				//replace this with testing if it can read AprilTags stuff:
 				//dummyTest(); //REMOVE before actual use! 
 	//crudeTestWeb(); 
-	expTestWeb();
-	cout <<"\n exp test finished\n";
-	trigTestWeb(); 
+
+
+
 
 				GLOBAL_ANGLE_PUBLISHER = (*nh).advertise<geometry_msgs::PointStamped>("/dji_sdk/desired_angle", 2); // queue size of 2 seems reasonable
 				drone->check_version(); //TODO need to find a way to get the return value from this
 				drone->request_sdk_permission_control(); //TODO need to find a way to get the return value from this
 				drone->takeoff(); //TODO need to find a way to get the return value from this
+                stayInCurrentSpot(drone); //Need this in case there are waypoint navigation requests still active 
 				//while(drone->global_position.height< 1.5) //set low in case it doesn't reach the full 2 meters 
 				//{
                 //    ros::Duration(0.1).sleep(); 

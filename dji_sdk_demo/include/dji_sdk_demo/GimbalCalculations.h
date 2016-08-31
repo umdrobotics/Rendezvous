@@ -213,7 +213,7 @@ std::pair<double, double> UTMtoGPS(double northing, double easting, std::string 
 void getGimbalAngleToPointAtTarget_rads
 (
  	UTMobject quadcopterLocation_UTM, 
-	double quadcopterAltitude_Meters, 
+	double heightAboveTarget_Meters, 
 	UTMobject targetLocation_UTM
  	,double &yaw_rads //This is an output variable
 	,double &pitch_rads //This is an output variable
@@ -235,7 +235,7 @@ void getGimbalAngleToPointAtTarget_rads
  roll_rads = 0;
  
 //for exaplanation of calculations, see diagram in Aaron Ward's July 20 report
- pitch_rads = -1.0 * atan2( quadcopterAltitude_Meters,  distance_Meters ); //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
+ pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
  //pitch_rads = -1.0 * atan( quadcopterAltitude_Meters / distance_Meters );
  //printf("\n\nTODO: Check if the negative sign is done correctly in the atan or atan2 function in the \"getGimbalAngleToPointAtTarget_rads\" function \n\n");
  //yaw_rads = acos( deltaNorth / distance_Meters );
