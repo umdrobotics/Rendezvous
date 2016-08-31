@@ -26,7 +26,7 @@
 
 #include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
 #include <dji_sdk_demo/GimbalCalculations.h>
-
+#include <dji_sdk_demo/handleLanding.h>
 
 #define YAW_RELATIVE_TO_BODY false // if gimbal yaw command is relative to the body, this is true, if it's relative to the inertial frame, it's false
 ///Begin global tracking variables
@@ -298,6 +298,7 @@ UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude
   //Now we need to add velocity to it. But we can't simply assume it will carry on it's current velocity vector.
    //For simplicity, let's assume the same magnitude, but in the direction of the new vector
     //since predictedCopterUTM variable currently contains the actual copter position, not prediction, we can use this
+   dji_sdk::Velocity copterSpeed = drone->velocity; //DJI::onboardSDK::VelocityData copterSpeed = DJI::onboardSDK::Flight::getVelocity(); 
    double newCopterAngle_rads = atan2(predictedEast - std::get<eastingIndex>(predictedCopterUTM), predictedNorth - std::get<northingIndex>(predictedCopterUTM));		   
    double velocityMagnitude = sqrt(copterSpeed.vx * copterSpeed.vx + copterSpeed.vy * copterSpeed.vy);
    
@@ -308,7 +309,7 @@ UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude
    std::get<eastingIndex>(predictedCopterUTM) += predictedChangeInCopterEast;
 
    //now need to handle if we should descend to the target or not
-   bool shouldIland = false; 
+   bool shouldILand = false; 
    double desiredNewAltitude_meters = HandleLanding::getNewAltitudeForDescent(
 																			   predictedNorth - std::get<northingIndex>(predictedCopterUTM)
 																			   ,predictedEast - std::get<eastingIndex>(predictedCopterUTM)
@@ -326,7 +327,7 @@ UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude
   // then need to set quadcopter waypoint accordingly
   goToTargetEstimate(drone ,targetLocPredictionGPS.latitudeIndex ,targetLocPredictionGPS.longitudeIndex  , copterState.altitude); //assume same altitude kept throughout until landing
   // then need to to estimate where the quadcopter will actually be
-  dji_sdk::Velocity copterSpeed = drone->velocity; //DJI::onboardSDK::VelocityData copterSpeed = DJI::onboardSDK::Flight::getVelocity(); 
+
 
   if(shouldILand == true)
    {
@@ -393,7 +394,7 @@ if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the 
      dji_sdk::Gimbal gimbalState = drone->gimbal;//DJI::onboardSDK::GimbalData gimbalState = (drone->gimbal).getGimbal();
      dji_sdk::GlobalPosition copterState = drone->global_position; //DJI::onboardSDK::PositionData copterState = drone->global_position; //DJI::onboardSDK::Flight::getPosition();
 	 //need to keep track of the altitude and height above target for when we land
-     ALTITUDE_AT_LAST_TARGET_SIGHTING = copterState.altitude
+     ALTITUDE_AT_LAST_TARGET_SIGHTING = copterState.altitude;
       latestTargetLocation = targetDistanceMetersToUTM_WithHeightDifference( // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
 			current.pose.pose.position , 	      				degreesToRadians(gimbalState.roll), 
 			degreesToRadians(gimbalState.pitch), 
@@ -457,7 +458,7 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 	 IS_TRACKING = true;
      
      
-	 handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, copterState.altitude, firstDetection);
+	 handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, firstDetection);
 	 
    } //closing brace to if(numTags>0)
 
@@ -486,9 +487,8 @@ getTargetOffsetFromUAV(current.pose.pose.position, degreesToRadians(gimbalState.
 					 
                     STATE_STORAGE = targetLocPrediction; //so it can be reused for future predictions if needed                
 
-					handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone); 
-					 //cv::Mat targetXandZFromCamera = loopStepWebWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);//targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER_DIST, LATEST_DT);
-			        //   cout <<" without measurement  prediction dist from camera (x and z) " << targetXandZFromCamera <<"\n";
+					handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, true); //put true since we don't want to land using a kalman filter prediction without data 
+
 					 
 					}	
 		  }

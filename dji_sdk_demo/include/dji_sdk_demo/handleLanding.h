@@ -67,12 +67,12 @@ namespace HandleLanding
 				     {shouldILand = true;}
 				 
 				  double newAltitude_meters = newHeightAboveTarget_meters + targetHeight_meters; 
-				  return newAltitidue_meters;
+				  return newAltitude_meters;
 				}
 		  
 		 else
 				{
-				  return altitude_metersde; 			  	
+				  return altitude_meters; 			  	
 				}
 				
 		}

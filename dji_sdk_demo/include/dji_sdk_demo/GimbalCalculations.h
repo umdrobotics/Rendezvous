@@ -452,7 +452,7 @@ UTMobject targetDistanceMetersToUTM_WithHeightDifference // this version also pl
 	,double currentQuadcopterLongitude 
 	,double currentQuadcopterAltitude_meters
 	
-	double & copterHeightAboveTarget_meters //THIS IS AN OUTPUT VARIABLE TO BE MODIFIED
+	,double & copterHeightAboveTarget_meters //THIS IS AN OUTPUT VARIABLE TO BE MODIFIED
      )
 	 
 {
