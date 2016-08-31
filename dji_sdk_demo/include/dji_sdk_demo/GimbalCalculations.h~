@@ -241,7 +241,7 @@ void getGimbalAngleToPointAtTarget_rads
  //yaw_rads = acos( deltaNorth / distance_Meters );
  //turns out acos can't be used, since it doesn't do enough to specify the quadrant. Use
  yaw_rads = atan2( deltaEast, deltaNorth); //remember north is the x axis, east is the y axis
- // cout <<"\n atan2 of y x " << deltaEast <<" " <<deltaNorth << " quadcopter east north " << std::get<eastingIndex>(quadcopterLocation_UTM) << " "<< std::get<northingIndex>(quadcopterLocation_UTM) <<  "    target east north " <<std::get<eastingIndex>(targetLocation_UTM) <<" " << std::get<northingIndex>(targetLocation_UTM)<<  "\n"; 
+  cout <<"\n atan2 of y x " << deltaEast <<" " <<deltaNorth << " quadcopter east north " << std::get<eastingIndex>(quadcopterLocation_UTM) << " "<< std::get<northingIndex>(quadcopterLocation_UTM) <<  "    target east north " <<std::get<eastingIndex>(targetLocation_UTM) <<" " << std::get<northingIndex>(targetLocation_UTM)<<  "\n"; 
   
   
 }

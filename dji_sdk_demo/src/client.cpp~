@@ -119,7 +119,7 @@ targetEstimate.latitude = latitude;
 targetEstimate.longitude = longitude;
 targetEstimate.altitude = altitude;
 targetEstimate.heading = 0; //I think this means the aircraft flies straight at it
-targetEstimate.staytime = 1.0; //don't wish to linger there, but we can afford a 1 second wait on a stationary target
+targetEstimate.staytime = 0; //don't wish to linger there
 
 
 dji_sdk::WaypointList loneWaypoint; //will only be 1 element in this list

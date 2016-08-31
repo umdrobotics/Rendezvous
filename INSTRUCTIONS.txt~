@@ -1,0 +1,21 @@
+EACH NUMBER IMPLIES A SEPARATE TERMINAL. COMMANDS WITHIN A TERMINAL ARE SEPARATED BY SEMICOLONS
+
+How to use without camera simulator:
+
+1: roscore &
+2: sudo su ; roslaunch dji_sdk_read_cam manifold_cam.launch &
+3: ROS_NAMESPACE=dji_sdk rosrun image_proc image_proc & ;  roslaunch apriltags_ros apriltags_ros-test.launch & ; rosrun image_view image_view image:=dji_sdk/tag_detections_image (image_view command not needed, but is useful for debugging)
+4: sudo su ; roslaunch dji_sdk sdk_manifold.launch
+5: rosrun angle_pid_node angle_pid_node ; press 0 when the menu pops up
+6: roslaunch dji_sdk_demo dji_sdk_client.launch ; press 54 when the menu pops up (WARNING: WILL CAUSE DRONE TO TAKEOFF IF PROPELLORS ARE ON!)
+
+How to use with camera simulator:
+
+1: roscore &
+2: sudo su ; roslaunch dji_sdk_read_cam manifold_cam.launch &
+3: ROS_NAMESPACE=dji_sdk rosrun image_proc image_proc &  
+4: roslaunch apriltags_ros apriltags_ros-simulation.launch  
+5: sudo su ; roslaunch dji_sdk sdk_manifold.launch
+6: rosrun angle_pid_node angle_pid_node ; press 0 when the menu pops up
+7: roscd dji_sdk_demo ; cd src ; python CameraSimulator.py 
+8: roslaunch dji_sdk_demo dji_sdk_client.launch ; press 54 when the menu pops up (WARNING: WILL CAUSE DRONE TO TAKEOFF IF PROPELLORS ARE ON!)
