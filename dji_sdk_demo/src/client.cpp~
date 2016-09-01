@@ -24,7 +24,7 @@
                volatile int degs =0; // for debugging gimbal control
              volatile int GIMBAL_TEST_SIGN = 1; //for debugging gimbal control
 
-#include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
+//#include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
 #include <dji_sdk_demo/GimbalCalculations.h>
 #include <dji_sdk_demo/handleLanding.h>
 
@@ -474,7 +474,6 @@ dummyTest_gimbal();
 printf("\n gimbal tests done"); 
 for (int a =0; a<10; a++){
 printf("running kalman filter test, check CSV file");}
-kalmanTest();
 printf("\n\nall dummy tests done \n\n");
 
 }

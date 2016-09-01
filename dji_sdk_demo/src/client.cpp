@@ -24,7 +24,7 @@
                volatile int degs =0; // for debugging gimbal control
              volatile int GIMBAL_TEST_SIGN = 1; //for debugging gimbal control
 
-#include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
+//#include <dji_sdk_demo/PIDcontrol.cpp> //need to figure out how to put this in the main folder instead of include
 #include <dji_sdk_demo/GimbalCalculations.h>
 #include <dji_sdk_demo/handleLanding.h>
 
@@ -59,7 +59,7 @@ double GLOBAL_ROLL_DJI_UNITS =0.0;
 double GLOBAL_PITCH_DJI_UNITS = -450.0; //at the start we want it pointing 45 degrees down to better detect targets
 double GLOBAL_YAW_DJI_UNITS =0.0;
 
-cv::Mat STATE_STORAGE; 
+cv::Mat STATE_STORAGE; //Need to keep track of each state so we can get an estimate if we lose track of the target. 
 
 //if we want to publish a new message whenever a new apriltag is detected, it might be best to publish the angles from within the apriltag subscriber callback
 //that means we need a global publisher variable
