@@ -121,7 +121,7 @@ cv::Mat loopStepWeb(cv::KalmanFilter kf, double dT, double xIn, double yIn, bool
          // <<<< Matrix A
 
 
-         cout << "dT:" << endl << dT << endl;
+         //cout << "dT:" << endl << dT << endl;
  //ill try moving this to the bottom
        //  state = kf.predict();
         // cout << "State post:" << endl << state << endl;            
@@ -166,7 +166,7 @@ cv::Mat loopStepWeb(cv::KalmanFilter kf, double dT, double xIn, double yIn, bool
             state.at<double>(1) = yIn;
             state.at<double>(2) = 0;
             state.at<double>(3) = 0;}			
-         cout << "State post:" << endl << state << endl;   
+         //cout << "State post:" << endl << state << endl;   
 return state ;
 } ///end function
 
@@ -189,7 +189,7 @@ cv::Mat loopStepWebWithoutMeasurement(cv::KalmanFilter kf, double dT , cv::Mat l
          // <<<< Matrix A
 
 
-         cout << "dT:" << endl << dT << endl;
+        // cout << "dT:" << endl << dT << endl;
  //ill try moving this to the bottom
        //  state = kf.predict();
         // cout << "State post:" << endl << state << endl;            
@@ -228,7 +228,7 @@ cv::Mat loopStepWebWithoutMeasurement(cv::KalmanFilter kf, double dT , cv::Mat l
             cv::Mat state(4,1,CV_64F); //(statesize,1,type);
           state = kf.predict();
 		
-         cout << "State post no measurement:" << endl << state << endl;   
+         //cout << "State post no measurement:" << endl << state << endl;   
 return state ;
 } ///end function
 

@@ -412,6 +412,7 @@ UTMobject targetDistanceMetersToUTM
      //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
     //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
       
+      cout <<"\n Target distance from camera " <<targetDistanceFromCamera_meters <<"\n"; 
        double targetOffsetFromUAV[3][1];
 	  getTargetOffsetFromUAV(
 	                           targetDistanceFromCamera_meters 
@@ -422,6 +423,7 @@ UTMobject targetDistanceMetersToUTM
 							);
         //cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
 	  
+
     UTMobject targetLocation2D_UTM;
 //it's reasonable to assume we don't cross zones
     std::get<designatorIndex>(targetLocation2D_UTM) = std::get<designatorIndex>(quadcopterLocation2D_UTM) ; 
@@ -493,7 +495,7 @@ cout <<"\nOffset from UAV x y z inertial " << targetOffsetFromUAV[0][0] <<" "<< 
 cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " "<< std::get<northingIndex>(targetLocation2D_UTM) <<" "<< std::get<designatorIndex>(targetLocation2D_UTM) <<" ";
   
   copterHeightAboveTarget_meters = targetOffsetFromUAV[2][0];
-  cout << " Height above target " << copterHeightAboveTarget_meters <<" meters \n"; 
+  cout << "\n\n Height above target " << copterHeightAboveTarget_meters <<" meters \n"; 
   return targetLocation2D_UTM;
    
 

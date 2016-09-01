@@ -241,7 +241,7 @@ void getGimbalAngleToPointAtTarget_rads
  //yaw_rads = acos( deltaNorth / distance_Meters );
  //turns out acos can't be used, since it doesn't do enough to specify the quadrant. Use
  yaw_rads = atan2( deltaEast, deltaNorth); //remember north is the x axis, east is the y axis
-  cout <<"\n atan2 of y x " << deltaEast <<" " <<deltaNorth << " quadcopter east north " << std::get<eastingIndex>(quadcopterLocation_UTM) << " "<< std::get<northingIndex>(quadcopterLocation_UTM) <<  "    target east north " <<std::get<eastingIndex>(targetLocation_UTM) <<" " << std::get<northingIndex>(targetLocation_UTM)<<  "\n"; 
+ // cout <<"\n atan2 of y x " << deltaEast <<" " <<deltaNorth << " quadcopter east north " << std::get<eastingIndex>(quadcopterLocation_UTM) << " "<< std::get<northingIndex>(quadcopterLocation_UTM) <<  "    target east north " <<std::get<eastingIndex>(targetLocation_UTM) <<" " << std::get<northingIndex>(targetLocation_UTM)<<  "\n"; 
   
   
 }
@@ -412,6 +412,7 @@ UTMobject targetDistanceMetersToUTM
      //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
     //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
       
+      cout <<"\n Target distance from camera " <<targetDistanceFromCamera_meters <<"\n"; 
        double targetOffsetFromUAV[3][1];
 	  getTargetOffsetFromUAV(
 	                           targetDistanceFromCamera_meters 
@@ -493,7 +494,7 @@ cout <<"\nOffset from UAV x y z inertial " << targetOffsetFromUAV[0][0] <<" "<< 
 cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " "<< std::get<northingIndex>(targetLocation2D_UTM) <<" "<< std::get<designatorIndex>(targetLocation2D_UTM) <<" ";
   
   copterHeightAboveTarget_meters = targetOffsetFromUAV[2][0];
-  cout << " Height above target " << copterHeightAboveTarget_meters <<" meters \n"; 
+  cout << "\n\n Height above target " << copterHeightAboveTarget_meters <<" meters \n"; 
   return targetLocation2D_UTM;
    
 

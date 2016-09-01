@@ -8,8 +8,8 @@ global TARGET_ZONE_LETTER
 
 
 #you can change them here
-TARGET_EAST = 803811.7 
-TARGET_NORTH = 2495272.5
+TARGET_EAST = 803714.947243 
+TARGET_NORTH = 2495268.762723
 TARGET_ZONE_NUMBER = 49
 TARGET_ZONE_LETTER = 'Q'
 #If you want to use latitude and longitude, you could place code like the following in main():
@@ -34,7 +34,8 @@ def radsToDegs(radians):
     return 180.0*radians/math.pi
 
 
-def getCameraPlane(altitude, FOV_deg=94.0 ):
+def getCameraPlane(altitude, FOV_deg= 94.0 ):
+    FOV_deg = 120.0 #it's 94.0 but the simulator is too strict so we need to compensate
     thetaDeg = FOV_deg/2.0
     theta = degsToRads(thetaDeg) #this is the angle that defines the "cone" of the camera
     #the camera x and y boundaries can each be defined using a cone, and then the image itself is a rectangle defined by those bounds
@@ -191,9 +192,21 @@ def getCameraBoundsInertial(roll_rads, pitch_rads, yaw_rads, quadNorth, quadEast
      yNegativeOffset = min(lowerBoundsXYZinertial[1][0], upperBoundsXYZinertial[1][0])
      xPositiveOffset = max(lowerBoundsXYZinertial[0][0], upperBoundsXYZinertial[0][0])
      xNegativeOffset = min(lowerBoundsXYZinertial[0][0], upperBoundsXYZinertial[0][0])
+# In theory, the camera is roughly symmetric, but the field of view calculated can become extraordinarily narrow at certain times in this simulator.
+# account for this by using the largest difference found.
 
-     yBoundsInertial = [centerY +yNegativeOffset, centerY + yPositiveOffset ]
-     xBoundsInertial = [centerX + xNegativeOffset, centerX + xPositiveOffset ]
+     if(abs(xNegativeOffset) > abs(yNegativeOffset)):
+         yNegativeOffset = xNegativeOffset;
+     else:
+         xNegativeOffset = yNegativeOffset;
+     if(abs(xPositiveOffset) > abs(yPositiveOffset)):
+         yPositiveOffset = xPositiveOffset;
+     else:
+         xPositiveOffset = yPositiveOffset;
+
+#add a slight extra constant as well to account for the field of view when it's landed
+     yBoundsInertial = [centerY +yNegativeOffset -2, centerY + yPositiveOffset +2 ]
+     xBoundsInertial = [centerX + xNegativeOffset - 2, centerX + xPositiveOffset +2 ]
      
      cameraBoundsInertial = [xBoundsInertial, yBoundsInertial, "1st element: x bounds, 2nd element: y bounds, both in meters on inertial frame"]
      return cameraBoundsInertial
@@ -284,6 +297,7 @@ def calculateAprilTagDetection(roll_rads, pitch_rads, yaw_rads, quadNorth, quadE
     #convert back to a row vector instead of a column vector before returning, for simplicity 
         cameraDisplacementSimplified = [cameraDisplacement[0][0], cameraDisplacement[1][0],cameraDisplacement[2][0] ]
         cameraDisplacementSimplified[2] = abs(altitude); #simplify for use with the simulator by assuming altitude is same as height above ground, and target is flat on ground 
+        cameraDisplacementSimplified[1]
         return cameraDisplacementSimplified 
 
     

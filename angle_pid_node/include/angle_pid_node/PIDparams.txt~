@@ -2,4 +2,3 @@ Kp: 3.1
 Kd: 0.0
 Ki: 0.0
 deadzone_djiunits: 30.0
-COMMENT: 10 dji units = 1 degree
