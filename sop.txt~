@@ -32,7 +32,7 @@ Open a new termina (Ctrl-Shift N)
 If you are using a Zenmuse X3 camera connected to Manifold, run
 
 $ sudo su
-# roslaunch dji_sdk_read_cam manifold_cam.launch   # means superuser
+$ roslaunch dji_sdk_read_cam manifold_cam.launch
 
 If you are using a webcam
 

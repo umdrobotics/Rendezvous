@@ -20,7 +20,7 @@
 
 
 #include <dji_sdk_demo/kalmanWebsite.cpp>
-#include <dji_sdk_demo/kalmanPhysics.cpp>  //need to figure out how to put this in the main folder instead of include
+//#include <dji_sdk_demo/kalmanPhysics.cpp>  //need to figure out how to put this in the main folder instead of include
                volatile int degs =0; // for debugging gimbal control
              volatile int GIMBAL_TEST_SIGN = 1; //for debugging gimbal control
 
@@ -1036,7 +1036,7 @@ int main(int argc, char *argv[])
 
             ros::Duration(3.0).sleep();
             newWaypointList.waypoint_list.clear();
-             waypoint4.altitude= 500; 
+             waypoint4.altitude= 10; 
              waypoint4.latitude = 22.537018;
              waypoint4.longitude=113.95364;
              newWaypointList.waypoint_list.push_back(waypoint4);

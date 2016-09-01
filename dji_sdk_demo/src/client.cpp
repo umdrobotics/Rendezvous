@@ -20,7 +20,7 @@
 
 
 #include <dji_sdk_demo/kalmanWebsite.cpp>
-#include <dji_sdk_demo/kalmanPhysics.cpp>  //need to figure out how to put this in the main folder instead of include
+//#include <dji_sdk_demo/kalmanPhysics.cpp>  //need to figure out how to put this in the main folder instead of include
                volatile int degs =0; // for debugging gimbal control
              volatile int GIMBAL_TEST_SIGN = 1; //for debugging gimbal control
 
@@ -474,7 +474,6 @@ dummyTest_gimbal();
 printf("\n gimbal tests done"); 
 for (int a =0; a<10; a++){
 printf("running kalman filter test, check CSV file");}
-kalmanTest();
 printf("\n\nall dummy tests done \n\n");
 
 }
