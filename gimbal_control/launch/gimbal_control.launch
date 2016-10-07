@@ -14,7 +14,7 @@
         <param name="kd" type="double" value="0.0"/>
         <param name="ki" type="double" value="0.0"/>
     </group>
-    <node pkg="tests" type="listener" name="listener" output="screen">
+    <node pkg="gimbal_control" type="gimbal_control" name="gimbal_control" output="screen">
     </node>
 </launch>
 

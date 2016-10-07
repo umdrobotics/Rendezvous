@@ -13,9 +13,9 @@
 //#include <cstring> //std::strlen
 //#include "std_msgs/String.h" //for publishing to ROS
 
+#define GIMBAL_SPEED_LIMIT_DU 1800.0
 
 using namespace std;
-
 
 PidController::PidController()
                             : m_sID("NA")
@@ -44,21 +44,29 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
                                     double dMeasuredTimeSec,
                                     double dGimbalAngleDeg)
 {
-    cout << "Desired:" << dDesiredAngleDU
-         << "DU, Measured Time:" << dMeasuredTimeSec
-         << "sec, Gimbal:" <<  dGimbalAngleDeg << "deg" << endl;
          
-    double errorDU = dGimbalAngleDeg * 10.0 - NormalizeAngleDU(dDesiredAngleDU);
+    double errorDU = NormalizeAngleDU(dDesiredAngleDU) - dGimbalAngleDeg * 10.0;
     
     if (abs(errorDU) < m_dDeadZoneAngleDU) 
     {
+        cout << m_sID << " Desired:" << dDesiredAngleDU
+         << "DU, Measured Time:" << dMeasuredTimeSec
+         << "sec, Gimbal:" <<  dGimbalAngleDeg 
+         << "deg, but error < deadzone value of " << m_dDeadZoneAngleDU << endl;
         return 0.0;
     } //ie don't move at all
 
     
     m_dLastMeasuredTimeSec = dMeasuredTimeSec;
 
-    return m_dKp * errorDU;		
+    double plantInput = std::max( std::min(m_dKp * errorDU, GIMBAL_SPEED_LIMIT_DU), -GIMBAL_SPEED_LIMIT_DU);
+
+    cout << m_sID << " Desired:" << dDesiredAngleDU
+         << "DU, Measured Time:" << dMeasuredTimeSec
+         << "sec, Gimbal:" <<  dGimbalAngleDeg 
+         << "deg, Plant Input:" << plantInput << endl;
+
+    return plantInput;		
     
 }
 
