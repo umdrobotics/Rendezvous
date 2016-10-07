@@ -48,7 +48,7 @@ PidController::PidController(std::string sID,
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
-    m_ofslog << "#Desired Angle (DU), Measured Time (s), Gimbal Angle(Deg), PlantInput (DU)" << endl;
+    m_ofslog << "#Desired Angle (DU), Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
 }
 
 PidController::~PidController()
@@ -62,18 +62,30 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
                                     double dMeasuredTimeSec,
                                     double dGimbalAngleDeg)
 {
-         
-    double errorDU = NormalizeAngleDU(dDesiredAngleDU) - dGimbalAngleDeg * 10.0;
     
-    double plantInput = (abs(errorDU) < m_dDeadZoneAngleDU) ? 
+    // Normalize desired angle so that the difference between the two is always less than |180.0|
+    double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDU/10, dGimbalAngleDeg);   
+    
+    if (dNormalizedDesiredAngleDeg > 270.0) 
+    {
+        dNormalizedDesiredAngleDeg -= 360.0;
+    } 
+    else if (dNormalizedDesiredAngleDeg < -270.0)     
+    {
+        dNormalizedDesiredAngleDeg += 360.0;
+    }
+        
+    double dErrorDU = (dNormalizedDesiredAngleDeg - dGimbalAngleDeg) * 10;
+    
+    double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
                         0.0 : 
-                        std::max( std::min( m_dKp * errorDU, GIMBAL_SPEED_LIMIT_DU), 
+                        std::max( std::min( m_dKp * dErrorDU, GIMBAL_SPEED_LIMIT_DU), 
                                     -GIMBAL_SPEED_LIMIT_DU);
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
                 << ros::Time::now().toSec() << "," 
                 << dDesiredAngleDU << "," 
-                << dMeasuredTimeSec << "," 
+                << dErrorDU << "," 
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;
 
@@ -84,13 +96,22 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
 }
 
 // private methods      
-double PidController::NormalizeAngleDU(double dAngleDU)
+
+double PidController::NormalizeAngleAboutDeg(double dAngleDeg, double dCenter)
 {
-    while (dAngleDU <= -1800.0) { dAngleDU += 3600.0; }
-    while (dAngleDU > 1800.0)  { dAngleDU -= 3600.0; }
-    return dAngleDU;
+    while (dAngleDeg <= -180.0 + dCenter) { dAngleDeg += 360.0; }
+    while (dAngleDeg > 180.0 + dCenter)  { dAngleDeg -= 360.0; }
+    return dAngleDeg;
+    return dAngleDeg;
 }
 
+double PidController::NormalizeAngleDeg(double dAngleDeg)
+{
+    while (dAngleDeg <= -180.0) { dAngleDeg += 360.0; }
+    while (dAngleDeg > 180.0)  { dAngleDeg -= 360.0; }
+    return dAngleDeg;
+}
+          
                          
 ostream& PidController::GetString(ostream& os)
 {

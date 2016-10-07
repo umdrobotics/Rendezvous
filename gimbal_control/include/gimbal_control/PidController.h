@@ -31,12 +31,19 @@ private: // members
 	
 private: // methods
 	
-	/**
-	* Normalize angle to be in (-pi, pi]
-	*/
-	double NormalizeAngleDU(double dAngleDU);
+    /**
+    * Normalize an angle about the center angle. 
+    * If the center angle is 0, then the output will be (-180, 180]
+    * If the center angle is 90, then the output will be (-90, 270]
+    * The output is always less then or equal to dCenter+180 and less than dCenter-180.
+    */
+    double NormalizeAngleAboutDeg(double dAngleDeg, double dCenter);
 	
-
+    /**
+    * Normalize an angle, the output angle will be (-180, 180]
+    * If the center angle is 90, then the output will be (-90, 270]
+    */
+    double NormalizeAngleDeg(double dAngleDeg);
 	
 private: // NOT IMPLEMENTED
 	PidController(const PidController&);  // copy constructor

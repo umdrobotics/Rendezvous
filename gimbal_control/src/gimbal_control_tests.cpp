@@ -42,6 +42,12 @@ int main(int argc, char **argv)
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
+    desiredGimbalPoseDU.point.z = 3150.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+    
+    desiredGimbalPoseDU.point.x = 0.0;  // roll
+    desiredGimbalPoseDU.point.y = 0.0;  // pitch
     desiredGimbalPoseDU.point.z = 1800.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
@@ -72,6 +78,12 @@ int main(int argc, char **argv)
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
+    desiredGimbalPoseDU.point.z = 450.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+    
+    desiredGimbalPoseDU.point.x = 0.0;  // roll
+    desiredGimbalPoseDU.point.y = 0.0;  // pitch
     desiredGimbalPoseDU.point.z = -1800.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
@@ -88,13 +100,13 @@ int main(int argc, char **argv)
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
 
-    desiredGimbalPoseDU.point.x = 400.0;  // roll
+    desiredGimbalPoseDU.point.x = 150.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
 
-    desiredGimbalPoseDU.point.x = -400.0;  // roll
+    desiredGimbalPoseDU.point.x = -150.0;  // roll
     desiredGimbalPoseDU.point.y = -0.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
@@ -106,6 +118,11 @@ int main(int argc, char **argv)
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
 
+    desiredGimbalPoseDU.point.x = 0.0;  // roll
+    desiredGimbalPoseDU.point.y = 450.0;  // pitch
+    desiredGimbalPoseDU.point.z = 0.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
     desiredGimbalPoseDU.point.y = -450.0;  // pitch
