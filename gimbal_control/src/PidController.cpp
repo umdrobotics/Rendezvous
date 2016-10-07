@@ -1,44 +1,61 @@
 #include "gimbal_control/PidController.h"
-//#include "angle_pid_node/PIDcontrol.h"
-//#include "ros/ros.h" //note this must come before including 
-//#include <string>
-//#include <sstream> //stringstream, for turning all PID controller params into a string for ROS
-//#include <stdlib.h>    //for absolute value
-//#include <ctype.h> //for isspace
-
-//#include <fstream>
-//#include <sstream>
-//#include <vector>
-//#include <algorithm>    // std::transform
-//#include <cstring> //std::strlen
-//#include "std_msgs/String.h" //for publishing to ROS
+#include "std_msgs/String.h"
+#include <sstream>
+#include <unistd.h>
 
 #define GIMBAL_SPEED_LIMIT_DU 1800.0
+#define DEFAULT_LOG_FILE_NAME "/PidController_"
 
 using namespace std;
+
+
+// public methods
 
 PidController::PidController()
                             : m_sID("NA")
                             , m_dKp(0.0)
                             , m_dKd(0.0)
                             , m_dKi(0.0)
+                            , m_dTimeStepSec(0.05)
                             , m_dDeadZoneAngleDU(10)
                             , m_dAccumulatedError(0)
-                            , m_dTimeStepSec(0.05)
                             , m_dLastMeasuredTimeSec(0)
 {}
 
 
-PidController::PidController(std::string sID, double kp, double kd, double ki)
+PidController::PidController(std::string sID, 
+                            double kp, 
+                            double kd, 
+                            double ki,                            
+                            double timeStepSec,
+                            double deadZoneAngleDU)
                             : m_sID(sID)
                             , m_dKp(kp)
                             , m_dKd(kd)
                             , m_dKi(ki)
-                            , m_dDeadZoneAngleDU(10)
+                            , m_dTimeStepSec(timeStepSec)
+                            , m_dDeadZoneAngleDU(deadZoneAngleDU)
                             , m_dAccumulatedError(0)
-                            , m_dTimeStepSec(0.05)
                             , m_dLastMeasuredTimeSec(0)
-{}
+{
+
+    // string s_cwd(getcwd(NULL,0));
+    // cout << "CWD is: " << s_cwd << endl;
+    
+    stringstream ss;
+    ss << getenv("HOME") << DEFAULT_LOG_FILE_NAME << m_sID << ".log";
+    m_ofslog.open(ss.str());
+    ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
+
+    m_ofslog << "Desired Angle (DU), Measured Time (s), Gimbal Angle(Deg), PlantInput (DU)";
+}
+
+PidController::~PidController()
+{
+    m_ofslog.close();
+    ROS_INFO("Destructing PidController.");
+}
+
 
 double PidController::GetPlantInput(double dDesiredAngleDU, 
                                     double dMeasuredTimeSec,
@@ -47,24 +64,25 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
          
     double errorDU = NormalizeAngleDU(dDesiredAngleDU) - dGimbalAngleDeg * 10.0;
     
+    stringstream ss;
+    double plantInput = 0.0;
+    
     if (abs(errorDU) < m_dDeadZoneAngleDU) 
     {
-        cout << m_sID << " Desired:" << dDesiredAngleDU
-         << "DU, Measured Time:" << dMeasuredTimeSec
-         << "sec, Gimbal:" <<  dGimbalAngleDeg 
-         << "deg, but error < deadzone value of " << m_dDeadZoneAngleDU << endl;
-        return 0.0;
-    } //ie don't move at all
+        ss << m_sID << "," << dDesiredAngleDU << "," << dMeasuredTimeSec << "," 
+                            << dGimbalAngleDeg << "," << plantInput;
+    }
+    else
+    { 
+        plantInput = std::max( std::min( m_dKp * errorDU, GIMBAL_SPEED_LIMIT_DU), 
+                               -GIMBAL_SPEED_LIMIT_DU);
 
+        ss << m_sID << "," << dDesiredAngleDU << "," << dMeasuredTimeSec << "," 
+           << dGimbalAngleDeg << "," << plantInput;
+    }
     
-    m_dLastMeasuredTimeSec = dMeasuredTimeSec;
 
-    double plantInput = std::max( std::min(m_dKp * errorDU, GIMBAL_SPEED_LIMIT_DU), -GIMBAL_SPEED_LIMIT_DU);
-
-    cout << m_sID << " Desired:" << dDesiredAngleDU
-         << "DU, Measured Time:" << dMeasuredTimeSec
-         << "sec, Gimbal:" <<  dGimbalAngleDeg 
-         << "deg, Plant Input:" << plantInput << endl;
+    // m_dLastMeasuredTimeSec = dMeasuredTimeSec;
 
     return plantInput;		
     
@@ -77,8 +95,6 @@ double PidController::NormalizeAngleDU(double dAngleDU)
     while (dAngleDU > 1800.0)  { dAngleDU -= 3600.0; }
     return dAngleDU;
 }
-                  
-                  
 
                          
 ostream& PidController::GetString(ostream& os)
@@ -89,6 +105,8 @@ ostream& PidController::GetString(ostream& os)
               << ", Ki: " << m_dKi << endl;
 }
 
+
+//nonmember methods
 ostream& operator<<(ostream& os, PidController& pid)
 {
     return pid.GetString(os);

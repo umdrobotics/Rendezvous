@@ -14,8 +14,11 @@
         <param name="kd" type="double" value="0.0"/>
         <param name="ki" type="double" value="0.0"/>
     </group>
-    <node pkg="gimbal_control" type="gimbal_control" name="gimbal_control" output="screen">
+    <node pkg="gimbal_control" type="gimbal_control" name="gimbal_control" output="screen" cwd="node">
+        <param name="gimbal_control_time_step_sec" type="double" value="0.02" />
     </node>
+
+
 </launch>
 
 
