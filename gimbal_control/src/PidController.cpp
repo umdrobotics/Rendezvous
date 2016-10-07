@@ -2,6 +2,7 @@
 #include "std_msgs/String.h"
 #include <sstream>
 #include <unistd.h>
+#include <limits>
 
 #define GIMBAL_SPEED_LIMIT_DU 1800.0
 #define DEFAULT_LOG_FILE_NAME "/PidController_"
@@ -47,7 +48,7 @@ PidController::PidController(std::string sID,
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
-    m_ofslog << "Desired Angle (DU), Measured Time (s), Gimbal Angle(Deg), PlantInput (DU)";
+    m_ofslog << "#Desired Angle (DU), Measured Time (s), Gimbal Angle(Deg), PlantInput (DU)" << endl;
 }
 
 PidController::~PidController()
@@ -64,23 +65,17 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
          
     double errorDU = NormalizeAngleDU(dDesiredAngleDU) - dGimbalAngleDeg * 10.0;
     
-    stringstream ss;
-    double plantInput = 0.0;
+    double plantInput = (abs(errorDU) < m_dDeadZoneAngleDU) ? 
+                        0.0 : 
+                        std::max( std::min( m_dKp * errorDU, GIMBAL_SPEED_LIMIT_DU), 
+                                    -GIMBAL_SPEED_LIMIT_DU);
     
-    if (abs(errorDU) < m_dDeadZoneAngleDU) 
-    {
-        ss << m_sID << "," << dDesiredAngleDU << "," << dMeasuredTimeSec << "," 
-                            << dGimbalAngleDeg << "," << plantInput;
-    }
-    else
-    { 
-        plantInput = std::max( std::min( m_dKp * errorDU, GIMBAL_SPEED_LIMIT_DU), 
-                               -GIMBAL_SPEED_LIMIT_DU);
-
-        ss << m_sID << "," << dDesiredAngleDU << "," << dMeasuredTimeSec << "," 
-           << dGimbalAngleDeg << "," << plantInput;
-    }
-    
+    m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
+                << ros::Time::now().toSec() << "," 
+                << dDesiredAngleDU << "," 
+                << dMeasuredTimeSec << "," 
+                << dGimbalAngleDeg << "," 
+                << plantInput << endl;
 
     // m_dLastMeasuredTimeSec = dMeasuredTimeSec;
 
@@ -102,7 +97,7 @@ ostream& PidController::GetString(ostream& os)
     return os << "ID: " << m_sID 
               << ", Kp: " << m_dKp
               << ", Kd: " << m_dKd
-              << ", Ki: " << m_dKi << endl;
+              << ", Ki: " << m_dKi;
 }
 
 

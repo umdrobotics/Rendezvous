@@ -36,19 +36,19 @@ int main(int argc, char **argv)
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
-    desiredGimbalPoseDU.point.z = 1800.0;  // yaw
-    gimbal_pose_pub.publish(desiredGimbalPoseDU);
-    ros::Duration(2.0).sleep();
-    
-    desiredGimbalPoseDU.point.x = 0.0;  // roll
-    desiredGimbalPoseDU.point.y = 0.0;  // pitch
     desiredGimbalPoseDU.point.z = 2700.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
-    desiredGimbalPoseDU.point.z = 3600.0;  // yaw
+    desiredGimbalPoseDU.point.z = 1800.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+    
+    desiredGimbalPoseDU.point.x = 0.0;  // roll
+    desiredGimbalPoseDU.point.y = 0.0;  // pitch
+    desiredGimbalPoseDU.point.z = 900.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
     
@@ -72,31 +72,56 @@ int main(int argc, char **argv)
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
-    desiredGimbalPoseDU.point.z = -3600.0;  // yaw
+    desiredGimbalPoseDU.point.z = -1800.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
+    desiredGimbalPoseDU.point.z = -900.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+
+    desiredGimbalPoseDU.point.x = 0.0;  // roll
+    desiredGimbalPoseDU.point.y = 0.0;  // pitch
+    desiredGimbalPoseDU.point.z = 0.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+
+    desiredGimbalPoseDU.point.x = 400.0;  // roll
+    desiredGimbalPoseDU.point.y = 0.0;  // pitch
+    desiredGimbalPoseDU.point.z = 0.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+
+    desiredGimbalPoseDU.point.x = -400.0;  // roll
+    desiredGimbalPoseDU.point.y = -0.0;  // pitch
+    desiredGimbalPoseDU.point.z = 0.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+
+    desiredGimbalPoseDU.point.x = 0.0;  // roll
+    desiredGimbalPoseDU.point.y = 0.0;  // pitch
+    desiredGimbalPoseDU.point.z = 0.0;  // yaw
+    gimbal_pose_pub.publish(desiredGimbalPoseDU);
+    ros::Duration(2.0).sleep();
+
+    
+    desiredGimbalPoseDU.point.x = 0.0;  // roll
+    desiredGimbalPoseDU.point.y = -450.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
-    desiredGimbalPoseDU.point.y = 450.0;  // pitch
-    desiredGimbalPoseDU.point.z = 0.0;  // yaw
-    gimbal_pose_pub.publish(desiredGimbalPoseDU);
-    ros::Duration(2.0).sleep();
-    
-    desiredGimbalPoseDU.point.x = 0.0;  // roll
-    desiredGimbalPoseDU.point.y = 900.0;  // pitch
+    desiredGimbalPoseDU.point.y = -900.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
     
     
     desiredGimbalPoseDU.point.x = 0.0;  // roll
-    desiredGimbalPoseDU.point.y = 1200.0;  // pitch
+    desiredGimbalPoseDU.point.y = -450.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
