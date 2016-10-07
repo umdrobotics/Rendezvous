@@ -48,7 +48,7 @@ PidController::PidController(std::string sID,
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
-    m_ofslog << "#Desired Angle (DU), Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
+    m_ofslog << "#Time,Desired Angle (DU),Normlized Desired(Deg), Adjusted Desired (Deg),Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
 }
 
 PidController::~PidController()
@@ -66,14 +66,12 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
     // Normalize desired angle so that the difference between the two is always less than |180.0|
     double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDU/10, dGimbalAngleDeg);   
     
-    if (dNormalizedDesiredAngleDeg > 270.0) 
-    {
-        dNormalizedDesiredAngleDeg -= 360.0;
-    } 
-    else if (dNormalizedDesiredAngleDeg < -270.0)     
-    {
-        dNormalizedDesiredAngleDeg += 360.0;
-    }
+    double dAdjustedDesiredAngleDeg = 
+        (dNormalizedDesiredAngleDeg > 270.0) ? dNormalizedDesiredAngleDeg - 360.0
+                                             : (dNormalizedDesiredAngleDeg < -270.0) ?
+                                               dNormalizedDesiredAngleDeg += 360.0
+                                             : dNormalizedDesiredAngleDeg;
+
         
     double dErrorDU = (dNormalizedDesiredAngleDeg - dGimbalAngleDeg) * 10;
     
@@ -85,6 +83,8 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
                 << ros::Time::now().toSec() << "," 
                 << dDesiredAngleDU << "," 
+                << dNormalizedDesiredAngleDeg << "," 
+                << dAdjustedDesiredAngleDeg << "," 
                 << dErrorDU << "," 
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;
