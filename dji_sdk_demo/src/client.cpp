@@ -283,179 +283,189 @@ void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArra
 {
 
 	
-UTMobject latestTargetLocation; //must declare before the if statements so it can be used for further estimates (by recording the UTM designator zone) if the target is lost	
+    UTMobject latestTargetLocation; 
+    //must declare before the if statements so it can be used for further estimates 
+    // (by recording the UTM designator zone) if the target is lost	
 	
-std_msgs::Header latestHeader ; //declare outside the if statements so it can be used at the end	
-//sensor_msgs::Image rgb = *tag_detection_array; //have to use this to access the data, can't use the ConstPtr for that
-apriltags_ros::AprilTagDetectionArray aprilTagsMessage;
-aprilTagsMessage = tag_detection_array;
-std::vector<apriltags_ros::AprilTagDetection> found;
-found = aprilTagsMessage.detections;
-int numTags = found.size();
+    std_msgs::Header latestHeader; 
+    //declare outside the if statements so it can be used at the end	
+
+    //sensor_msgs::Image rgb = *tag_detection_array; //have to use this to access the data, can't use the ConstPtr for that
+
+    apriltags_ros::AprilTagDetectionArray aprilTagsMessage;
+    aprilTagsMessage = tag_detection_array;
+
+    std::vector<apriltags_ros::AprilTagDetection> found;
+    found = aprilTagsMessage.detections;
+
+    int numTags = found.size();
   
-cv::Mat targetLocPrediction; //must declare outside the if statements so we can keep estimating if the target is lost
-                            //If we use a local variable and then assign a global variable to it, this is less likely to cause memory overflow that just using the global variable directly
+    cv::Mat targetLocPrediction; 
+    // must declare outside the if statements so we can keep estimating if the target is lost
+    // If we use a local variable and then assign a global variable to it, 
+    // this is less likely to cause memory overflow that just using the global variable directly
 
-// let's assume that if there are multiple tags, we only want to deal with the first one.
-if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
-  {
-	  
-    bool firstDetection = true; //assume it's the first detection (and thus that we may need to disregard the information) until proven otherwise
-	  
-  FRAMES_WITHOUT_TARGET = 0; //we've found the target again
+    // let's assume that if there are multiple tags, we only want to deal with the first one.
+    if (numTags > 0 ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
+    {
+	    bool firstDetection = true; //assume it's the first detection (and thus that we may need to disregard the information) until proven otherwise
+	    FRAMES_WITHOUT_TARGET = 0; //we've found the target again
   
+        apriltags_ros::AprilTagDetection current=found.at(0);
+        current.pose.pose.position.y = CAMERA_Y_MULTIPLIER * current.pose.pose.position.y;  
+        //since we want to ensure up, relative to the camera, is treated as positive y in the camera frame  
   
-  apriltags_ros::AprilTagDetection current=found.at(0);
-  current.pose.pose.position.y = CAMERA_Y_MULTIPLIER * current.pose.pose.position.y;  //since we want to ensure up, relative to the camera, is treated as positive y in the camera frame  
-  latestHeader = current.pose.header; 
+        latestHeader = current.pose.header; 
 
-//update the global variables containing the coordinates (in the camera frame remember) (
-  LATEST_TARGET_X_CAMERA = current.pose.pose.position.x;
-  LATEST_TARGET_Y_CAMERA =  current.pose.pose.position.y; 
-  LATEST_TARGET_Z_CAMERA = current.pose.pose.position.z;
-//Need to use "pose.pose" since the AprilTagDetection contains a "PoseStamped" which then contains a stamp and a pose
-  // TODO make sure that your variables can handle this calculation
-   //ros::time tStamp = current.pose.header.stamp;//this gives an error for some reason
-   double currentTime = current.pose.header.stamp.nsec/1000000000.0 + current.pose.header.stamp.sec;
-  //figure out elapsed time between detections, necessary for kalman filtering
-   LATEST_DT = currentTime - LATEST_TIMESTAMP ;
- //be sure to keep track of time
-   LATEST_TIMESTAMP = currentTime;
-  
+        //update the global variables containing the coordinates (in the camera frame remember) 
+        LATEST_TARGET_X_CAMERA = current.pose.pose.position.x;
+        LATEST_TARGET_Y_CAMERA =  current.pose.pose.position.y; 
+        LATEST_TARGET_Z_CAMERA = current.pose.pose.position.z;
 
-//now begin calculations to figure out target position in northings and eastings
-     dji_sdk::Gimbal gimbalState = drone->gimbal;//DJI::onboardSDK::GimbalData gimbalState = (drone->gimbal).getGimbal();
-     dji_sdk::GlobalPosition copterState = drone->global_position; //DJI::onboardSDK::PositionData copterState = drone->global_position; //DJI::onboardSDK::Flight::getPosition();
-	 //need to keep track of the altitude and height above target for when we land
-     ALTITUDE_AT_LAST_TARGET_SIGHTING = copterState.altitude;
-      latestTargetLocation = targetDistanceMetersToUTM_WithHeightDifference( // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
-			current.pose.pose.position , 	      				degreesToRadians(gimbalState.roll), 
-			degreesToRadians(gimbalState.pitch), 
-			degreesToRadians(gimbalState.yaw/*bodyFrameToInertial_yaw(gimbalState.yaw,drone)*/)// since yaw is relative to body, not inertial frame, we need to convert//degreesToRadians(gimbalState.yaw) 
-			,copterState.latitude 
-			,copterState.longitude 
-			,copterState.altitude //TODO decide if we should use .height instead
-			
-			,LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS // THIS IS AN OUTPUT VARIABLE
-			);
-//cout <<" verify result e,n,zone "<< std::get<eastingIndex>(latestTargetLocation) << " "<< std::get<northingIndex>(latestTargetLocation) <<" "<< std::get<designatorIndex>(latestTargetLocation)  <<"\n";
-
-
-
-
+        //Need to use "pose.pose" since the AprilTagDetection contains a "PoseStamped" which then contains a stamp and a pose
+        // TODO make sure that your variables can handle this calculation
+        //ros::time tStamp = current.pose.header.stamp;//this gives an error for some reason
+   
+        double currentTime = current.pose.header.stamp.nsec/1000000000.0 + current.pose.header.stamp.sec;
     
+        //figure out elapsed time between detections, necessary for kalman filtering
+        LATEST_DT = currentTime - LATEST_TIMESTAMP ;
+ 
+        //be sure to keep track of time
+        LATEST_TIMESTAMP = currentTime;
+  
 
-//recall that x is north, y is east, and we need these values to pass the Kalman filter
-    double targetX = std::get<northingIndex>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<northingIndex>(latestTargetLocation);
-   double targetY = std::get<eastingIndex>(latestTargetLocation); //LATEST_TARGET_Y_CAMERA; //std::get<eastingIndex>(latestTargetLocation);
+        //now begin calculations to figure out target position in northings and eastings
+        dji_sdk::Gimbal gimbalState = drone->gimbal;
+        //DJI::onboardSDK::GimbalData gimbalState = (drone->gimbal).getGimbal();
+        
+        dji_sdk::GlobalPosition copterState = drone->global_position; 
+        //DJI::onboardSDK::PositionData copterState = drone->global_position; //DJI::onboardSDK::Flight::getPosition();
+	 
+	    //need to keep track of the altitude and height above target for when we land
+        ALTITUDE_AT_LAST_TARGET_SIGHTING = copterState.altitude;
+        
+        // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
+        latestTargetLocation = targetDistanceMetersToUTM_WithHeightDifference ( current.pose.pose.position,
+                                                                                degreesToRadians(gimbalState.roll), 
+			                                                                    degreesToRadians(gimbalState.pitch), 
+			                                                                    degreesToRadians(gimbalState.yaw/*bodyFrameToInertial_yaw(gimbalState.yaw,drone)*/),
+			                                                                    // since yaw is relative to body, not inertial frame, 
+			                                                                    //we need to convertdegreesToRadians(gimbalState.yaw)
+			                                                                    copterState.latitude,
+			                                                                    copterState.longitude,
+			                                                                    copterState.altitude, //TODO decide if we should use .height instead
+			                                                                    LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS // THIS IS AN OUTPUT VARIABLE
+			                                                                  );
+			                                                                  
+        // cout <<" verify result e,n,zone "<< std::get<eastingIndex>(latestTargetLocation) << " "
+        //      << std::get<northingIndex>(latestTargetLocation) <<" "<< std::get<designatorIndex>(latestTargetLocation)  <<"\n";
 
+        //recall that x is north, y is east, and we need these values to pass the Kalman filter
+        double targetX = std::get<northingIndex>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<northingIndex>(latestTargetLocation);
+        double targetY = std::get<eastingIndex>(latestTargetLocation); //LATEST_TARGET_Y_CAMERA; //std::get<eastingIndex>(latestTargetLocation);
 
-
-  if(! ( IS_TRACKING) )
-   {
+        if(! ( IS_TRACKING) )
+        {
 	   
-	 HandleLanding::pauseDescent();  
+	        HandleLanding::pauseDescent();  
 
-     firstDetection = true;
+            firstDetection = true;
 
-     GLOBAL_KALMAN_FILTER = initializeKalmanFilterWeb(); 
-     targetLocPrediction = loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); //use !firstDetection since we don't want to descend if this is the first detection
+            GLOBAL_KALMAN_FILTER = initializeKalmanFilterWeb(); 
+            targetLocPrediction = loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); 
+            //use !firstDetection since we don't want to descend if this is the first detection
        
-       if(STATIONARY_TARGET == true)
-               {
+            if(STATIONARY_TARGET == true)
+            {
                 cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
                 targetLocPrediction.at<double>(0) = targetX; //use the actual value since we don't need to kalman filter in this case
                 targetLocPrediction.at<double>(1) = targetY; //use the actual value since we don't need to kalman filter in this case
                 targetLocPrediction.at<double>(2) = 0; //vx = 0 since we're not predicting
                 targetLocPrediction.at<double>(3) = 0; //vy = 0 since we're not predicting
-                }       
+            }       
 
-        STATE_STORAGE=targetLocPrediction;    //in case we lose track of the target, this needs to save our data
+            STATE_STORAGE=targetLocPrediction;    //in case we lose track of the target, this needs to save our data
 
-
-    // String stall;
-    // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
-    // cin>> stall; 
-    }
-
- else
-    {
-
-      firstDetection = false;
-      targetLocPrediction =  loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); //use !firstDetection since we don't want to descent until we have multiple detections
-       if(STATIONARY_TARGET == true)
-               {
+            // String stall;
+            // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
+            // cin>> stall; 
+        }
+        else
+        {
+            firstDetection = false;
+            targetLocPrediction =  loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); 
+                //use !firstDetection since we don't want to descent until we have multiple detections
+       
+            if(STATIONARY_TARGET == true)
+            {
                 cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
                 targetLocPrediction.at<double>(0) = targetX; //use the actual value since we don't need to kalman filter in this case
                 targetLocPrediction.at<double>(1) = targetY; //use the actual value since we don't need to kalman filter in this case
                 targetLocPrediction.at<double>(2) = 0; //vx = 0 since we're not predicting
                 targetLocPrediction.at<double>(3) = 0; //vy = 0 since we're not predicting
-                }   
-
-     }
+            }   
+        }
      
-	 IS_TRACKING = true;
-     
-     
-	 handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, !firstDetection);
+	    IS_TRACKING = true;
+        handleTargetPrediction( targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, !firstDetection);
 	 
-   } //closing brace to if(numTags>0)
-
-  else // if no detections then we can't track it
+    } //closing brace to if(numTags>0)
+    else // if no detections then we can't track it
     {
      
-  	 HandleLanding::pauseDescent();  //I don't really want to land based on a kalman filter's estimate, it's too risky
+  	    HandleLanding::pauseDescent();  //I don't really want to land based on a kalman filter's estimate, it's too risky
 	 
-    //my concern is that by declaring it false every time there isn't one, we might end up never tracking it
-    //IS_TRACKING = false; //couldn't find one so we're obviously not tracking yet. 
-	   if(IS_TRACKING == true)
-	      {
+        //my concern is that by declaring it false every time there isn't one, we might end up never tracking it
+        //IS_TRACKING = false; //couldn't find one so we're obviously not tracking yet. 
+	    if(IS_TRACKING == true)
+	    {
 
-		     FRAMES_WITHOUT_TARGET ++ ; 
+		    FRAMES_WITHOUT_TARGET ++ ; 
 	        if(FRAMES_WITHOUT_TARGET >= FRAMES_UNTIL_TARGET_LOST)
-					{ 
-					 IS_TRACKING = false; 
-					  FRAMES_WITHOUT_TARGET = 0;
-                     stayInCurrentSpot(drone);
+            { 
+                IS_TRACKING = false; 
+                FRAMES_WITHOUT_TARGET = 0;
+                stayInCurrentSpot(drone);
                 //reset the gimbal also, so it poitns in front and down
-                       GLOBAL_ROLL_DJI_UNITS =0.0;
-                       GLOBAL_PITCH_DJI_UNITS =-450.0; 
-                       GLOBAL_YAW_DJI_UNITS = -0.0;
-					}
+                GLOBAL_ROLL_DJI_UNITS =0.0;
+                GLOBAL_PITCH_DJI_UNITS =-450.0; 
+                GLOBAL_YAW_DJI_UNITS = -0.0;
+            }
 			else
-					{
-						//
-
-					  targetLocPrediction = loopStepWebWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT, STATE_STORAGE);//targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
-					 dji_sdk::GlobalPosition copterState = drone->global_position;
+            {
+                targetLocPrediction = loopStepWebWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT, STATE_STORAGE);
+                //targetEstimateWithoutMeasurement(GLOBAL_KALMAN_FILTER, LATEST_DT);
+				
+				dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
-                    STATE_STORAGE = targetLocPrediction; //so it can be reused for future predictions if needed                
-                   if(STATIONARY_TARGET!=true)
-					         {handleTargetPrediction(targetLocPrediction, std::get<designatorIndex>(latestTargetLocation), copterState , latestHeader , drone, false); //put false since we don't want to land using a kalman filter prediction without data
-                             }
-                   else
-                       {
-                        cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
-                        stayInCurrentSpot(drone);
-    
-                        }
-
-					 
-					}	
-		  }
-     }
+                STATE_STORAGE = targetLocPrediction; //so it can be reused for future predictions if needed                
+                if(STATIONARY_TARGET!=true)
+				{
+				    handleTargetPrediction( targetLocPrediction, 
+				                            std::get<designatorIndex>(latestTargetLocation), 
+				                            copterState,
+				                            latestHeader, 
+				                            drone, 
+				                            false); //put false since we don't want to land using a kalman filter prediction without data
+                 }
+                 else
+                 {
+                    cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
+                    stayInCurrentSpot(drone);
+                }
+            }	
+        }
+    }
 }
 
 #define numMessagesToBuffer 1 //10
 
 void listenOptionForTracking(ros::NodeHandle& n)
 {
-
-ros::Subscriber sub = n.subscribe(AprilTagsTopicTracking, numMessagesToBuffer, apriltagCheckCallbackForTracking);
-printf("\n After the callback line");
-ros::spin(); 
-
-
+    ros::Subscriber sub = n.subscribe(AprilTagsTopicTracking, numMessagesToBuffer, apriltagCheckCallbackForTracking);
+    printf("\n After the callback line");
+    ros::spin(); 
 }
 
 
@@ -467,15 +477,18 @@ ros::spin();
 
 void dummyTest()
 {
-dummyTest_geolocalization();
-printf("geolocalization tests done");
-printf("\n beginning gimbal tests \n");
-dummyTest_gimbal();
-printf("\n gimbal tests done"); 
-for (int a =0; a<10; a++){
-printf("running kalman filter test, check CSV file");}
-printf("\n\nall dummy tests done \n\n");
+    dummyTest_geolocalization();
+    printf("geolocalization tests done");
+    printf("\n beginning gimbal tests \n");
+    dummyTest_gimbal();
+    printf("\n gimbal tests done"); 
 
+    for (int a =0; a<10; a++)
+    {
+        printf("running kalman filter test, check CSV file");
+    }
+    
+    printf("\n\nall dummy tests done \n\n");
 }
 
 //end functions for integration with AprilTags and geolocalization
