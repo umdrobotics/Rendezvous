@@ -167,8 +167,7 @@ int main(int argc, char **argv)
     // Gimbal Angle Tests
     DJIDrone& drone = *_ptrDrone;
     RunInitialAngleTests(drone);
-
-
+    
     double dTimeStepSec = 0.05;
     nh.getParam("/gimbal_control/gimbal_control_time_step_sec", dTimeStepSec);   
     ROS_INFO("Controller time step is %f\n", dTimeStepSec);

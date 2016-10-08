@@ -39,12 +39,9 @@ PidController::PidController(std::string sID,
                             , m_dAccumulatedError(0)
                             , m_dLastMeasuredTimeSec(0)
 {
-
-    // string s_cwd(getcwd(NULL,0));
-    // cout << "CWD is: " << s_cwd << endl;
-    
+   
     stringstream ss;
-    ss << getenv("HOME") << DEFAULT_LOG_FILE_NAME << m_sID << ".log";
+    ss << getenv("ROS_HOME") << DEFAULT_LOG_FILE_NAME << m_sID << ".log";
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
@@ -62,18 +59,45 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
                                     double dMeasuredTimeSec,
                                     double dGimbalAngleDeg)
 {
+    // 1. The gimbal reading (dGimbalAngleDeg) is in [-180, 180]
+    // 2. We don't want the gimbal rotate ~360 degrees 
+    //    when it is ~179 deg and desired angle is ~181.
+
+    static double dActualGimbalAngleDeg = 10000.00; // set it with an unrealistic number.
     
+    
+    if (dActualGimbalAngleDeg == 10000.0)
+    {
+        dActualGimbalAngleDeg = dGimbalAngleDeg;
+    }
+    else if (dActualGimbalAngleDeg - dGimbalAngleDeg > 180.0) 
+    {   // actual angle is greater than 180, but reading is near -180.
+        
+        // We need to adjust the actual angle to be greater than 180.
+        dActualGimbalAngleDeg = dGimbalAngleDeg + 360.0;     
+    }
+    else if (dActualGimbalAngleDeg - dGimbalAngleDeg < -180.0) 
+    {   // actual angle is less than -180, but reading is near 180.
+     
+        // We need to adjust the actual angle to be less than -180.
+        dActualGimbalAngleDeg = dGimbalAngleDeg - 360.0;     
+    }
+    else
+    {
+        dActualGimbalAngleDeg = dGimbalAngleDeg; 
+    }
+        
     // Normalize desired angle so that the difference between the two is always less than |180.0|
-    double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDU/10, dGimbalAngleDeg);   
+    double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDU/10,                  
+                                                               dActualGimbalAngleDeg);   
     
     double dAdjustedDesiredAngleDeg = 
         (dNormalizedDesiredAngleDeg > 270.0) ? dNormalizedDesiredAngleDeg - 360.0
                                              : (dNormalizedDesiredAngleDeg < -270.0) ?
                                                dNormalizedDesiredAngleDeg += 360.0
                                              : dNormalizedDesiredAngleDeg;
-
         
-    double dErrorDU = (dNormalizedDesiredAngleDeg - dGimbalAngleDeg) * 10;
+    double dErrorDU = (dAdjustedDesiredAngleDeg - dActualGimbalAngleDeg) * 10;
     
     double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
                         0.0 : 
