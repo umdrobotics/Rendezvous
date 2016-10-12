@@ -9,7 +9,6 @@
 
 using namespace std;
 
-
 // public methods
 
 PidController::PidController()
@@ -19,9 +18,10 @@ PidController::PidController()
                             , m_dKi(0.0)
                             , m_dTimeStepSec(0.05)
                             , m_dDeadZoneAngleDU(10)
-                            , m_dAccumulatedError(0)
-                            , m_dLastMeasuredTimeSec(0)
-{}
+                            , m_bIsIntelligentControl(false)
+{    
+    ConstructorHelper();   
+}
 
 
 PidController::PidController(std::string sID, 
@@ -29,23 +29,17 @@ PidController::PidController(std::string sID,
                             double kd, 
                             double ki,                            
                             double timeStepSec,
-                            double deadZoneAngleDU)
+                            double deadZoneAngleDU,
+                            bool isIntelligentControl)
                             : m_sID(sID)
                             , m_dKp(kp)
                             , m_dKd(kd)
                             , m_dKi(ki)
                             , m_dTimeStepSec(timeStepSec)
                             , m_dDeadZoneAngleDU(deadZoneAngleDU)
-                            , m_dAccumulatedError(0)
-                            , m_dLastMeasuredTimeSec(0)
+                            , m_bIsIntelligentControl(isIntelligentControl)
 {
-   
-    stringstream ss;
-    ss << getenv("ROS_HOME") << DEFAULT_LOG_FILE_NAME << m_sID << ".log";
-    m_ofslog.open(ss.str());
-    ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
-
-    m_ofslog << "#Time,Desired Angle (DU),Normlized Desired(Deg), Adjusted Desired (Deg),Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
+    ConstructorHelper();   
 }
 
 PidController::~PidController()
@@ -56,9 +50,45 @@ PidController::~PidController()
 
 
 double PidController::GetPlantInput(double dDesiredAngleDU, 
-                                    double dMeasuredTimeSec,
                                     double dGimbalAngleDeg)
 {
+    
+    return m_bIsIntelligentControl ? RunIntelligentControl(dDesiredAngleDU, dGimbalAngleDeg)
+                                   : RunNormalControl(dDesiredAngleDU, dGimbalAngleDeg);       
+    
+}
+
+
+ostream& PidController::GetString(ostream& os)
+{
+    return os << "ID:" << m_sID 
+              << ", Kp:" << m_dKp
+              << ", Kd:" << m_dKd
+              << ", Ki:" << m_dKi
+              << ", Ts:" << m_dTimeStepSec
+              << ", IntelligentControl:" << m_bIsIntelligentControl;
+}
+
+// private methods      
+
+void PidController::ConstructorHelper()
+{
+
+    char* rosHome = getenv ("ROS_HOME");
+    ROS_ASSERT_MSG(rosHome, "Can't find the environment variable, ROS_HOME");
+    
+    stringstream ss;
+    ss << rosHome << DEFAULT_LOG_FILE_NAME << m_sID << ".log";
+    m_ofslog.open(ss.str());
+    ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
+
+    m_ofslog << "#Time,Desired Angle (DU),Normlized Desired(Deg), Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
+    
+}
+
+double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimbalAngleDeg)
+{
+     
     // 1. The gimbal reading (dGimbalAngleDeg) is in [-180, 180]
     // 2. We don't want the gimbal rotate ~360 degrees 
     //    when it is ~179 deg and desired angle is ~181.
@@ -108,18 +138,43 @@ double PidController::GetPlantInput(double dDesiredAngleDU,
                 << ros::Time::now().toSec() << "," 
                 << dDesiredAngleDU << "," 
                 << dNormalizedDesiredAngleDeg << "," 
-                << dAdjustedDesiredAngleDeg << "," 
                 << dErrorDU << "," 
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;
 
-    // m_dLastMeasuredTimeSec = dMeasuredTimeSec;
-
     return plantInput;		
     
+    
 }
+    
+double PidController::RunNormalControl(double dDesiredAngleDU, double dGimbalAngleDeg)
+{
+     
+    // 1. The gimbal reading (dGimbalAngleDeg) is in [-180, 180]
+        
+    // Normalize desired angle so that the difference between the two is always less than |180.0|
+    double dNormalizedDesiredAngleDeg = NormalizeAngleDeg(dDesiredAngleDU/10);   
+    
 
-// private methods      
+    double dErrorDU = (dNormalizedDesiredAngleDeg - dGimbalAngleDeg) * 10;
+    
+    double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
+                        0.0 : 
+                        std::max( std::min( m_dKp * dErrorDU, GIMBAL_SPEED_LIMIT_DU), 
+                                    -GIMBAL_SPEED_LIMIT_DU);
+    
+    m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
+                << ros::Time::now().toSec() << "," 
+                << dDesiredAngleDU << "," 
+                << dNormalizedDesiredAngleDeg << "," 
+                << dErrorDU << "," 
+                << dGimbalAngleDeg << "," 
+                << plantInput << endl;
+
+    return plantInput;		
+}
+    
+    
 
 double PidController::NormalizeAngleAboutDeg(double dAngleDeg, double dCenter)
 {
@@ -131,19 +186,11 @@ double PidController::NormalizeAngleAboutDeg(double dAngleDeg, double dCenter)
 
 double PidController::NormalizeAngleDeg(double dAngleDeg)
 {
-    while (dAngleDeg <= -180.0) { dAngleDeg += 360.0; }
-    while (dAngleDeg > 180.0)  { dAngleDeg -= 360.0; }
-    return dAngleDeg;
+    return NormalizeAngleAboutDeg(dAngleDeg, 0);
 }
           
                          
-ostream& PidController::GetString(ostream& os)
-{
-    return os << "ID: " << m_sID 
-              << ", Kp: " << m_dKp
-              << ", Kd: " << m_dKd
-              << ", Ki: " << m_dKi;
-}
+
 
 
 //nonmember methods

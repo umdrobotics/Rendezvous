@@ -19,15 +19,14 @@ private: // members
 	double m_dKi; 
 	
 	double m_dTimeStepSec;
-
-	double m_dDeadZoneAngleDU; //DJI Unit anything less than 1 degrees, we don't care
+    
+    double m_dDeadZoneAngleDU; //DJI Unit anything less than 1 degrees, we don't care
 	
-	double m_dAccumulatedError; //need to start out at 0-element
-
-	double m_dLastMeasuredTimeSec;
+    // If m_bIsIntelligentControl is false, the gimbal will rotate only from -180 to 180 degrees.
+    // If m_bIsIntelligentControl is true, the gimbal may rotate from -315 to 315 degrees.
+    bool m_bIsIntelligentControl;  
 	
 	std::ofstream m_ofslog;
-	
 	
 private: // methods
 	
@@ -45,6 +44,12 @@ private: // methods
     */
     double NormalizeAngleDeg(double dAngleDeg);
 	
+    void ConstructorHelper();
+    
+    double RunIntelligentControl(double dDesiredAngleDU, double dGimbalAngleDeg);
+    
+    double RunNormalControl(double dDesiredAngleDU, double dGimbalAngleDeg);
+    
 private: // NOT IMPLEMENTED
 	PidController(const PidController&);  // copy constructor
 	PidController& operator=(const PidController&); // assignment
@@ -54,20 +59,20 @@ public: // methods
 	PidController();
 		
     PidController ( std::string sID = "NA", 
-                    double kp = 1.0, 
-                    double kd = 0.0, 
-                    double ki = 0.0,
-                    double deadZoneAngleDU = 10.0,
-                    double timeStepSec = 0.02);
+                    double      kp = 1.0, 
+                    double      kd = 0.0, 
+                    double      ki = 0.0,
+                    double      timeStepSec = 0.02,
+                    double      deadZoneAngleDU = 10.0,
+                    bool        isIntelligentControl = false
+                    );
     
     
     virtual ~PidController();
     
     double CalculateDesiredVelocity(double error_DU, double timeSinceLastStep); 
     
-    double GetPlantInput(double dDesiredAngleDU, 
-                         double dMeasuredTimeDeg,
-                         double dGimbalAngleDeg);
+    double GetPlantInput(double dDesiredAngleDU, double dGimbalAngleDeg);
 
     std::ostream& GetString(std::ostream& os);
     
