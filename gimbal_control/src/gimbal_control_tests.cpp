@@ -100,13 +100,13 @@ int main(int argc, char **argv)
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
 
-    desiredGimbalPoseDU.point.x = 150.0;  // roll
+    desiredGimbalPoseDU.point.x = 140.0;  // roll
     desiredGimbalPoseDU.point.y = 0.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
 
-    desiredGimbalPoseDU.point.x = -150.0;  // roll
+    desiredGimbalPoseDU.point.x = -140.0;  // roll
     desiredGimbalPoseDU.point.y = -0.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
@@ -119,7 +119,7 @@ int main(int argc, char **argv)
     ros::Duration(2.0).sleep();
 
     desiredGimbalPoseDU.point.x = 0.0;  // roll
-    desiredGimbalPoseDU.point.y = 450.0;  // pitch
+    desiredGimbalPoseDU.point.y = 280.0;  // pitch
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();

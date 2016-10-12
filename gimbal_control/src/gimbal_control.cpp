@@ -36,35 +36,43 @@ void SigintHandler(int sig)
 
 void RunInitialAngleTests(DJIDrone& drone)
 {
-    // set yaw to 1800 DU (= 180 degrees counterclockwise) with  the time to take 1 sec.
-    drone.gimbal_angle_control(0.0, 0.0, 1800.00, 10.0);    
-    ros::Duration(2.0).sleep();
-
-    // set all angles to zero.
-    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
-    ros::Duration(2.0).sleep();
-
-    // set roll to -300 DU = -30 degrees with the time to take 1 sec.
-    drone.gimbal_angle_control(-300, 0.0, 0.0, 10.0);    
+    // set yaw to 1790 DU (= 179 degrees counterclockwise) with  the time to take 1 sec.
+    drone.gimbal_angle_control(0.0, 0.0, 900.00, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set roll to 300 DU = 30 degrees with the time to take 1 sec.
-    drone.gimbal_angle_control(300, 0.0, 0.0, 10.0);    
+    // set yaw to -1790 DU (= -179 degrees clockwise) with  the time to take 1 sec.  
+    drone.gimbal_angle_control(0.0, 0.0, -900.0, 10.0);     
     ros::Duration(1.0).sleep();
 
     // set all angles to zero.
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set yaw to -1800 DU (= -180 degrees clockwise) with  the time to take 1 sec.
-    drone.gimbal_angle_control(0.0, 0.0, -1800.0, 10.0);     
+    // set yaw to 100 DU (= 10 degrees clockwise) with  the time to take 1 sec.  
+    drone.gimbal_angle_control(0.0, 0.0, 200.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set yaw to -100 DU (= -10 degrees clockwise) with  the time to take 1 sec.  
+    drone.gimbal_angle_control(0.0, 0.0, -200.0, 10.0);    
     ros::Duration(1.0).sleep();
 
     // set all angles to zero.
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set pitch to -450 DU (-90 degreed pitch down)with the time to take 1 sec.
+    // set roll to -300 DU = -15 degrees with the time to take 1 sec.
+    drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set roll to 300 DU = 15 degrees with the time to take 1 sec.
+    drone.gimbal_angle_control(150, 0.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set all angles to zero.
+    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set pitch to -450 DU (-45 degreed pitch down)with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, -450.0, 0.0, 10.0);    
     ros::Duration(2.0).sleep();
 
@@ -83,19 +91,13 @@ void timerCallback(const ros::TimerEvent&)
                             + _msgDesiredGimbalPoseDU.header.stamp.sec;
                             
     double yawRateInput = 
-        _yaw_rate_controller->GetPlantInput ( _msgDesiredGimbalPoseDU.point.z, 
-                                            dMeasuredTimeSec,
-                                            drone.gimbal.yaw);
+        _yaw_rate_controller->GetPlantInput(_msgDesiredGimbalPoseDU.point.z, drone.gimbal.yaw);
     
     double pitchRateInput = 
-        _pitch_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDU.point.y, 
-                                             dMeasuredTimeSec,
-                                             drone.gimbal.pitch);
+        _pitch_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDU.point.y, drone.gimbal.pitch);
     
     double rollRateInput = 
-        _roll_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDU.point.x, 
-                                            dMeasuredTimeSec,    
-                                            drone.gimbal.roll);
+        _roll_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDU.point.x, drone.gimbal.roll);
            
     drone.gimbal_speed_control(rollRateInput, pitchRateInput, yawRateInput);
 }
@@ -115,6 +117,10 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     ros::Subscriber sub = nh.subscribe("desired_gimbal_pose", 1000, listernerCallback);
 
+    double dTimeStepSec = 0.02;
+    nh.getParam("/gimbal_control/gimbal_control_time_step_sec", dTimeStepSec);   
+    ROS_INFO("Controller time step is %f\n", dTimeStepSec);
+
     _ptrDrone = new DJIDrone(nh);
 
     double yawrate_kp = 0.0;
@@ -125,10 +131,16 @@ int main(int argc, char **argv)
     nh.getParam("/YawRatePidCtrlParams/kd", yawrate_kd);
     nh.getParam("/YawRatePidCtrlParams/ki", yawrate_ki);  
 
+    double deadZoneAngleDU = 10.0; // 1 degree
+    bool isIntelligentControl = true;
+
     _yaw_rate_controller = new PidController("YawRateCtrl", 
                                             yawrate_kp, 
                                             yawrate_kd, 
-                                            yawrate_ki);
+                                            yawrate_ki,
+                                            dTimeStepSec,
+                                            deadZoneAngleDU,
+                                            isIntelligentControl);
         
     double pitchrate_kp = 0.0;
     double pitchrate_kd = 0.0;
@@ -141,7 +153,8 @@ int main(int argc, char **argv)
     _pitch_rate_controller = new PidController ("PitchRateCtrl", 
                                                 pitchrate_kp, 
                                                 pitchrate_kd, 
-                                                pitchrate_ki);   
+                                                pitchrate_ki,
+                                                dTimeStepSec);   
     
     double rollrate_kp = 0.0;
     double rollrate_kd = 0.0;
@@ -154,7 +167,8 @@ int main(int argc, char **argv)
     _roll_rate_controller = new PidController ("RollRateCtrl", 
                                                 rollrate_kp, 
                                                 rollrate_kd, 
-                                                rollrate_ki);
+                                                rollrate_ki,
+                                                dTimeStepSec);
     
     ROS_INFO_STREAM(*_yaw_rate_controller);
     ROS_INFO_STREAM(*_pitch_rate_controller);
@@ -166,11 +180,10 @@ int main(int argc, char **argv)
  
     // Gimbal Angle Tests
     DJIDrone& drone = *_ptrDrone;
-    RunInitialAngleTests(drone);
     
-    double dTimeStepSec = 0.05;
-    nh.getParam("/gimbal_control/gimbal_control_time_step_sec", dTimeStepSec);   
-    ROS_INFO("Controller time step is %f\n", dTimeStepSec);
+	// RunInitialAngleTests(drone);
+    
+
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
     
     signal(SIGINT, SigintHandler);
