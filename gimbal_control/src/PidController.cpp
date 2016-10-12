@@ -92,21 +92,24 @@ double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimb
     // 1. The gimbal reading (dGimbalAngleDeg) is in [-180, 180]
     // 2. We don't want the gimbal rotate ~360 degrees 
     //    when it is ~179 deg and desired angle is ~181.
+    // 3. When desired angle is 180 and there is a small overshoot or disturbance,
+    //    the gimbal angle could be 181 degrees, which is angle measurement of -179.
+    //    If it happens we don't want the gimbal rotate 360 degrees to be 180. 
 
-    static double dActualGimbalAngleDeg = 10000.00; // set it with an unrealistic number.
+    static double dActualGimbalAngleDeg = 10000.0; // set it with an unrealistic number.
     
     
     if (dActualGimbalAngleDeg == 10000.0)
     {
         dActualGimbalAngleDeg = dGimbalAngleDeg;
     }
-    else if (dActualGimbalAngleDeg - dGimbalAngleDeg > 180.0) 
+    else if (dActualGimbalAngleDeg - dGimbalAngleDeg > 300.0) 
     {   // actual angle is greater than 180, but reading is near -180.
         
         // We need to adjust the actual angle to be greater than 180.
         dActualGimbalAngleDeg = dGimbalAngleDeg + 360.0;     
     }
-    else if (dActualGimbalAngleDeg - dGimbalAngleDeg < -180.0) 
+    else if (dActualGimbalAngleDeg - dGimbalAngleDeg < -300.0) 
     {   // actual angle is less than -180, but reading is near 180.
      
         // We need to adjust the actual angle to be less than -180.
@@ -120,13 +123,23 @@ double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimb
     // Normalize desired angle so that the difference between the two is always less than |180.0|
     double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDU/10,                  
                                                                dActualGimbalAngleDeg);   
-    
-    double dAdjustedDesiredAngleDeg = 
-        (dNormalizedDesiredAngleDeg > 270.0) ? dNormalizedDesiredAngleDeg - 360.0
-                                             : (dNormalizedDesiredAngleDeg < -270.0) ?
-                                               dNormalizedDesiredAngleDeg += 360.0
-                                             : dNormalizedDesiredAngleDeg;
-        
+
+
+    double dAdjustedDesiredAngleDeg = dNormalizedDesiredAngleDeg;
+
+    if (dNormalizedDesiredAngleDeg > 270.0)
+    {
+        // If the normalized desired angle is greater than 270,
+        // the actual angle could be too large. So we need to unwind. 
+        dAdjustedDesiredAngleDeg -= 360.0;      
+    }
+    else if (dNormalizedDesiredAngleDeg < -270.0)
+    {                                          
+        // If the normalized desired angle is less than -270,
+        // the actual angle could be too small. So we need to unwind. 
+        dAdjustedDesiredAngleDeg += 360.0;
+    }
+   
     double dErrorDU = (dAdjustedDesiredAngleDeg - dActualGimbalAngleDeg) * 10;
     
     double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
@@ -138,6 +151,7 @@ double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimb
                 << ros::Time::now().toSec() << "," 
                 << dDesiredAngleDU << "," 
                 << dNormalizedDesiredAngleDeg << "," 
+                << dAdjustedDesiredAngleDeg << "," 
                 << dErrorDU << "," 
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;
@@ -148,11 +162,10 @@ double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimb
 }
     
 double PidController::RunNormalControl(double dDesiredAngleDU, double dGimbalAngleDeg)
-{
-     
-    // 1. The gimbal reading (dGimbalAngleDeg) is in [-180, 180]
-        
-    // Normalize desired angle so that the difference between the two is always less than |180.0|
+{     
+    // The gimbal reading (dGimbalAngleDeg) is in (-180, 180].      
+
+    // Normalize desired angle so that the desired angle is always in (-180, 180].
     double dNormalizedDesiredAngleDeg = NormalizeAngleDeg(dDesiredAngleDU/10);   
     
 
@@ -167,6 +180,9 @@ double PidController::RunNormalControl(double dDesiredAngleDU, double dGimbalAng
                 << ros::Time::now().toSec() << "," 
                 << dDesiredAngleDU << "," 
                 << dNormalizedDesiredAngleDeg << "," 
+                // The following line should be adjusted desired angle,
+                // but in this case it is the same as normalized angle.
+                << dNormalizedDesiredAngleDeg << ","   
                 << dErrorDU << "," 
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;

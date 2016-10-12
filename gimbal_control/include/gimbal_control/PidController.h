@@ -45,9 +45,19 @@ private: // methods
     double NormalizeAngleDeg(double dAngleDeg);
 	
     void ConstructorHelper();
-    
+
+    /**
+    * RunIntelligentControl
+    * Returns the plant input  
+    * Good for yaw control
+    */
     double RunIntelligentControl(double dDesiredAngleDU, double dGimbalAngleDeg);
     
+    /**
+    * RunNormalControl
+    * Returns the plant input  
+    * Good for pitch and roll control
+    */
     double RunNormalControl(double dDesiredAngleDU, double dGimbalAngleDeg);
     
 private: // NOT IMPLEMENTED
@@ -59,7 +69,7 @@ public: // methods
 	PidController();
 		
     PidController ( std::string sID = "NA", 
-                    double      kp = 1.0, 
+                    double      kp = 2.0, 
                     double      kd = 0.0, 
                     double      ki = 0.0,
                     double      timeStepSec = 0.02,
