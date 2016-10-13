@@ -1,22 +1,26 @@
-#include "ros/ros.h"
+#include <ros/ros.h>
 #include "std_msgs/String.h"
 
-#include <target_tracking/utm.h>
+#include <target_tracking/conversion.h>
 #include <target_tracking/UasMath.h>
+#include <dji_sdk/dji_drone.h>
 #include <apriltags_ros/AprilTagDetection.h>
 #include <apriltags_ros/AprilTagDetectionArray.h>
+#include <sensor_msgs/NavSatFix.h>
+
 #include <sstream>
 #include <iostream>
-#include <dji_sdk/dji_drone.h>
 #include <signal.h>
-#include <tuple>
 
 
-typedef std::tuple<double, double, std::string> UTMobject;
+//#include <tuple>
 
-#define EASTING 0
-#define NORTHING 1
-#define DESIGNATOR 2
+
+//typedef std::tuple<double, double, std::string> UTMobject;
+
+//#define EASTING 0
+//#define NORTHING 1
+//#define DESIGNATOR 2
 
 
 DJIDrone* _ptrDrone;
@@ -114,6 +118,7 @@ void getTargetOffsetFromUAV(geometry_msgs::Point& distance_m,
 } ///end getTargetOffsetFromUAV()
 
 
+/*
 UTMobject GPStoUTM(double latitude, double longitude)
 {
     //printf("WARNING: still need to test GPS to UTM conversion!"); 
@@ -136,11 +141,13 @@ UTMobject GPStoUTM(double latitude, double longitude)
 
     return UTMcoords;
 }
+*/
 
 // this version also places the quadcopter height above the target in an output variable
-UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point& distanceM,   
+// UTMobject 
+geometry_msgs::Point targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point& distanceM,   
                                                         dji_sdk::Gimbal& gimbal,
-                                                        dji_sdk::GlobalPosition& dronePosition,
+                                                        geometry_msgs::Point& droneUtmPosition,
                                                         // output variable
                                                         double & copterHeightAboveTarget_meters)
 {
@@ -149,7 +156,8 @@ UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point& 
     // and we know the camera's roll, pitc, yaw,
     // relative to the ground (NED frame just like UTM)
     // and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
-    UTMobject quadcopterLocation2D_UTM = GPStoUTM(dronePosition.latitude, dronePosition.longitude); //need to test this function
+    
+    //UTMobject quadcopterLocation2D_UTM = GPStoUTM(dronePosition.latitude, dronePosition.longitude); //need to test this function
     
     // printf("quad loc. UTM object easting northing zone %f %f %s \n", 
     //              std::get<EASTING>(quadcopterLocation2D_UTM), 
@@ -163,24 +171,26 @@ UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point& 
     double targetOffsetFromUAV[3][1];
     getTargetOffsetFromUAV(distanceM, gimbal, targetOffsetFromUAV);
                            
-    ROS_INFO( "target offset from UAV (x y z inertial)" 
-                << targetOffsetFromUAV[0][0] << "," 
-                << targetOffsetFromUAV[1][0] << ","
-                << targetOffsetFromUAV[2][0]);
-      
-    UTMobject targetLocation2D_UTM;
+                          
+    // UTMobject targetLocation2D_UTM;
+
+    geometry_msgs::Point targetUtmPosition;
 
     //it's reasonable to assume we don't cross zones
-    std::get<DESIGNATOR>(targetLocation2D_UTM) = std::get<DESIGNATOR>(quadcopterLocation2D_UTM) ; 
+    //std::get<DESIGNATOR>(targetLocation2D_UTM) = std::get<DESIGNATOR>(quadcopterLocation2D_UTM) ; 
     
-    //can still use the UTMobject since we don't care about the Z offset because we'll handle altitude separately
-    std::get<EASTING>(targetLocation2D_UTM) = std::get<EASTING>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[1][0];
-    //targetLocation2D_UTM.first = quadcopterLocation2D_UTM.first + targetOffsetFromUAV[0][0];
-    //targetLocation2D_UTM.second = quadcopterLocation2D_UTM.second + targetOffsetFromUAV[1][0];
+    targetUtmPosition.x = droneUtmPosition.x + targetOffsetFromUAV[1][0];
+    targetUtmPosition.y = droneUtmPosition.y + targetOffsetFromUAV[0][0]; 
+    targetUtmPosition.z = 0.0;
     
-    std::get<NORTHING>(targetLocation2D_UTM) = std::get<NORTHING>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[0][0]; 
+    // can still use the UTMobject since we don't care about the Z offset because we'll handle altitude separately
+    // std::get<EASTING>(targetLocation2D_UTM) = std::get<EASTING>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[1][0];
+    // targetLocation2D_UTM.first = quadcopterLocation2D_UTM.first + targetOffsetFromUAV[0][0];
+    // targetLocation2D_UTM.second = quadcopterLocation2D_UTM.second + targetOffsetFromUAV[1][0];
+    
+    // std::get<NORTHING>(targetLocation2D_UTM) = std::get<NORTHING>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[0][0]; 
 
-    //now convert back to GPS coordinates and we can generate a proper waypoint
+    // now convert back to GPS coordinates and we can generate a proper waypoint
 
     // cout <<"\nOffset from UAV x y z inertial " << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" quadcopter location east north zone " << std::get<EASTING>(quadcopterLocation2D_UTM) << " "<< std::get<NORTHING>(quadcopterLocation2D_UTM) <<" "<< std::get<DESIGNATOR>(quadcopterLocation2D_UTM)  ;
     // cout <<"\nresult e,n,zone "<< std::get<EASTING>(targetLocation2D_UTM) << " "<< std::get<NORTHING>(targetLocation2D_UTM) <<" "<< std::get<DESIGNATOR>(targetLocation2D_UTM) <<" ";
@@ -188,8 +198,8 @@ UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point& 
     // copterHeightAboveTarget_meters = targetOffsetFromUAV[2][0];
     // cout << "\n\n Height above target " << copterHeightAboveTarget_meters <<" meters \n"; 
   
-    return targetLocation2D_UTM;
-   
+    // return targetLocation2D_UTM;
+    return targetUtmPosition;
 
 
 } ///end function
@@ -198,8 +208,7 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
 {
 
     DJIDrone& drone = *_ptrDrone;
-	
-    UTMobject latestTargetLocation; 
+
     //must declare before the if statements so it can be used for further estimates 
     // (by recording the UTM designator zone) if the target is lost	
 	
@@ -221,9 +230,13 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
     // this is less likely to cause memory overflow that just using the global variable directly
 
     // let's assume that if there are multiple tags, we only want to deal with the first one.
-    if (aprilTagsMessage.detections.size() ) //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
+    if (aprilTagsMessage.detections.size() ) 
+    //TODO : correct flaw in logic here, such that if we lose the target we still perform he calculations based on estimates 
     {
-	    bool firstDetection = true; //assume it's the first detection (and thus that we may need to disregard the information) until proven otherwise
+    
+        //assume it's the first detection (and thus that we may need to disregard the information) until proven otherwise
+	    bool firstDetection = true; 
+	    
 	    // FRAMES_WITHOUT_TARGET = 0; //we've found the target again
   
         apriltags_ros::AprilTagDetection current = aprilTagsMessage.detections.at(0);
@@ -258,10 +271,26 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
         
         double dLastRecordedHeightAboveTargetM = 0.0;
         
+        	
+        double northing, easting;
+        char zone;
+    
+        gps_common::LLtoUTM(drone.global_position.latitude, drone.global_position.longitude, northing, easting, &zone);
+    
+        geometry_msgs::Point droneUtmPosition;
+        
+        droneUtmPosition.x = easting;
+        droneUtmPosition.y = northing;
+        droneUtmPosition.z = drone.global_position.height;
+        	
+        	
+        // UTMobject latestTargetLocation; 
+        geometry_msgs::Point latestTargetLocation;
+        
         // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
         latestTargetLocation = targetDistanceMetersToUTM_WithHeightDifference ( current.pose.pose.position,
                                                                                 drone.gimbal,
-                                                                                drone.global_position,
+                                                                                droneUtmPosition,
                                                                                 //TODO decide if we should use .height instead
 			                                                                    //LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS // THIS IS AN OUTPUT VARIABLE
                                                                                 dLastRecordedHeightAboveTargetM
@@ -271,8 +300,27 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
         //      << std::get<NORTHING>(latestTargetLocation) <<" "<< std::get<DESIGNATOR>(latestTargetLocation)  <<"\n";
 
         //recall that x is north, y is east, and we need these values to pass the Kalman filter
-        double targetX = std::get<NORTHING>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<NORTHING>(latestTargetLocation);
-        double targetY = std::get<EASTING>(latestTargetLocation); //LATEST_TARGET_Y_CAMERA; //std::get<EASTING>(latestTargetLocation);
+        double targetX = latestTargetLocation.x;  //LATEST_TARGET_X_CAMERA; //std::get<NORTHING>(latestTargetLocation);
+        double targetY = latestTargetLocation.y; //LATEST_TARGET_Y_CAMERA; //std::get<EASTING>(latestTargetLocation);
+
+
+        std::stringstream ss ;
+        
+        ss  << "Drone Pos(x,y,z): " << droneUtmPosition.x << "," 
+                                    << droneUtmPosition.y << ","
+                                    << droneUtmPosition.z << std::endl
+            << "Gimbal Angle(y,p,r): "  << drone.gimbal.yaw << ","
+                                        << drone.gimbal.yaw << ","
+                                        << drone.gimbal.yaw << "," << std::endl
+            << "Tag Distance(x,y,z): "  << current.pose.pose.position.x << ","
+                                        << current.pose.pose.position.y << ","
+                                        << current.pose.pose.position.z << "," << std::endl
+            << "Distance from UAV (x y z inertial): "   << latestTargetLocation.x << ","
+                                                        << latestTargetLocation.y << ","
+                                                        << latestTargetLocation.z << std::endl;
+                                                        
+        ROS_INFO("%s", ss.str().c_str());
+
 
 
 	 

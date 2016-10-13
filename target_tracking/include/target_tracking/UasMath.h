@@ -11,11 +11,13 @@
 
 #include <cmath>
 
+#define RADIANS_PER_DEGREE (M_PI/180.0);
+#define DEGREES_PER_RADIAN (180.0/M_PI);
+
 class UasMath
 {
 
-const double RADIANS_PER_DEGREE = M_PI/180.0;
-const double DEGREES_PER_RADIAN = 180.0/M_PI;
+
 
 public:
 
