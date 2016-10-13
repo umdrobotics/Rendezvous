@@ -2,6 +2,7 @@
 #include "std_msgs/String.h"
 
 #include <target_tracking/utm.h>
+#include <target_tracking/UasMath.h>
 #include <apriltags_ros/AprilTagDetection.h>
 #include <apriltags_ros/AprilTagDetectionArray.h>
 #include <sstream>
@@ -31,25 +32,20 @@ void SigintHandler(int sig)
     ros::shutdown();
 }
 
-double degreesToRadians(double angle_degrees)
-{
-    return ( (M_PI*angle_degrees)/ (1.0*180.0) );
-}
+
  
  
-void getTargetOffsetFromUAV(geometry_msgs::Point distanceM,        
-                            double cameraRollToGround_radians, 
-                            double cameraPitchToGround_radians, 
-                            double cameraYawToGround_radians,
+void getTargetOffsetFromUAV(geometry_msgs::Point& distance_m,        
+                            dji_sdk::Gimbal& gimbal,
                             double outputDistance[3][1]) //THIS IS AN OUTPUT VARIABLE! 
 {
     // rotation matrix will be calculated based on instructions 
     // here: http://planning.cs.uiuc.edu/node102.html
     // first, rename some variables to make calculations more readable
-    
-    double yaw = cameraYawToGround_radians;
-    double pitch = cameraPitchToGround_radians;
-    double roll = cameraRollToGround_radians;
+
+    double yaw = UasMath::ConvertDeg2Rad(gimbal.yaw);
+    double pitch = UasMath::ConvertDeg2Rad(gimbal.pitch);
+    double roll = UasMath::ConvertDeg2Rad(gimbal.roll);
     
     //printf("\n confirm that roll pitch yaw is respectively %f %f %f \n", roll, pitch, yaw); 
     double cameraRotationMatrix[3][3] = 
@@ -74,7 +70,7 @@ void getTargetOffsetFromUAV(geometry_msgs::Point distanceM,
     // NOT THE GROUND FRAME! 
     // This is what we want and why we'll multiply by the rotation matrix
     
-    double targetOffsetFromCamera[3][1] = {{distanceM.x},{distanceM.y},{distanceM.z}};
+    double targetOffsetFromCamera[3][1] = {{distance_m.x},{distance_m.y},{distance_m.z}};
     
     // perform matrix multiplication 
     // (recall that you take the dot product of the 1st matrix rows with the 2nd matrix colums)
@@ -100,6 +96,7 @@ void getTargetOffsetFromUAV(geometry_msgs::Point distanceM,
 
     // now we can determine the actual distance from the UAV, by accounting for the camera's orientation
     double targetOffsetFromUAV[3][1];
+    
     for (int row = 0; row < 3; row++)
     {
         double sum = 0;
@@ -141,24 +138,18 @@ UTMobject GPStoUTM(double latitude, double longitude)
 }
 
 // this version also places the quadcopter height above the target in an output variable
-UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point distanceM,        
-                                                        double cameraRollToGround_radians, 
-                                                        double cameraPitchToGround_radians, 
-                                                        double cameraYawToGround_radians, 
-                                                        double currentQuadcopterLatitude, 
-                                                        double currentQuadcopterLongitude, 
-                                                        double currentQuadcopterAltitude_meters,
+UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point& distanceM,   
+                                                        dji_sdk::Gimbal& gimbal,
+                                                        dji_sdk::GlobalPosition& dronePosition,
                                                         // output variable
                                                         double & copterHeightAboveTarget_meters)
 {
-    
-    UTMobject quadcopterLocation2D_UTM;
     
     // we have the magnitude of the offset in each direction
     // and we know the camera's roll, pitc, yaw,
     // relative to the ground (NED frame just like UTM)
     // and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
-    quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
+    UTMobject quadcopterLocation2D_UTM = GPStoUTM(dronePosition.latitude, dronePosition.longitude); //need to test this function
     
     // printf("quad loc. UTM object easting northing zone %f %f %s \n", 
     //              std::get<EASTING>(quadcopterLocation2D_UTM), 
@@ -170,13 +161,12 @@ UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point d
     // camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
       
     double targetOffsetFromUAV[3][1];
-    getTargetOffsetFromUAV(distanceM, 
-                           cameraRollToGround_radians, 
-                           cameraPitchToGround_radians, 
-                           cameraYawToGround_radians,
-                           targetOffsetFromUAV);
+    getTargetOffsetFromUAV(distanceM, gimbal, targetOffsetFromUAV);
                            
-    //cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
+    ROS_INFO( "target offset from UAV (x y z inertial)" 
+                << targetOffsetFromUAV[0][0] << "," 
+                << targetOffsetFromUAV[1][0] << ","
+                << targetOffsetFromUAV[2][0]);
       
     UTMobject targetLocation2D_UTM;
 
@@ -270,14 +260,9 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
         
         // Note that gimbal result is in degrees, but gimbal control is in tenths of a dgree
         latestTargetLocation = targetDistanceMetersToUTM_WithHeightDifference ( current.pose.pose.position,
-                                                                                degreesToRadians(drone.gimbal.roll), 
-			                                                                    degreesToRadians(drone.gimbal.pitch), 
-			                                                                    degreesToRadians(drone.gimbal.yaw/*bodyFrameToInertial_yaw(drone.gimbal.yaw,drone)*/),
-			                                                                    // since yaw is relative to body, not inertial frame, 
-			                                                                    //we need to convertdegreesToRadians(drone.gimbal.yaw)
-			                                                                    drone.global_position.latitude,
-			                                                                    drone.global_position.longitude,
-			                                                                    drone.global_position.altitude, //TODO decide if we should use .height instead
+                                                                                drone.gimbal,
+                                                                                drone.global_position,
+                                                                                //TODO decide if we should use .height instead
 			                                                                    //LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS // THIS IS AN OUTPUT VARIABLE
                                                                                 dLastRecordedHeightAboveTargetM
 			                                                                  );
