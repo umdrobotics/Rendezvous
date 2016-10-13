@@ -1,0 +1,643 @@
+//begin includes and definitions for geolocalization
+#include <math.h> //used for sine and cosine for rotation matrix when geolocalizing target
+#include <dji_sdk_demo/conversions.h> //provides GPS-UTM conversions
+//end includes for integration with AprilTags
+#include <tuple>
+
+typedef std::tuple<double, double, std::string> UTMobject ;
+#define eastingIndex 0
+#define northingIndex 1
+#define designatorIndex 2
+#define latitudeIndex first //for use with std::pair objects
+#define longitudeIndex second //for use with std::pair objects
+
+
+//end includes and definitions for geolocalizations
+
+
+
+//begin functions for integration with AprilTags and geolocalization
+
+//DJI's gimbal angles are in tenths of a degree, but the drone->gimbal.yaw, etc, returns it in degrees. We need to be able to convert forward and back
+double radiansToDjiUnits(double angle_rads)
+ {
+  return (10*180.0/M_PI)* angle_rads;
+ }
+double djiUnitsToRadians(double angle_dji)
+ {
+  return ( (M_PI*angle_dji)/ (10.0*180.0) );
+ }
+
+double radiansToDegrees(double angle_rads)
+ {
+  return (180.0/M_PI)* angle_rads;
+ }
+double degreesToRadians(double angle_degrees)
+ {
+       return ( (M_PI*angle_degrees)/ (1.0*180.0) );
+ }
+ 
+double degreesToDjiUnits(double angle_degrees)
+ {
+       return (10.0*angle_degrees); 
+ }
+double djiUnitsToDegrees(double angle_dji)
+ {
+       return ( (angle_dji)/ (10.0) );
+ }
+ 
+//I think this is how you get the yaw of the quadcopter body
+ //this method is based off the documentation for onboard-sdk  on Github https://github.com/dji-sdk/Onboard-SDK/blob/3.1/doc/en/ProgrammingGuide.md
+ void quaternionToRPY(   dji_sdk::AttitudeQuaternion q, double & roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
+{ 
+     roll  = atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2));
+     pitch = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
+     yaw   = atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1));
+}
+
+
+//also need to be able to convert from the body frame to the coordinate frame, for gimbal yaw
+//so calculate the angle you want relative to inertal frame, then use this function to get the command you need
+double inertialFrameToBody_yaw(double angleToInertial_rads, DJIDrone* dronePointer)
+   {
+
+     //first need to convert from quaternion format to RPY to get drone's yaw 
+        double roll_body;
+    double pitch_body;
+    double yaw_body;
+        quaternionToRPY(dronePointer->attitude_quaternion, roll_body, pitch_body, yaw_body); //roll_body pitch_body and yaw_body are output variables that will be altered by this function
+        //rotation to inertial frame = rotation to body + body's rotation to inertial frame
+            //rotation to body = rotation to inertial frame - body's rotation to inertial frame
+        double angleToBody = angleToInertial_rads - yaw_body;
+      
+         //now keep the angle between -180 and 180 degrees (ie -pi and pi)
+        while(angleToBody < -1.0*M_PI) {angleToBody += 2.0*M_PI;}
+        while(angleToBody > M_PI) {angleToBody -= 2.0*M_PI;}
+    // cout << " desired angle inertial " << angleToInertial_rads<< "body yaw " << yaw_body << "resulting angle for command " <<  angleToBody <<"\n";
+
+       return angleToBody;
+    }
+
+
+double bodyFrameToInertial_yaw(double angleToBody_rads, DJIDrone* dronePointer)
+   {
+
+     //first need to convert from quaternion format to RPY to get drone's yaw 
+        double roll_body;
+    double pitch_body;
+    double yaw_body;
+        quaternionToRPY(dronePointer->attitude_quaternion, roll_body, pitch_body, yaw_body); //roll_body pitch_body and yaw_body are output variables that will be altered by this function
+        //rotation to inertial frame = rotation to body + body's rotation to inertial frame
+        double angleToInertial = angleToBody_rads + yaw_body;
+      
+         //now keep the angle between -180 and 180 degrees (ie -pi and pi)
+        while(angleToInertial < -1.0*M_PI) {angleToInertial += 2.0*M_PI;}
+        while(angleToInertial > M_PI) {angleToInertial -= 2.0*M_PI;}
+
+
+       return angleToInertial;
+    }
+
+
+
+
+
+void waypointBasedOnApriltags(int id, DJIDrone* drone)
+{
+           dji_sdk::WaypointList newWaypointList;
+       dji_sdk::Waypoint waypoint0, waypoint1, waypoint2, waypoint3;
+        
+
+                /* Waypoint List Navi Test */
+                
+                    waypoint0.latitude = 22.535;
+                    waypoint0.longitude = 113.95;
+                    waypoint0.altitude = 100;
+                    waypoint0.staytime = 5;
+                    waypoint0.heading = 0;
+    
+
+                
+                    waypoint1.latitude = 22.535;
+                    waypoint1.longitude = 113.96;
+                    waypoint1.altitude = 100;
+                    waypoint1.staytime = 0;
+                    waypoint1.heading = 90;
+    
+                
+                    waypoint2.latitude = 22.545;
+                    waypoint2.longitude = 113.96;
+                    waypoint2.altitude = 100;
+                    waypoint2.staytime = 4;
+                    waypoint2.heading = -90;
+
+                    waypoint3.latitude = 22.545;
+                    waypoint3.longitude = 113.96;
+                    waypoint3.altitude = 10;
+                    waypoint3.staytime = 2;
+                    waypoint3.heading = 180;
+    
+                    /*waypoint4.latitude = 22.525;
+                    waypoint4.longitude = 113.93;
+                    waypoint4.altitude = 50;
+                    waypoint4.staytime = 0;
+                    waypoint4.heading = -180;*/
+ if(0 < id && id < 5)               
+   {
+     if(id>=1)
+       {
+                 newWaypointList.waypoint_list.push_back(waypoint0);
+        }
+     if(id>=2)
+       {
+                 newWaypointList.waypoint_list.push_back(waypoint1);
+        }
+     if(id>=3)
+       {
+                 newWaypointList.waypoint_list.push_back(waypoint2);
+        }
+     if(id>=4)
+       {
+                 newWaypointList.waypoint_list.push_back(waypoint3);
+        }
+
+     printf("\n Since first id spotted was %d drone will fly to %d waypoints", id, id);
+
+                drone->waypoint_navigation_send_request(newWaypointList);
+ }
+ else{printf("first id seen was %d, please show a tag id between 1 and 4 (inclusive) for waypoint demo", id);}
+
+
+}
+
+
+UTMobject GPStoUTM(double latitude, double longitude)
+{
+ //printf("WARNING: still need to test GPS to UTM conversion!"); 
+ //variables which will be modified to store the eastings and northings
+ double northing;
+ double easting; 
+//string to hold zone designator
+ std::string zone; 
+ //find the eastings and northings from lat and long
+ gps_common::LLtoUTM(latitude, longitude, northing, easting, zone);
+
+
+ //now create an object ( a tuple) that holds these
+ UTMobject UTMcoords;
+ std::get<eastingIndex>(UTMcoords) = easting;
+ std::get<northingIndex>(UTMcoords) = northing;
+ std::get<designatorIndex>(UTMcoords) = zone;
+
+ return UTMcoords;
+}
+
+
+std::pair<double, double> UTMtoGPS(double northing, double easting, std::string zone)
+{
+ //printf("WARNING: still need to test UTM back to GPS conversion!"); 
+ //create storage variables to hold lat and long results
+ double latResult = 0;
+ double longResult = 0;
+
+ gps_common::UTMtoLL(northing, easting, zone, latResult, longResult) ;
+ std::pair<double, double> GPScoords;
+ GPScoords.latitudeIndex = latResult;
+ GPScoords.longitudeIndex = longResult;
+ return GPScoords;
+}
+
+
+//if the quadcopter can't catch up to the target, we still want the camera to point at it. This calculates how the camera will need to be oriented, relative to the inertial frame. Assume no roll is used, only pitch and yaw. 
+//It will assign the values to the PASS-BY-REFERENCE variables yaw, pitch, and roll (roll will end up 0)
+void getGimbalAngleToPointAtTarget_rads
+(
+    UTMobject quadcopterLocation_UTM, 
+    double heightAboveTarget_Meters, 
+    UTMobject targetLocation_UTM
+    ,double &yaw_rads //This is an output variable
+    ,double &pitch_rads //This is an output variable
+    ,double &roll_rads    //This is an output variable
+)
+{
+    //printf("\nCAUTION: Gimbal angle calculation assumes target and quadcopter are in same UTM zones. \n Also, assumes that positive pitch is up, and positive yaw is from north to east \n");
+  //compute displacements in northing and easting (signed)
+    double deltaNorth = std::get<northingIndex>(targetLocation_UTM) - std::get<northingIndex>(quadcopterLocation_UTM) ;
+    double deltaEast = std::get<eastingIndex>(targetLocation_UTM) - std::get<eastingIndex>(quadcopterLocation_UTM); 
+
+//compute distance using pythagorean theorem
+    double squareOfDistance_Meters = (deltaEast * deltaEast) + (deltaNorth * deltaNorth ) ;
+        double distance_Meters = sqrt(squareOfDistance_Meters);
+    
+ //rotation matrix will be calculated based on instructions here: http://planning.cs.uiuc.edu/node102.html  
+ //this applies roll, then pitch, then yaw (we use 0 roll always). 
+// thus, pitch can be computed from the altitude and the unsigned distance, and then the gimbal can be yawed according to signed distance
+ roll_rads = 0;
+ 
+//for exaplanation of calculations, see diagram in Aaron Ward's July 20 report
+ pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
+ //pitch_rads = -1.0 * atan( quadcopterAltitude_Meters / distance_Meters );
+ //printf("\n\nTODO: Check if the negative sign is done correctly in the atan or atan2 function in the \"getGimbalAngleToPointAtTarget_rads\" function \n\n");
+ //yaw_rads = acos( deltaNorth / distance_Meters );
+ //turns out acos can't be used, since it doesn't do enough to specify the quadrant. Use
+ yaw_rads = atan2( deltaEast, deltaNorth); //remember north is the x axis, east is the y axis
+ // cout <<"\n atan2 of y x " << deltaEast <<" " <<deltaNorth << " quadcopter east north " << std::get<eastingIndex>(quadcopterLocation_UTM) << " "<< std::get<northingIndex>(quadcopterLocation_UTM) <<  "    target east north " <<std::get<eastingIndex>(targetLocation_UTM) <<" " << std::get<northingIndex>(targetLocation_UTM)<<  "\n"; 
+  
+  
+}
+
+
+
+void getTargetOffsetFromUAV 
+     (
+    geometry_msgs::Point distanceM,        
+    double cameraRollToGround_radians, 
+    double cameraPitchToGround_radians, 
+    double cameraYawToGround_radians,
+    double outputDistance[3][1] //THIS IS AN OUTPUT VARIABLE!
+     )
+{
+          //rotation matrix will be calculated based on instructions here: http://planning.cs.uiuc.edu/node102.html
+//first, rename some variables to make calculations more readable
+    double yaw = cameraYawToGround_radians;
+    double pitch = cameraPitchToGround_radians;
+    double roll = cameraRollToGround_radians;
+       //printf("\n confirm that roll pitch yaw is respectively %f %f %f \n", roll, pitch, yaw); 
+      double cameraRotationMatrix[3][3] = 
+        {
+            {   cos(yaw)*cos(pitch),
+                 cos(yaw)*sin(pitch)*sin(roll)-sin(yaw)*cos(roll), 
+                cos(yaw)*sin(pitch)*cos(roll) + sin(yaw)*sin(roll)
+            },
+            {  
+                sin(yaw)*cos(pitch),
+                sin(yaw)*sin(pitch)*sin(roll) + cos(yaw)*cos(roll),
+                sin(yaw)*sin(pitch)*cos(roll) - cos(yaw)*sin(roll) 
+            },
+            {
+             -1.0*sin(pitch),
+            cos(pitch)*sin(roll),
+            cos(pitch)*cos(roll)
+            },
+        };
+  //WARNING: These x, y, and z values are relative to the camera frame, NOT THE GROUND FRAME! This is what we want and why we'll multiply by the rotation matrix
+    double targetOffsetFromCamera[3][1] =
+             {
+        {distanceM.x},                {distanceM.y},                {distanceM.z}
+         };
+    
+  //perform matrix multiplication 
+  //(recall that you take the dot product of the 1st matrix rows with the 2nd matrix colums)
+ //process is very simple since 2nd matrix is a vertical vector
+
+//first, convert from image plane to real-world coordinates
+  double transformMatrix[3][3] = { {0,0,1}, {1,0,0}, {0,-1,0} };
+//now we can determine the distance in the inertial frame
+  double distanceInRealWorld[3][1];
+  
+
+  for (int row = 0; row < 3; row++)
+      {
+    double sum = 0;
+    for (int column = 0; column < 3; column++)
+        {
+        sum += transformMatrix[row][column] * targetOffsetFromCamera [column][0]; 
+        }
+        distanceInRealWorld[row][0] = sum;
+    } 
+   //end matrix multiplication
+
+// now we can determine the actual distance from the UAV, by accounting for the camera's orientation
+  double targetOffsetFromUAV[3][1];
+  for (int row = 0; row < 3; row++)
+      {
+    double sum = 0;
+    for (int column = 0; column < 3; column++)
+        {
+        sum += cameraRotationMatrix[row][column] * distanceInRealWorld [column][0]; 
+        }
+        targetOffsetFromUAV[row][0] = sum;
+    } 
+    
+    outputDistance[0][0] = targetOffsetFromUAV[0][0];
+    outputDistance[1][0] = targetOffsetFromUAV[1][0];
+    outputDistance[2][0] = targetOffsetFromUAV[2][0];
+
+   
+} ///end getTargetOffsetFromUAV()
+
+
+dji_sdk::Waypoint targetDistanceMetersToLongitude
+     (
+    geometry_msgs::Point distanceM,         double cameraRollToGround_radians, 
+    double cameraPitchToGround_radians, 
+    double cameraYawToGround_radians 
+    ,double currentQuadcopterLatitude 
+    ,double currentQuadcopterLongitude 
+    ,double currentQuadcopterAltitude_meters
+     )
+{
+    
+        UTMobject quadcopterLocation2D_UTM;
+       //we have the magnitude of the offset in each direction
+       // and we know the camera's roll, pitc, yaw,
+       // relative to the ground (NED frame just like UTM)
+       //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
+        quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
+        //printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
+
+        
+        double  targetOffsetFromUAV[3][1];
+      getTargetOffsetFromUAV(
+                               distanceM 
+                               ,cameraRollToGround_radians 
+                               ,cameraPitchToGround_radians 
+                               ,cameraYawToGround_radians
+                               ,targetOffsetFromUAV   ///THIS IS AN OUTPUT VARIABlE THAT WILL BE MODIFIED
+                            );      
+        
+        
+    UTMobject targetLocation2D_UTM;
+//it's reasonable to assume we don't cross zones
+    std::get<designatorIndex>(targetLocation2D_UTM) = std::get<designatorIndex>(quadcopterLocation2D_UTM) ; 
+    printf("CAUTION: target assumed to be in same UTM zone as quadcopter, zone: %s", std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str());
+    //can still use the UTMobject since we don't care about the Z offset because we'll handle altitude separately
+      std::get<eastingIndex>(targetLocation2D_UTM) = std::get<eastingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[1][0];//targetLocation2D_UTM.first = quadcopterLocation2D_UTM.first + targetOffsetFromUAV[0][0];
+      //targetLocation2D_UTM.second = quadcopterLocation2D_UTM.second + targetOffsetFromUAV[1][0];
+      std::get<northingIndex>(targetLocation2D_UTM) = std::get<northingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[0][0]; 
+
+
+
+//now convert back to GPS coordinates and we can generate a proper waypoint
+      std::pair<double, double> targetLocation2D_GPS = UTMtoGPS(std::get<northingIndex>(targetLocation2D_UTM), std::get<eastingIndex>(targetLocation2D_UTM), std::get<designatorIndex>(targetLocation2D_UTM)); 
+printf("target GPS location is lat %f long %f ", targetLocation2D_GPS.latitudeIndex, targetLocation2D_GPS.longitudeIndex); 
+
+        dji_sdk::Waypoint targetLocationWithSameAltitude;
+      targetLocationWithSameAltitude.latitude = targetLocation2D_GPS.latitudeIndex;
+      targetLocationWithSameAltitude.longitude = targetLocation2D_GPS.longitudeIndex;
+      targetLocationWithSameAltitude.altitude = currentQuadcopterAltitude_meters; 
+      targetLocationWithSameAltitude.staytime = 0;
+      targetLocationWithSameAltitude.heading = 0 ;
+
+    return targetLocationWithSameAltitude;
+   
+} 
+
+
+
+
+
+UTMobject targetDistanceMetersToUTM(geometry_msgs::Point distanceM,        
+                                    double cameraRollToGround_radians, 
+                                    double cameraPitchToGround_radians, 
+                                    double cameraYawToGround_radians, 
+                                    double currentQuadcopterLatitude,
+                                    double currentQuadcopterLongitude, 
+                                    double currentQuadcopterAltitude_meters)
+{
+    
+        UTMobject quadcopterLocation2D_UTM;
+       //we have the magnitude of the offset in each direction
+       // and we know the camera's roll, pitc, yaw,
+       // relative to the ground (NED frame just like UTM)
+       //and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
+        quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
+        //printf("quad loc. UTM object easting northing zone %f %f %s \n", std::get<eastingIndex>(quadcopterLocation2D_UTM), std::get<northingIndex>(quadcopterLocation2D_UTM), std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
+      //so now we have the camera offset from ground (meters), the camera rotation, and the target offset from camera. We need to convert this to camera offset from ground (ie, from center of UTM coordinates)
+     //to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
+    //camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
+      
+      cout <<"\n Target distance from camera " <<distanceM <<"\n"; 
+       double targetOffsetFromUAV[3][1];
+      getTargetOffsetFromUAV(
+                               distanceM 
+                               ,cameraRollToGround_radians 
+                               ,cameraPitchToGround_radians 
+                               ,cameraYawToGround_radians
+                               ,targetOffsetFromUAV   ///THIS IS AN OUTPUT VARIABlE THAT WILL BE MODIFIED
+                            );
+        //cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
+      
+
+    UTMobject targetLocation2D_UTM;
+//it's reasonable to assume we don't cross zones
+    std::get<designatorIndex>(targetLocation2D_UTM) = std::get<designatorIndex>(quadcopterLocation2D_UTM) ; 
+    //printf("CAUTION: target assumed to be in same UTM zone as quadcopter, zone: %s", std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str());
+    //can still use the UTMobject since we don't care about the Z offset because we'll handle altitude separately
+      std::get<eastingIndex>(targetLocation2D_UTM) = std::get<eastingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[1][0];//targetLocation2D_UTM.first = quadcopterLocation2D_UTM.first + targetOffsetFromUAV[0][0];
+      //targetLocation2D_UTM.second = quadcopterLocation2D_UTM.second + targetOffsetFromUAV[1][0];
+      std::get<northingIndex>(targetLocation2D_UTM) = std::get<northingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[0][0]; 
+
+//now convert back to GPS coordinates and we can generate a proper waypoint
+
+cout <<"\nOffset from UAV x y z inertial " << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" quadcopter location east north zone " << std::get<eastingIndex>(quadcopterLocation2D_UTM) << " "<< std::get<northingIndex>(quadcopterLocation2D_UTM) <<" "<< std::get<designatorIndex>(quadcopterLocation2D_UTM)  ;
+cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " "<< std::get<northingIndex>(targetLocation2D_UTM) <<" "<< std::get<designatorIndex>(targetLocation2D_UTM) <<" ";
+  return targetLocation2D_UTM;
+   
+
+
+} ///end function
+
+// this version also places the quadcopter height above the target in an output variable
+UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point distanceM,        
+                                                        double cameraRollToGround_radians, 
+                                                        double cameraPitchToGround_radians, 
+                                                        double cameraYawToGround_radians, 
+                                                        double currentQuadcopterLatitude, 
+                                                        double currentQuadcopterLongitude, 
+                                                        double currentQuadcopterAltitude_meters,
+                                                        // output variable
+                                                        double & copterHeightAboveTarget_meters)
+{
+    
+    UTMobject quadcopterLocation2D_UTM;
+    
+    // we have the magnitude of the offset in each direction
+    // and we know the camera's roll, pitc, yaw,
+    // relative to the ground (NED frame just like UTM)
+    // and we need to convert this to (x,y) coordinates on the ground (don't care about Z, we'll handle altitude in a separate algorithm)
+    quadcopterLocation2D_UTM = GPStoUTM(currentQuadcopterLatitude, currentQuadcopterLongitude); //need to test this function
+    
+    // printf("quad loc. UTM object easting northing zone %f %f %s \n", 
+    //              std::get<eastingIndex>(quadcopterLocation2D_UTM), 
+    //              std::get<northingIndex>(quadcopterLocation2D_UTM), 
+    //              std::get<designatorIndex>(quadcopterLocation2D_UTM).c_str() );
+    // so now we have the camera offset from ground (meters), the camera rotation, and the target offset from camera. 
+    // We need to convert this to camera offset from ground (ie, from center of UTM coordinates)
+    // to do so: we say that targetPosition = cameraOffset + cameraRotationMatrix *** targetOffsetFromCamera, where *** denotes matrix multiplication
+    // camera_offset is just our known UTM coordinates since the camera is a point mass with the drone in this model.
+      
+    double targetOffsetFromUAV[3][1];
+    getTargetOffsetFromUAV(distanceM, 
+                           cameraRollToGround_radians, 
+                           cameraPitchToGround_radians, 
+                           cameraYawToGround_radians,
+                           targetOffsetFromUAV);
+                           
+    //cout <<"target offset from UAV (x y z intertial)" << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" ";
+      
+    UTMobject targetLocation2D_UTM;
+
+    //it's reasonable to assume we don't cross zones
+    std::get<designatorIndex>(targetLocation2D_UTM) = std::get<designatorIndex>(quadcopterLocation2D_UTM) ; 
+    
+    //can still use the UTMobject since we don't care about the Z offset because we'll handle altitude separately
+    std::get<eastingIndex>(targetLocation2D_UTM) = std::get<eastingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[1][0];
+    //targetLocation2D_UTM.first = quadcopterLocation2D_UTM.first + targetOffsetFromUAV[0][0];
+    //targetLocation2D_UTM.second = quadcopterLocation2D_UTM.second + targetOffsetFromUAV[1][0];
+    
+    std::get<northingIndex>(targetLocation2D_UTM) = std::get<northingIndex>(quadcopterLocation2D_UTM) + targetOffsetFromUAV[0][0]; 
+
+    //now convert back to GPS coordinates and we can generate a proper waypoint
+
+    cout <<"\nOffset from UAV x y z inertial " << targetOffsetFromUAV[0][0] <<" "<< targetOffsetFromUAV[1][0] <<" "<< targetOffsetFromUAV[2][0] <<" quadcopter location east north zone " << std::get<eastingIndex>(quadcopterLocation2D_UTM) << " "<< std::get<northingIndex>(quadcopterLocation2D_UTM) <<" "<< std::get<designatorIndex>(quadcopterLocation2D_UTM)  ;
+    cout <<"\nresult e,n,zone "<< std::get<eastingIndex>(targetLocation2D_UTM) << " "<< std::get<northingIndex>(targetLocation2D_UTM) <<" "<< std::get<designatorIndex>(targetLocation2D_UTM) <<" ";
+  
+    copterHeightAboveTarget_meters = targetOffsetFromUAV[2][0];
+    cout << "\n\n Height above target " << copterHeightAboveTarget_meters <<" meters \n"; 
+  
+    return targetLocation2D_UTM;
+   
+
+
+} ///end function
+
+
+
+     
+     
+//following function is to test for very basic errors in the geolocalization functions. It will be updated as more functions are added
+void dummyTest_geolocalization()
+{
+   geometry_msgs::Point pTest; 
+   pTest.x = 100;
+   pTest.y = -2;
+   pTest.z = -0.04; 
+   dji_sdk::Waypoint wpTest = targetDistanceMetersToLongitude(pTest, 0.5, 1.75, 2.3, 101.0, 45.02357, 15);
+   
+  double testLat = 42.321838 ;
+  double testLong =  -83.23293;
+   std::pair<double, double> latLong;
+   latLong.latitudeIndex = testLat ;
+   latLong.longitudeIndex = testLong ;
+   printf("\n starting lat and long in degrees: %f and %f ", testLat, testLong); 
+   UTMobject utmTest = GPStoUTM(latLong.latitudeIndex, latLong.longitudeIndex); 
+      printf("\n UTM translation: northings: %f eastings: %f  zone: %s \n", std::get<northingIndex>(utmTest), std::get<eastingIndex>(utmTest), std::get<designatorIndex>(utmTest).c_str() ); 
+  std::pair<double, double> backToGPS = UTMtoGPS( std::get<northingIndex>(utmTest), std::get<eastingIndex>(utmTest), std::get<designatorIndex>(utmTest) );
+
+      printf("\n re-converted lat and long in degrees: %f and %f \n", backToGPS.latitudeIndex, backToGPS.longitudeIndex);
+       
+printf("\n \n beginning first target localization test case: camera is pointing straight down, 15 meters above a target at location lat %f  long %f \n" , testLat, testLong);
+geometry_msgs::Point distanceFromCamera;
+//right underneath
+distanceFromCamera.x=0; distanceFromCamera.y=0; distanceFromCamera.z=15;
+double roll_rad =0; //not rolled, directly underneath
+double yaw_rad=0; //assume no yaw
+double pitch_rad = -1.0 * M_PI/2.0 ;  //pointing directly down ( I think positive points it down)
+dji_sdk::Waypoint testwp = targetDistanceMetersToLongitude
+     (
+    distanceFromCamera, 
+          roll_rad, 
+    pitch_rad, 
+    yaw_rad 
+    ,testLat 
+    ,testLong
+    ,15.0
+     );
+
+double resultLat = testwp.latitude;
+double resultLong = testwp.longitude;
+
+printf("resulting target lat and long %f %f \n", resultLat, resultLong);
+
+double offset = 20.0;
+printf("\n \n beginning second target localization test case: camera is pointing straight down, 15 meters above a target at location lat %f  long %f , but this time target location is %f M up in both x and y direction \n" , testLat, testLong, offset);
+distanceFromCamera.x = offset;
+distanceFromCamera.y = offset;
+ testwp = targetDistanceMetersToLongitude
+     (
+    distanceFromCamera, 
+          roll_rad, 
+    pitch_rad, 
+    yaw_rad 
+    ,testLat 
+    ,testLong,
+        15.0
+     );
+
+ resultLat = testwp.latitude;
+ resultLong = testwp.longitude;
+
+printf("resulting target lat and long %f %f \n", resultLat, resultLong);
+
+printf("\n \n beginning third target localization test case: camera is pointing 45 degrees down, and yawed +45 degrees (ie, 45 degrees to the east IF I UNDERSTAND THAT SYSTEM CORRECTLY), 15 meters away from a target with camera at location lat %f  long %f . UAV is at altitude of 22.0 meters \n" , testLat, testLong);
+distanceFromCamera.x=0; distanceFromCamera.y=0; distanceFromCamera.z=15;
+ roll_rad =0; //not rolled, 
+ yaw_rad= M_PI/4.0; //yawed 45 degrees right
+ pitch_rad = -1.0 * M_PI/4.0 ;  //45 degrees down
+ testwp = targetDistanceMetersToLongitude
+     (
+    distanceFromCamera, 
+          roll_rad, 
+    pitch_rad, 
+    yaw_rad 
+    ,testLat 
+    ,testLong,
+        22.0
+     );
+
+ resultLat = testwp.latitude;
+ resultLong = testwp.longitude;
+
+printf("resulting target lat and long %f %f \n", resultLat, resultLong);
+
+   printf("geolocalization dummy test completed");
+}
+
+
+//following function is to test for very basic errors in the gimbal functions. It will be updated as more functions are added
+
+void dummyTest_gimbal()
+{
+ std::string zone = "17T";
+
+ double copterEasting = 316004.0 ;
+ double copterNorthing = 4687925.0;
+ double copterAltitude_Meters = 50;
+ 
+ double targetOffsetNorthings = 20;
+ double targetOffsetEastings = 10;
+
+ double targetNorthing = copterNorthing + targetOffsetNorthings;
+ double targetEasting = copterEasting + targetOffsetEastings; 
+ 
+ UTMobject quadcopterLocation;
+ std::get<northingIndex>(quadcopterLocation) = copterNorthing;
+ std::get<eastingIndex>(quadcopterLocation) = copterEasting;
+ std::get<designatorIndex>(quadcopterLocation) = zone;
+ UTMobject targetLocation;
+ std::get<northingIndex>(targetLocation) = targetNorthing;
+ std::get<eastingIndex>(targetLocation) = targetEasting;
+ std::get<designatorIndex>(targetLocation) = zone;
+
+double yaw;
+double pitch;
+double roll;
+ getGimbalAngleToPointAtTarget_rads(quadcopterLocation, copterAltitude_Meters, targetLocation, yaw, pitch, roll) ;
+
+ printf("gimbal test 1. Quadcopter location at northing: %f easting: %f zone %s , altitude %f meters, target offset by %f m North and %f m east. To point at it, we'll need gimbal offset of (radians): roll %f pitch %f yaw %f \n", copterNorthing, copterEasting, zone.c_str(), copterAltitude_Meters, targetOffsetNorthings, targetOffsetEastings, roll, pitch, yaw); 
+
+
+targetOffsetNorthings = -20;
+targetOffsetEastings = -20;
+targetNorthing = copterNorthing + targetOffsetNorthings;
+targetEasting = copterEasting + targetOffsetEastings;
+ std::get<northingIndex>(targetLocation) = targetNorthing;
+ std::get<eastingIndex>(targetLocation) = targetEasting;
+
+getGimbalAngleToPointAtTarget_rads(quadcopterLocation, copterAltitude_Meters, targetLocation, yaw, pitch, roll) ;
+ printf("gimbal test 2. Target \"behind\" quadcopter. Quadcopter location at northing: %f easting: %f zone %s , altitude %f meters, target offset by %f m North and %f m east. To point at it, we'll need gimbal offset of (radians): roll %f pitch %f yaw %f \n", copterNorthing, copterEasting, zone.c_str(), copterAltitude_Meters, targetOffsetNorthings, targetOffsetEastings, roll, pitch, yaw); 
+
+printf("gimbal dummy tests completed \n"); 
+
+}
