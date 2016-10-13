@@ -1,8 +1,11 @@
 build/
 bin/
 lib/
+*~
+
 # Except for this lib 
 !Guidance-SDK-ROS/lib/
+
 
 msg_gen/
 srv_gen/
