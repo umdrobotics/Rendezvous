@@ -1,36 +1,144 @@
 #include "ros/ros.h"
 #include "std_msgs/String.h"
+
+#include <target_tracking/utm.h>
+#include <apriltags_ros/AprilTagDetection.h>
+#include <apriltags_ros/AprilTagDetectionArray.h>
 #include <sstream>
 #include <iostream>
 #include <dji_sdk/dji_drone.h>
 #include <signal.h>
-#include <sstream>
-#include <iostream>
+#include <tuple>
 
 
-typedef std::tuple<double, double, std::string> UTMobject ;
+typedef std::tuple<double, double, std::string> UTMobject;
+
 #define EASTING 0
 #define NORTHING 1
 #define DESIGNATOR 2
-
-using namespace std;
 
 
 DJIDrone* _ptrDrone;
 
 void SigintHandler(int sig)
 {
-    // Do some custom action.
-    // For example, publish a stop message to some other nodes.
     ROS_INFO("It is requested to terminate gimbal_control...");
-    // delete(_ptrDrone);
+    
+    delete(_ptrDrone);
       
     ROS_INFO("Shutting down gimbal_control...");
-    // All the default sigint handler does is call shutdown()
+    
     ros::shutdown();
 }
 
+double degreesToRadians(double angle_degrees)
+{
+    return ( (M_PI*angle_degrees)/ (1.0*180.0) );
+}
+ 
+ 
+void getTargetOffsetFromUAV(geometry_msgs::Point distanceM,        
+                            double cameraRollToGround_radians, 
+                            double cameraPitchToGround_radians, 
+                            double cameraYawToGround_radians,
+                            double outputDistance[3][1]) //THIS IS AN OUTPUT VARIABLE! 
+{
+    // rotation matrix will be calculated based on instructions 
+    // here: http://planning.cs.uiuc.edu/node102.html
+    // first, rename some variables to make calculations more readable
+    
+    double yaw = cameraYawToGround_radians;
+    double pitch = cameraPitchToGround_radians;
+    double roll = cameraRollToGround_radians;
+    
+    //printf("\n confirm that roll pitch yaw is respectively %f %f %f \n", roll, pitch, yaw); 
+    double cameraRotationMatrix[3][3] = 
+        {   {   
+                cos(yaw)*cos(pitch),
+                cos(yaw)*sin(pitch)*sin(roll)-sin(yaw)*cos(roll), 
+                cos(yaw)*sin(pitch)*cos(roll) + sin(yaw)*sin(roll)
+            },
+            {  
+                sin(yaw)*cos(pitch),
+                sin(yaw)*sin(pitch)*sin(roll) + cos(yaw)*cos(roll),
+                sin(yaw)*sin(pitch)*cos(roll) - cos(yaw)*sin(roll) 
+            },
+            {
+                -1.0*sin(pitch),
+                cos(pitch)*sin(roll),
+                cos(pitch)*cos(roll)
+            },
+        };
+        
+    // WARNING: These x, y, and z values are relative to the camera frame, 
+    // NOT THE GROUND FRAME! 
+    // This is what we want and why we'll multiply by the rotation matrix
+    
+    double targetOffsetFromCamera[3][1] = {{distanceM.x},{distanceM.y},{distanceM.z}};
+    
+    // perform matrix multiplication 
+    // (recall that you take the dot product of the 1st matrix rows with the 2nd matrix colums)
+    // process is very simple since 2nd matrix is a vertical vector
+    
+    // first, convert from image plane to real-world coordinates
+    double transformMatrix[3][3] = { {0,0,1}, {1,0,0}, {0,-1,0} };
 
+    //now we can determine the distance in the inertial frame
+    double distanceInRealWorld[3][1];
+  
+
+    for (int row = 0; row < 3; row++)
+    {
+        double sum = 0;
+        for (int column = 0; column < 3; column++)
+        {
+            sum += transformMatrix[row][column] * targetOffsetFromCamera [column][0]; 
+        }
+        distanceInRealWorld[row][0] = sum;
+    } 
+    //end matrix multiplication
+
+    // now we can determine the actual distance from the UAV, by accounting for the camera's orientation
+    double targetOffsetFromUAV[3][1];
+    for (int row = 0; row < 3; row++)
+    {
+        double sum = 0;
+        for (int column = 0; column < 3; column++)
+        {
+            sum += cameraRotationMatrix[row][column] * distanceInRealWorld [column][0]; 
+        }
+        targetOffsetFromUAV[row][0] = sum;
+    } 
+    
+    outputDistance[0][0] = targetOffsetFromUAV[0][0];
+    outputDistance[1][0] = targetOffsetFromUAV[1][0];
+    outputDistance[2][0] = targetOffsetFromUAV[2][0];
+   
+} ///end getTargetOffsetFromUAV()
+
+
+UTMobject GPStoUTM(double latitude, double longitude)
+{
+    //printf("WARNING: still need to test GPS to UTM conversion!"); 
+    //variables which will be modified to store the eastings and northings
+    double northing;
+    double easting; 
+
+    //string to hold zone designator
+    std::string zone; 
+ 
+    //find the eastings and northings from lat and long
+    gps_common::LLtoUTM(latitude, longitude, northing, easting, zone);
+
+
+    //now create an object ( a tuple) that holds these
+    UTMobject UTMcoords;
+    std::get<EASTING>(UTMcoords) = easting;
+    std::get<NORTHING>(UTMcoords) = northing;
+    std::get<DESIGNATOR>(UTMcoords) = zone;
+
+    return UTMcoords;
+}
 
 // this version also places the quadcopter height above the target in an output variable
 UTMobject targetDistanceMetersToUTM_WithHeightDifference (geometry_msgs::Point distanceM,        
@@ -193,13 +301,11 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "target_tracking");
     ROS_INFO("target tracking");
     ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe("chatter", 1000, chatterCallback);
-    ros::spin();
 
     _ptrDrone = new DJIDrone(nh);
     
-    numMessagesToBuffer = 5;
-    ros::Subscriber sub = n.subscribe("dji_sdk/tag_detections", numMessagesToBuffer, tagDetectionCallback);
+    int numMessagesToBuffer = 5;
+    ros::Subscriber sub = nh.subscribe("dji_sdk/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     
     signal(SIGINT, SigintHandler);    
     ros::spin();
