@@ -171,41 +171,6 @@ void waypointBasedOnApriltags(int id, DJIDrone* drone)
 }
 
 
-UTMobject GPStoUTM(double latitude, double longitude)
-{
- //printf("WARNING: still need to test GPS to UTM conversion!"); 
- //variables which will be modified to store the eastings and northings
- double northing;
- double easting; 
-//string to hold zone designator
- std::string zone; 
- //find the eastings and northings from lat and long
- gps_common::LLtoUTM(latitude, longitude, northing, easting, zone);
-
-
- //now create an object ( a tuple) that holds these
- UTMobject UTMcoords;
- std::get<eastingIndex>(UTMcoords) = easting;
- std::get<northingIndex>(UTMcoords) = northing;
- std::get<designatorIndex>(UTMcoords) = zone;
-
- return UTMcoords;
-}
-
-
-std::pair<double, double> UTMtoGPS(double northing, double easting, std::string zone)
-{
- //printf("WARNING: still need to test UTM back to GPS conversion!"); 
- //create storage variables to hold lat and long results
- double latResult = 0;
- double longResult = 0;
-
- gps_common::UTMtoLL(northing, easting, zone, latResult, longResult) ;
- std::pair<double, double> GPScoords;
- GPScoords.latitudeIndex = latResult;
- GPScoords.longitudeIndex = longResult;
- return GPScoords;
-}
 
 
 //if the quadcopter can't catch up to the target, we still want the camera to point at it. This calculates how the camera will need to be oriented, relative to the inertial frame. Assume no roll is used, only pitch and yaw. 

@@ -132,145 +132,180 @@ drone->waypoint_navigation_send_request(loneWaypoint);
 
 ros::NodeHandle* nh;
 DJIDrone* drone;
+
 #define AprilTagsTopicTracking "dji_sdk/tag_detections"
-void handleGimbalPrediction(UTMobject predictedTargetUTM, UTMobject predictedCopterUTM, double heightAboveTarget, std_msgs::Header latestHeader ,DJIDrone* drone)
+
+void handleGimbalPrediction(UTMobject predictedTargetUTM, 
+                            UTMobject predictedCopterUTM, 
+                            double heightAboveTarget, 
+                            std_msgs::Header latestHeader,
+                            DJIDrone* drone)
 {
 
- //then need to modify the gimbal angle to have it point appropriately. This will be done with multiple variables that will be modified by a function, rather than an explicit return
-   double yaw_rads;
-   double pitch_rads;
-   double roll_rads;
-    getGimbalAngleToPointAtTarget_rads
-    (
- 	predictedCopterUTM, 
-	heightAboveTarget, 
-	predictedTargetUTM
- 	,yaw_rads //This is an output variable
-	,pitch_rads //This is an output variable
-	,roll_rads    //This is an output variable
-    );
+    // then need to modify the gimbal angle to have it point appropriately. 
+    // This will be done with multiple variables that will be modified by a function, 
+    // rather than an explicit return
+   
+    double yaw_rads;
+    double pitch_rads;
+    double roll_rads;
+    
+    getGimbalAngleToPointAtTarget_rads (predictedCopterUTM, 
+	                                    heightAboveTarget, 
+	                                    predictedTargetUTM,
+ 	                                    yaw_rads, //This is an output variable
+	                                    pitch_rads, //This is an output variable
+	                                    roll_rads);   //This is an output variable
+                                           
 	
-/*#define NO_PITCH false // set this to true to avoid pitch during testing on the bench
-#ifdef NO_PITCH
-pitch_rads = degreesToRadians(-10); //small pitch so calculations still make sense
-#endif */
-if (YAW_RELATIVE_TO_BODY == true)
-  {yaw_rads = inertialFrameToBody_yaw(yaw_rads, drone);}
+    if (YAW_RELATIVE_TO_BODY)
+    {
+        yaw_rads = inertialFrameToBody_yaw(yaw_rads, drone);
+    }
+
+    //lets you use DJI go gimbal mode selection, and thus free mode.
+    unsigned char desiredControlMode = 1; 
+
+    //actually it looks like 10 is the lowest it will go
+    unsigned char desiredDuration = 10; //this is the durtion in tenths of a second. 
 
 
-   unsigned char desiredControlMode = 1; //lets you use DJI go gimbal mode selection, and thus free mode.
-   unsigned char desiredDuration = 10; //actually it looks like 10 is the lowest it will go//1; //this is the durtion in tenths of a second. I think 1 is the lowest it can go. TODO verify this 
-
-    //drone->gimbal_angle_control(radiansToDjiUnits(roll_rads), radiansToDjiUnits(pitch_rads), radiansToDjiUnits(yaw_rads), desiredDuration, desiredControlMode);
-     //skip the angle control and let a PID control (outside this function loop) handle it
-	 GLOBAL_ROLL_DJI_UNITS = radiansToDjiUnits(roll_rads); 
-	 GLOBAL_PITCH_DJI_UNITS = radiansToDjiUnits(pitch_rads);
-	 GLOBAL_YAW_DJI_UNITS = radiansToDjiUnits(yaw_rads);
- //then  we're done with this step
+    //skip the angle control and let a PID control (outside this function loop) handle it
+	GLOBAL_ROLL_DJI_UNITS = radiansToDjiUnits(roll_rads); 
+	GLOBAL_PITCH_DJI_UNITS = radiansToDjiUnits(pitch_rads);
+	GLOBAL_YAW_DJI_UNITS = radiansToDjiUnits(yaw_rads);
+ 
+    //then  we're done with this step
      
-     // if we want to use a separate nod for PID calculations, need to publish them here
-	 //the following link provides a good guide: http://answers.ros.org/question/48727/publisher-and-subscriber-in-the-same-node/
-	 //for simplicity, I'm going to send the desired angle in the form of a pointStamped message (point with timestamp)
-	//I will translate the indices according to their standard order, ie, since x comes before y and roll comes before pitch.
+    // if we want to use a separate nod for PID calculations, need to publish them here
+	// the following link provides a good guide: http://answers.ros.org/question/48727/publisher-and-subscriber-in-the-same-node/
+	// for simplicity, I'm going to send the desired angle in the form of a pointStamped message (point with timestamp)
+	// I will translate the indices according to their standard order, ie, since x comes before y and roll comes before pitch.
 	// roll will be the x element and pitch will be the y element
-	#define rollIndex x
+	
+    #define rollIndex x
 	#define pitchIndex  y
 	#define yawIndex z
-     geometry_msgs::PointStamped desiredAngle ;	
-     desiredAngle.point.rollIndex = GLOBAL_ROLL_DJI_UNITS;
-	 desiredAngle.point.pitchIndex = GLOBAL_PITCH_DJI_UNITS;
-	 desiredAngle.point.yawIndex = GLOBAL_YAW_DJI_UNITS;
-	  desiredAngle.header = latestHeader ; //send the same time stamp information that was on the apriltags message to the PID node
-	 GLOBAL_ANGLE_PUBLISHER.publish(desiredAngle);
+
+    geometry_msgs::PointStamped desiredAngle ;	
+    desiredAngle.point.rollIndex = GLOBAL_ROLL_DJI_UNITS;
+	desiredAngle.point.pitchIndex = GLOBAL_PITCH_DJI_UNITS;
+	desiredAngle.point.yawIndex = GLOBAL_YAW_DJI_UNITS;
+	desiredAngle.header = latestHeader ; //send the same time stamp information that was on the apriltags message to the PID node
+	
+    GLOBAL_ANGLE_PUBLISHER.publish(desiredAngle);
 }
 
-////////Turned this piece into a function so it could also easily be called when there is not a target detection, only a prediction
-void handleTargetPrediction(cv::Mat targetLocPrediction ,std::string targetUtmZone ,dji_sdk::GlobalPosition copterState ,std_msgs::Header latestHeader ,DJIDrone* drone ,bool shouldIDescend ){
-cout <<"targetLocPrediction " <<targetLocPrediction <<" "; 
+// Turned this piece into a function so it could also easily be called 
+// when there is not a target detection, only a prediction
+void handleTargetPrediction(cv::Mat targetLocPrediction,
+                            std::string targetUtmZone,
+                            dji_sdk::GlobalPosition copterState,
+                            std_msgs::Header latestHeader,
+                            DJIDrone* drone,
+                            bool shouldIDescend)
+{
+    cout <<"targetLocPrediction " << targetLocPrediction <<" "; 
 
- double predictedNorth = targetLocPrediction.at<double>(0,0); //access element 0,0 ie x
- double predictedEast = targetLocPrediction.at<double>(0,1); //access element 0,1 ie y
-cout <<" east north zone " << predictedEast<<" "<< predictedNorth<<" "<< targetUtmZone;
+    double predictedNorth = targetLocPrediction.at<double>(0,0); //access element 0,0 ie x
+    double predictedEast = targetLocPrediction.at<double>(0,1); //access element 0,1 ie y
 
-UTMobject predictedTargetUTM; //will need this for later
-std::get<northingIndex>(predictedTargetUTM) = predictedNorth;
-std::get<eastingIndex>(predictedTargetUTM) = predictedEast;
-std::get<designatorIndex>(predictedTargetUTM) = targetUtmZone;
+    cout <<" east north zone " << predictedEast<<" "<< predictedNorth<<" "<< targetUtmZone;
+
+    UTMobject predictedTargetUTM; //will need this for later
+    std::get<northingIndex>(predictedTargetUTM) = predictedNorth;
+    std::get<eastingIndex>(predictedTargetUTM) = predictedEast;
+    std::get<designatorIndex>(predictedTargetUTM) = targetUtmZone;
   
 
-UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude);  
-//flying to these may allow more control over the copter, since it often mvoes too fast, especialyl for a stationary target
-  double halfwayNorth = (predictedNorth + std::get<northingIndex>(actualCopterUTM))/2.0;
-  double halfwayEast = (predictedEast + std::get<eastingIndex>(actualCopterUTM))/2.0;
+    UTMobject actualCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude);  
+
+    //flying to these may allow more control over the copter, since it often mvoes too fast, especialyl for a stationary target
+    double halfwayNorth = (predictedNorth + std::get<northingIndex>(actualCopterUTM))/2.0;
+    double halfwayEast = (predictedEast + std::get<eastingIndex>(actualCopterUTM))/2.0;
 
 
-  std::pair<double, double> targetLocPredictionGPS = UTMtoGPS(halfwayNorth, halfwayEast, targetUtmZone); //predictedNorth, predictedEast, targetUtmZone); 
+    std::pair<double, double> targetLocPredictionGPS = UTMtoGPS(halfwayNorth, halfwayEast, targetUtmZone); 
+    //predictedNorth, predictedEast, targetUtmZone); 
 
-//now we need to descend towards the target (or maybe land)
+    //now we need to descend towards the target (or maybe land)
 
-
-																			
-  UTMobject predictedCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude); 
-  //Now we need to add velocity to it. But we can't simply assume it will carry on it's current velocity vector.
-   //For simplicity, let's assume the same magnitude, but in the direction of the new vector
+    UTMobject predictedCopterUTM = GPStoUTM(copterState.latitude, copterState.longitude); 
+  
+    //Now we need to add velocity to it. But we can't simply assume it will carry on it's current velocity vector.
+    //For simplicity, let's assume the same magnitude, but in the direction of the new vector
     //since predictedCopterUTM variable currently contains the actual copter position, not prediction, we can use this
-   dji_sdk::Velocity copterSpeed = drone->velocity; //DJI::onboardSDK::VelocityData copterSpeed = DJI::onboardSDK::Flight::getVelocity(); 
-   double newCopterAngle_rads = atan2(predictedEast - std::get<eastingIndex>(predictedCopterUTM), predictedNorth - std::get<northingIndex>(predictedCopterUTM));		   
-   double velocityMagnitude = sqrt(copterSpeed.vx * copterSpeed.vx + copterSpeed.vy * copterSpeed.vy);
+    dji_sdk::Velocity copterSpeed = drone->velocity; 
+
+    //DJI::onboardSDK::VelocityData copterSpeed = DJI::onboardSDK::Flight::getVelocity(); 
+
+    double newCopterAngle_rads = atan2( predictedEast - std::get<eastingIndex>(predictedCopterUTM), 
+                                        predictedNorth - std::get<northingIndex>(predictedCopterUTM));		   
+
+    double velocityMagnitude = sqrt(copterSpeed.vx * copterSpeed.vx + copterSpeed.vy * copterSpeed.vy);
    
-   double predictedChangeInCopterEast = sin(newCopterAngle_rads) * LATEST_DT * velocityMagnitude;
-   double predictedChangeInCopterNorth = cos(newCopterAngle_rads) * LATEST_DT * velocityMagnitude;
-   if(STATIONARY_TARGET != true) //it must be explicitly defined as true for us to skip this (and thus assume a stationary target)
+    double predictedChangeInCopterEast = sin(newCopterAngle_rads) * LATEST_DT * velocityMagnitude;
+    double predictedChangeInCopterNorth = cos(newCopterAngle_rads) * LATEST_DT * velocityMagnitude;
+   
+    if(!STATIONARY_TARGET) 
+    //it must be explicitly defined as true for us to skip this (and thus assume a stationary target)
     {
-       std::get<northingIndex>(predictedCopterUTM) += predictedChangeInCopterNorth;
-       std::get<eastingIndex>(predictedCopterUTM) += predictedChangeInCopterEast;
-       
+        std::get<northingIndex>(predictedCopterUTM) += predictedChangeInCopterNorth;
+        std::get<eastingIndex>(predictedCopterUTM) += predictedChangeInCopterEast;
     }
-   else
-     {
-       cout << "TARGET ASSUMED TO BE STATIONARY!"; 
-     }
+    else
+    {
+        cout << "TARGET ASSUMED TO BE STATIONARY!"; 
+    }
    
 
-   //now need to handle if we should descend to the target or not
-   bool shouldILand = false; 
-   double desiredNewAltitude_meters = HandleLanding::getNewAltitudeForDescent(
-																			   predictedNorth - std::get<northingIndex>(predictedCopterUTM)
-																			   ,predictedEast - std::get<eastingIndex>(predictedCopterUTM)
-																			   ,ALTITUDE_AT_LAST_TARGET_SIGHTING
-																			   ,LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS
-																			   
-																			   ,shouldILand
-																			 ) ;
-	if(shouldIDescend != true)
-			{desiredNewAltitude_meters = copterState.altitude; }
-		
-		
+    //now need to handle if we should descend to the target or not
+    bool shouldILand = false; 
+    double desiredNewAltitude_meters 
+        = HandleLanding::getNewAltitudeForDescent ( predictedNorth - std::get<northingIndex>(predictedCopterUTM),
+                                                    predictedEast - std::get<eastingIndex>(predictedCopterUTM),
+                                                    ALTITUDE_AT_LAST_TARGET_SIGHTING,
+													LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS,
+													shouldILand);
+	if(!shouldIDescend)
+	{
+        desiredNewAltitude_meters = copterState.altitude; 
+    }
+
+    // then need to set quadcopter waypoint accordingly
+    goToTargetEstimate( drone,
+                        targetLocPredictionGPS.latitudeIndex,
+                        targetLocPredictionGPS.longitudeIndex, 
+                        desiredNewAltitude_meters); 
+    // then need to to estimate where the quadcopter will actually be
+
+    if(shouldILand)
+    {
+	    // THIS WILL ONLY WORK FOR A STATIONARY TARGET!
+        cout << "\n\n NOTICE!!!! \n ABOUT TO LAND  !!!! \n\n";
+	    drone->landing();  
+        cout <<" \n\n NOTICE!!!! \n SENT LANDING COMMAND  !!!! \n\n";
+    
+        //if it won't land when it should, uncomment the following 2 liens
+        //while(drone.global_position.height > 0.5) 
+        //need to prevent the rest of the loop from overriding this
+	    //            {ros::Duration(1.0).sleep();}
+    }
+
+    double estimatedTargetHeight = copterState.altitude - copterState.height ; 
+    // still assumes target is on ground, 
+    // but should avoid the timing errors associated with using ALTITUDE_AT_LAST_TARGET_SIGHTING
    
+    printf(" target height estimate %f  altitude at last sighting %f last recorded height above target %f \n",
+            estimatedTargetHeight,  ALTITUDE_AT_LAST_TARGET_SIGHTING ,LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS );
    
-  // then need to set quadcopter waypoint accordingly
-  goToTargetEstimate(drone ,targetLocPredictionGPS.latitudeIndex ,targetLocPredictionGPS.longitudeIndex  , desiredNewAltitude_meters); 
-  // then need to to estimate where the quadcopter will actually be
+    if(ALTITUDE_AT_LAST_TARGET_SIGHTING ==0) //if it wasn't modified after initializing
+    {
+        estimatedTargetHeight = 0;
+    }
 
-
-  if(shouldILand == true)
-   {
-	
-	// THIS WILL ONLY WORK FOR A STATIONARY TARGET!
-   cout <<" \n\n NOTICE!!!! \n ABOUT TO LAND  !!!! \n\n";
-	drone->landing();  
-       cout <<" \n\n NOTICE!!!! \n SENT LANDING COMMAND  !!!! \n\n";
-    //if it won't land when it should, uncomment the following 2 liens
-    //while(drone.global_position.height > 0.5) //need to prevent the rest of the loop from overriding this
-	//            {ros::Duration(1.0).sleep();}
-   }
-
-   double estimatedTargetHeight = copterState.altitude - copterState.height ; //still assumes target is on ground, but should avoid the timing errors associated with using ALTITUDE_AT_LAST_TARGET_SIGHTING
-   printf(" target height estimate %f  altitude at last sighting %f last recorded height above target %f \n", estimatedTargetHeight,  ALTITUDE_AT_LAST_TARGET_SIGHTING ,LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS );
-   if(ALTITUDE_AT_LAST_TARGET_SIGHTING ==0) //if it wasn't modified after initializing
-            {estimatedTargetHeight = 0;}
-   double predictedHeightAboveTarget = desiredNewAltitude_meters - estimatedTargetHeight; 
-   handleGimbalPrediction(predictedTargetUTM, predictedCopterUTM, predictedHeightAboveTarget, latestHeader, drone);
+    double predictedHeightAboveTarget = desiredNewAltitude_meters - estimatedTargetHeight; 
+    handleGimbalPrediction(predictedTargetUTM, predictedCopterUTM, predictedHeightAboveTarget, latestHeader, drone);
 
 }
 //end handleTargetPrediction
