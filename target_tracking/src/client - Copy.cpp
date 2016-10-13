@@ -163,11 +163,6 @@ void handleGimbalPrediction(UTMobject predictedTargetUTM,
         yaw_rads = inertialFrameToBody_yaw(yaw_rads, drone);
     }
 
-    //lets you use DJI go gimbal mode selection, and thus free mode.
-    unsigned char desiredControlMode = 1; 
-
-    //actually it looks like 10 is the lowest it will go
-    unsigned char desiredDuration = 10; //this is the durtion in tenths of a second. 
 
 
     //skip the angle control and let a PID control (outside this function loop) handle it
@@ -400,33 +395,7 @@ void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArra
         double targetX = std::get<northingIndex>(latestTargetLocation); //LATEST_TARGET_X_CAMERA; //std::get<northingIndex>(latestTargetLocation);
         double targetY = std::get<eastingIndex>(latestTargetLocation); //LATEST_TARGET_Y_CAMERA; //std::get<eastingIndex>(latestTargetLocation);
 
-        if(! ( IS_TRACKING) )
-        {
-	   
-	        HandleLanding::pauseDescent();  
-
-            firstDetection = true;
-
-            GLOBAL_KALMAN_FILTER = initializeKalmanFilterWeb(); 
-            targetLocPrediction = loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); 
-            //use !firstDetection since we don't want to descend if this is the first detection
-       
-            if(STATIONARY_TARGET == true)
-            {
-                cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
-                targetLocPrediction.at<double>(0) = targetX; //use the actual value since we don't need to kalman filter in this case
-                targetLocPrediction.at<double>(1) = targetY; //use the actual value since we don't need to kalman filter in this case
-                targetLocPrediction.at<double>(2) = 0; //vx = 0 since we're not predicting
-                targetLocPrediction.at<double>(3) = 0; //vy = 0 since we're not predicting
-            }       
-
-            STATE_STORAGE=targetLocPrediction;    //in case we lose track of the target, this needs to save our data
-
-            // String stall;
-            // cout <<"\nCIN pause: press a key then hit enter to contiue\n"; 
-            // cin>> stall; 
-        }
-        else
+        if (IS_TRACKING)
         {
             firstDetection = false;
             targetLocPrediction =  loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); 
@@ -439,7 +408,26 @@ void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArra
                 targetLocPrediction.at<double>(1) = targetY; //use the actual value since we don't need to kalman filter in this case
                 targetLocPrediction.at<double>(2) = 0; //vx = 0 since we're not predicting
                 targetLocPrediction.at<double>(3) = 0; //vy = 0 since we're not predicting
-            }   
+            }  
+        }
+        else
+        {
+ 	        HandleLanding::pauseDescent();  
+            firstDetection = true;
+            GLOBAL_KALMAN_FILTER = initializeKalmanFilterWeb(); 
+            targetLocPrediction = loopStepWeb(GLOBAL_KALMAN_FILTER, LATEST_DT, targetX, targetY, !firstDetection); 
+            //use !firstDetection since we don't want to descend if this is the first detection
+       
+            if(STATIONARY_TARGET)
+            {
+                cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
+                targetLocPrediction.at<double>(0) = targetX; //use the actual value since we don't need to kalman filter in this case
+                targetLocPrediction.at<double>(1) = targetY; //use the actual value since we don't need to kalman filter in this case
+                targetLocPrediction.at<double>(2) = 0; //vx = 0 since we're not predicting
+                targetLocPrediction.at<double>(3) = 0; //vy = 0 since we're not predicting
+            }       
+
+            STATE_STORAGE=targetLocPrediction;    //in case we lose track of the target, this needs to save our data
         }
      
 	    IS_TRACKING = true;
@@ -453,10 +441,9 @@ void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArra
 	 
         //my concern is that by declaring it false every time there isn't one, we might end up never tracking it
         //IS_TRACKING = false; //couldn't find one so we're obviously not tracking yet. 
-	    if(IS_TRACKING == true)
+	    if(IS_TRACKING)
 	    {
-
-		    FRAMES_WITHOUT_TARGET ++ ; 
+		    FRAMES_WITHOUT_TARGET++ ; 
 	        if(FRAMES_WITHOUT_TARGET >= FRAMES_UNTIL_TARGET_LOST)
             { 
                 IS_TRACKING = false; 
@@ -475,19 +462,19 @@ void apriltagCheckCallbackForTracking(const apriltags_ros::AprilTagDetectionArra
 				dji_sdk::GlobalPosition copterState = drone->global_position;
 					 
                 STATE_STORAGE = targetLocPrediction; //so it can be reused for future predictions if needed                
-                if(STATIONARY_TARGET!=true)
+                if(STATIONARY_TARGET)
 				{
+                    cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
+                    stayInCurrentSpot(drone);
+                }
+                else
+                {
 				    handleTargetPrediction( targetLocPrediction, 
 				                            std::get<designatorIndex>(latestTargetLocation), 
 				                            copterState,
 				                            latestHeader, 
 				                            drone, 
 				                            false); //put false since we don't want to land using a kalman filter prediction without data
-                 }
-                 else
-                 {
-                    cout <<"NOTICE: STATIONARY TARGET ASSUMED!";
-                    stayInCurrentSpot(drone);
                 }
             }	
         }
