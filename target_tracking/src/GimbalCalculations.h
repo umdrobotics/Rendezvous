@@ -18,65 +18,7 @@ typedef std::tuple<double, double, std::string> UTMobject ;
 
 //begin functions for integration with AprilTags and geolocalization
 
-//DJI's gimbal angles are in tenths of a degree, but the drone->gimbal.yaw, etc, returns it in degrees. We need to be able to convert forward and back
-double radiansToDjiUnits(double angle_rads)
- {
-  return (10*180.0/M_PI)* angle_rads;
- }
-double djiUnitsToRadians(double angle_dji)
- {
-  return ( (M_PI*angle_dji)/ (10.0*180.0) );
- }
 
-double radiansToDegrees(double angle_rads)
- {
-  return (180.0/M_PI)* angle_rads;
- }
-double degreesToRadians(double angle_degrees)
- {
-       return ( (M_PI*angle_degrees)/ (1.0*180.0) );
- }
- 
-double degreesToDjiUnits(double angle_degrees)
- {
-       return (10.0*angle_degrees); 
- }
-double djiUnitsToDegrees(double angle_dji)
- {
-       return ( (angle_dji)/ (10.0) );
- }
- 
-//I think this is how you get the yaw of the quadcopter body
- //this method is based off the documentation for onboard-sdk  on Github https://github.com/dji-sdk/Onboard-SDK/blob/3.1/doc/en/ProgrammingGuide.md
- void quaternionToRPY(   dji_sdk::AttitudeQuaternion q, double & roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
-{ 
-     roll  = atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2));
-     pitch = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
-     yaw   = atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1));
-}
-
-
-//also need to be able to convert from the body frame to the coordinate frame, for gimbal yaw
-//so calculate the angle you want relative to inertal frame, then use this function to get the command you need
-double inertialFrameToBody_yaw(double angleToInertial_rads, DJIDrone* dronePointer)
-   {
-
-     //first need to convert from quaternion format to RPY to get drone's yaw 
-        double roll_body;
-    double pitch_body;
-    double yaw_body;
-        quaternionToRPY(dronePointer->attitude_quaternion, roll_body, pitch_body, yaw_body); //roll_body pitch_body and yaw_body are output variables that will be altered by this function
-        //rotation to inertial frame = rotation to body + body's rotation to inertial frame
-            //rotation to body = rotation to inertial frame - body's rotation to inertial frame
-        double angleToBody = angleToInertial_rads - yaw_body;
-      
-         //now keep the angle between -180 and 180 degrees (ie -pi and pi)
-        while(angleToBody < -1.0*M_PI) {angleToBody += 2.0*M_PI;}
-        while(angleToBody > M_PI) {angleToBody -= 2.0*M_PI;}
-    // cout << " desired angle inertial " << angleToInertial_rads<< "body yaw " << yaw_body << "resulting angle for command " <<  angleToBody <<"\n";
-
-       return angleToBody;
-    }
 
 
 double bodyFrameToInertial_yaw(double angleToBody_rads, DJIDrone* dronePointer)

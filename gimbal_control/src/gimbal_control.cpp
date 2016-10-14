@@ -105,8 +105,8 @@ void timerCallback(const ros::TimerEvent&)
 void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPoseDU)
 {
     _msgDesiredGimbalPoseDU = *msgDesiredPoseDU;
-    ROS_INFO_STREAM("Received Desired Roll:" << _msgDesiredGimbalPoseDU.point.x 
-                            << " Pitch:" <<  _msgDesiredGimbalPoseDU.point.y 
+    ROS_INFO_STREAM("Desired Angle (DU) Roll:" << _msgDesiredGimbalPoseDU.point.x 
+                            << " Pitch:" << _msgDesiredGimbalPoseDU.point.y 
                             << " Yaw:" <<  _msgDesiredGimbalPoseDU.point.z);
 }
 
@@ -115,7 +115,7 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "gimbal_control");
     ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe("desired_gimbal_pose", 1000, listernerCallback);
+    ros::Subscriber sub = nh.subscribe("/gimbal_control/desired_gimbal_pose", 1000, listernerCallback);
 
     double dTimeStepSec = 0.02;
     nh.getParam("/gimbal_control/gimbal_control_time_step_sec", dTimeStepSec);   
@@ -175,7 +175,7 @@ int main(int argc, char **argv)
     ROS_INFO_STREAM(*_roll_rate_controller);
     
     _msgDesiredGimbalPoseDU.point.x = 0.0;
-    _msgDesiredGimbalPoseDU.point.y = -450.0;
+    _msgDesiredGimbalPoseDU.point.y = -250.0;
     _msgDesiredGimbalPoseDU.point.z = 0.0;
  
     // Gimbal Angle Tests

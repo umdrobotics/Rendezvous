@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 #include "std_msgs/String.h"
-
+#include <geometry_msgs/PointStamped.h>
 #include <target_tracking/conversion.h>
 #include <target_tracking/UasMath.h>
 #include <dji_sdk/dji_drone.h>
@@ -38,16 +38,59 @@ void SigintHandler(int sig)
     ros::shutdown();
 }
 
+
+//I think this is how you get the yaw of the quadcopter body
+ //this method is based off the documentation for onboard-sdk  on Github https://github.com/dji-sdk/Onboard-SDK/blob/3.1/doc/en/ProgrammingGuide.md
+ void quaternionToRPY(dji_sdk::AttitudeQuaternion q, double & roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
+{ 
+     roll  = atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2));
+     pitch = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
+     yaw   = atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1));
+}
+
+
+
+//also need to be able to convert from the body frame to the coordinate frame, for gimbal yaw
+//so calculate the angle you want relative to inertal frame, then use this function to get the command you need
+double inertialFrameToBody_yaw(double angleToInertial_rad, DJIDrone& drone)
+{
+
+    //first need to convert from quaternion format to RPY to get drone's yaw 
+    double roll_rad;
+    double pitch_rad;
+    double yaw_rad;
+
+   quaternionToRPY( drone.attitude_quaternion, 
+                    roll_rad, 
+                    pitch_rad, 
+                    yaw_rad); 
+    //roll_body pitch_body and yaw_body are output variables that will be altered by this function
+    //rotation to inertial frame = rotation to body + body's rotation to inertial frame
+    //rotation to body = rotation to inertial frame - body's rotation to inertial frame
+ 
+    double angleToBody = angleToInertial_rad - yaw_rad;
+      
+    //now keep the angle between -180 and 180 degrees (ie -pi and pi)
+
+    while(angleToBody <= -1.0*M_PI) {angleToBody += 2.0*M_PI;}
+    while(angleToBody > M_PI) {angleToBody -= 2.0*M_PI;}
+    
+    return angleToBody;
+
+}
+
+
+
 //if the quadcopter can't catch up to the target, we still want the camera to point at it. This calculates how the camera will need to be oriented, relative to the inertial frame. Assume no roll is used, only pitch and yaw. 
 //It will assign the values to the PASS-BY-REFERENCE variables yaw, pitch, and roll (roll will end up 0)
-void getGimbalAngleToPointAtTarget_rads(geometry_msgs::Point& droneUtmPosition //UTMobject quadcopterLocation_UTM, 
+void getGimbalAngleToPointAtTarget_rads(geometry_msgs::Point& droneUtmPosition, //UTMobject quadcopterLocation_UTM, 
                                         double heightAboveTarget_Meters, 
-                                        geometry_msgs::Point targetUtmLocation //UTMobject targetLocation_UTM,
+                                        geometry_msgs::Point targetUtmLocation, //UTMobject targetLocation_UTM,
                                         double &yaw_rads, //This is an output variable
                                         double &pitch_rads, //This is an output variable
                                         double &roll_rads )    //This is an output variable
 {
-    // printf("\nCAUTION: Gimbal angle calculation assumes target and quadcopter are in same UTM zones. \n Also, assumes that positive pitch is up, and positive yaw is from north to east \n");
+
     // compute displacements in northing and easting (signed)
     double deltaNorth = targetUtmLocation.y  - droneUtmPosition.y;
     double deltaEast = targetUtmLocation.x  - droneUtmPosition.x;
@@ -60,14 +103,15 @@ void getGimbalAngleToPointAtTarget_rads(geometry_msgs::Point& droneUtmPosition /
     roll_rads = 0;
  
     // for exaplanation of calculations, see diagram in Aaron Ward's July 20 report
-    // pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
-    pitch_rads = -1.0 * atan( droneUtmPosition.z / distance_Meters );
-    // printf("\n\nTODO: Check if the negative sign is done correctly in the atan or atan2 function in the \"getGimbalAngleToPointAtTarget_rads\" function \n\n");
+    // pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); 
+    //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
+    pitch_rads = -1.0 * atan2( droneUtmPosition.z, distance_Meters );
+
     // yaw_rads = acos( deltaNorth / distance_Meters );
     // turns out acos can't be used, since it doesn't do enough to specify the quadrant. Use
  
-    yaw_rads = atan2( deltaEast, deltaNorth); //remember north is the x axis, east is the y axis
-    // cout <<"\n atan2 of y x " << deltaEast <<" " <<deltaNorth << " quadcopter east north " << std::get<eastingIndex>(quadcopterLocation_UTM) << " "<< std::get<northingIndex>(quadcopterLocation_UTM) <<  "    target east north " <<std::get<eastingIndex>(targetLocation_UTM) <<" " << std::get<northingIndex>(targetLocation_UTM)<<  "\n"; 
+    yaw_rads = atan2( deltaEast, deltaNorth); 
+    //remember north is the x axis, east is the y axis
   
   
 }
@@ -292,11 +336,11 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
         
         //droneUtmPosition.x = easting;
         //droneUtmPosition.y = northing;
-        droneUtmPosition.z = drone.global_position.height;
+        droneUtmPosition.z = drone.global_position.altitude;
         	
         	
         // UTMobject latestTargetLocation; 
-        geometry_msgs::Point targetUtmLocation
+        geometry_msgs::Point targetUtmPosition
              = targetDistanceMetersToUTM_WithHeightDifference ( current.pose.pose.position,
                                                                 drone.gimbal,
                                                                 droneUtmPosition,
@@ -304,29 +348,6 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
 			                                                    //LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS 
                                                                 // THIS IS AN OUTPUT VARIABLE
                                                                 dLastRecordedHeightAboveTargetM);
-
-        std::stringstream ss ;
-        
-        ss  << std::fixed << std::setprecision(7) << std::endl
-            << "Drone Pos(lat,lon,alt,heigt): "   << drone.global_position.latitude << "," 
-                                            << drone.global_position.longitude << ","
-                                            << drone.global_position.altitude << "," 
-                                            << drone.global_position.height << std::endl
-            << "Drone Pos(x,y,z): " << droneUtmPosition.x << "," 
-                                    << droneUtmPosition.y << ","
-                                    << droneUtmPosition.z << "," << std::endl
-            << "Gimbal Angle(y,p,r): "  << drone.gimbal.yaw << ","
-                                        << drone.gimbal.pitch << ","
-                                        << drone.gimbal.roll << "," << std::endl
-            << "Tag Distance(x,y,z): "  << current.pose.pose.position.x << ","
-                                        << current.pose.pose.position.y << ","
-                                        << current.pose.pose.position.z << "," << std::endl
-            << "Distance from UAV (x y z inertial): "   << targetUtmLocation.x << ","
-                                                        << targetUtmLocation.y << ","
-                                                        << targetUtmLocation.z << std::endl;
-                                                        
-        ROS_INFO("%s", ss.str().c_str());
-
 
         
         // then need to modify the gimbal angle to have it point appropriately. 
@@ -338,7 +359,7 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
         double roll_rads;
         
         getGimbalAngleToPointAtTarget_rads (droneUtmPosition, 
-                                            heightAboveTarget, 
+                                            drone.global_position.height, //heightAboveTarget, 
                                             targetUtmPosition,
                                             yaw_rads, //This is an output variable
                                             pitch_rads, //This is an output variable
@@ -360,11 +381,39 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
         msgDesiredAngleDU.point.y = UasMath::ConvertRad2Deg(pitch_rads) * 10.0;
         msgDesiredAngleDU.point.z = UasMath::ConvertRad2Deg(yaw_rads) * 10.0;
         
-        desiredAngle.header = current.pose.header; //send the same time stamp information that was on the apriltags message to the PID node
+        msgDesiredAngleDU.header = current.pose.header; //send the same time stamp information that was on the apriltags message to the PID node
         
-        _GimbalAnglePub.publish(desiredAngle);
+        _GimbalAnglePub.publish(msgDesiredAngleDU);
+                
+        std::stringstream ss ;
         
-        
+        ss  << std::fixed << std::setprecision(7) << std::endl
+            << "Time: " << ros::Time::now().toSec() << std::endl
+            << "Drone Pos(lat,lon,alt,heigt): "   << drone.global_position.latitude << "," 
+                                            << drone.global_position.longitude << ","
+                                            << drone.global_position.altitude << "," 
+                                            << drone.global_position.height << std::endl
+            << "Drone Pos(x,y,z): " << droneUtmPosition.x << "," 
+                                    << droneUtmPosition.y << ","
+                                    << droneUtmPosition.z << "," << std::endl
+            << "Gimbal AngleDeg(y,p,r): "  << drone.gimbal.yaw << ","
+                                        << drone.gimbal.pitch << ","
+                                        << drone.gimbal.roll << "," << std::endl
+            << "Tag Distance(x,y,z): "  << current.pose.pose.position.x << ","
+                                        << current.pose.pose.position.y << ","
+                                        << current.pose.pose.position.z << "," << std::endl
+            << "Target Pos(x y z): "    << targetUtmPosition.x << ","
+                                        << targetUtmPosition.y << ","
+                                        << targetUtmPosition.z << std::endl
+            << "Desired AngleDU(y,p,r): "     << msgDesiredAngleDU.point.z << ","
+                                                << msgDesiredAngleDU.point.y << ","
+                                                << msgDesiredAngleDU.point.x << std::endl;
+                                                        
+        ROS_INFO("%s", ss.str().c_str());
+
+
+
+
     } //closing brace to if(numTags>0)
     
 }
@@ -379,10 +428,11 @@ int main(int argc, char **argv)
     _ptrDrone = new DJIDrone(nh);
     DJIDrone& drone = *_ptrDrone;
 
-    // set the gimbal pitch  to -45 for tests.
+    // set the gimbal pitch  to -25 for tests.
     drone.gimbal_angle_control(0.0, -250.0, 0.0, 10.0);    
 
-    _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_angle", 2); // queue size of 2 seems reasonable
+    _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 2); 
+    // queue size of 2 seems reasonable
                 
     int numMessagesToBuffer = 5;
     ros::Subscriber sub = nh.subscribe("dji_sdk/tag_detections", numMessagesToBuffer, tagDetectionCallback);
