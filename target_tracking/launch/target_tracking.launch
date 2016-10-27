@@ -1,0 +1,7 @@
+<launch>
+    <node name="target_tracking" pkg="target_tracking" type="target_tracking" output="screen" cwd="node">
+    </node>
+</launch>
+
+
+

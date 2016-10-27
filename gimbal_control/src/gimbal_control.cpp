@@ -33,6 +33,28 @@ void SigintHandler(int sig)
     ros::shutdown();
 }
 
+void RunShortAngleTests(DJIDrone& drone)
+{    
+    // set roll to -300 DU = -15 degrees with the time to take 1 sec.
+    drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set roll to 300 DU = 15 degrees with the time to take 1 sec.
+    drone.gimbal_angle_control(150, 0.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set all angles to zero.
+    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set pitch to -450 DU (-45 degreed pitch down)with the time to take 1 sec.
+    drone.gimbal_angle_control(0.0, -150.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+
+    // set pitch to 0 DU (0 degreed pitch down)with the time to take 1 sec.
+    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
+    ros::Duration(1.0).sleep();
+}
 
 void RunInitialAngleTests(DJIDrone& drone)
 {
@@ -181,7 +203,8 @@ int main(int argc, char **argv)
     // Gimbal Angle Tests
     DJIDrone& drone = *_ptrDrone;
     
-	// RunInitialAngleTests(drone);
+    RunShortAngleTests(drone);
+    //RunInitialAngleTests(drone);
     
 
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);

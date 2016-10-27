@@ -82,7 +82,7 @@ void PidController::ConstructorHelper()
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
-    m_ofslog << "#Time,Desired Angle (DU),Normlized Desired(Deg), Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
+    m_ofslog << "#Time,Desired Angle (DU),Normlized Desired(Deg), Adj Desired(Deg), Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
     
 }
 

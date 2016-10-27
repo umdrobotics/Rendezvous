@@ -434,8 +434,8 @@ int main(int argc, char **argv)
     _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 2); 
     // queue size of 2 seems reasonable
                 
-    int numMessagesToBuffer = 5;
-    ros::Subscriber sub = nh.subscribe("dji_sdk/tag_detections", numMessagesToBuffer, tagDetectionCallback);
+    int numMessagesToBuffer = 2;
+    ros::Subscriber sub = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     
     signal(SIGINT, SigintHandler);    
     ros::spin();

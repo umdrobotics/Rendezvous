@@ -11,7 +11,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "gimbal_control_tests");
     ros::NodeHandle nh;
     ros::Publisher gimbal_pose_pub 
-        = nh.advertise<geometry_msgs::PointStamped>("desired_gimbal_pose", 1000);
+        = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
         
     geometry_msgs::PointStamped desiredGimbalPoseDU;
        
@@ -142,15 +142,6 @@ int main(int argc, char **argv)
     desiredGimbalPoseDU.point.z = 0.0;  // yaw
     gimbal_pose_pub.publish(desiredGimbalPoseDU);
     ros::Duration(2.0).sleep();
-    
-    
-    
-    
-    
-    
-    
-    
-    
     
     
     
