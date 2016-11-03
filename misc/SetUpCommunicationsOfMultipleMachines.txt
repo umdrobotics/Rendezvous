@@ -1,0 +1,33 @@
+Firstly, we need to set up the host and network for master and remote machine: 
+(For here, we use NUC6i5 for master and manifold52 for remote machine.)
+
+
+Connect NUC6i5 and manifold52 to the same LAN. 
+
+
+On NUC6i5:
+1)	Set IP address: 192.168.1.15; 
+2)	" sudo gedit /etc/hostname " , change hostname into NUC6i5 ;
+3)	" sudo gedit /etc/hosts ", add 2 lines like the red square: 
+4)	" sudo /etc/init.d/networking restart ";
+5)	" sudo apt-get install chrony ";
+6)	" sudo apt-get install openssh-server ";
+7)	" gedit .bashrc " and add these in the bottom: 
+    	" export ROS_HOSTNAME=`hostname`
+     	  export ROS_MASTER_URI=http://`hostname`:11311 ";
+8)	" source ~/.bashrc ".
+
+
+
+On manifold52: 
+1)	Set IP address: 192.168.1.52; 
+2)	" sudo gedit /etc/hostname " , change hostname into manifold52; 
+3)	" sudo gedit /etc/hosts ", add 2 lines as before;
+4)	" sudo /etc/init.d/networking restart ";  
+5)	" sudo apt-get install chrony ";
+6)	" sudo apt-get install openssh-server ";
+7)	" gedit .bashrc " and add these in the bottom: 
+    	" export ROS_HOSTNAME=`hostname`
+	  export ROS_MASTER_URI=http://NUC6i5:11311 " 
+	//Note: At this point, NUC6i5 is the master. Should be changed if master is changed. 
+8)	" source ~/.bashrc ".
