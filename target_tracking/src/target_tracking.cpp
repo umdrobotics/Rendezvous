@@ -14,16 +14,6 @@
 #include <signal.h>
 
 
-//#include <tuple>
-
-
-//typedef std::tuple<double, double, std::string> UTMobject;
-
-//#define EASTING 0
-//#define NORTHING 1
-//#define DESIGNATOR 2
-
-
 DJIDrone* _ptrDrone;
 ros::Publisher _GimbalAnglePub;
 
@@ -259,7 +249,7 @@ geometry_msgs::Point targetDistanceMetersToUTM_WithHeightDifference(geometry_msg
 
 } ///end function
 
-void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detection_array)
+void PredictDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray tag_detection_array)
 {
 
     DJIDrone& drone = *_ptrDrone;
@@ -376,14 +366,14 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
         // I will translate the indices according to their standard order, ie, since x comes before y and roll comes before pitch.
         // roll will be the x element and pitch will be the y element
 
-        geometry_msgs::PointStamped msgDesiredAngleDU;	
-        msgDesiredAngleDU.point.x = UasMath::ConvertRad2Deg(roll_rads) * 10.0;
-        msgDesiredAngleDU.point.y = UasMath::ConvertRad2Deg(pitch_rads) * 10.0;
-        msgDesiredAngleDU.point.z = UasMath::ConvertRad2Deg(yaw_rads) * 10.0;
+        geometry_msgs::PointStamped msgDesiredAngleDeg;	
+        msgDesiredAngleDeg.point.x = UasMath::ConvertRad2Deg(roll_rads);
+        msgDesiredAngleDeg.point.y = UasMath::ConvertRad2Deg(pitch_rads);
+        msgDesiredAngleDeg.point.z = UasMath::ConvertRad2Deg(yaw_rads);
         
-        msgDesiredAngleDU.header = current.pose.header; //send the same time stamp information that was on the apriltags message to the PID node
+        msgDesiredAngleDeg.header = current.pose.header; //send the same time stamp information that was on the apriltags message to the PID node
         
-        _GimbalAnglePub.publish(msgDesiredAngleDU);
+        _GimbalAnglePub.publish(msgDesiredAngleDeg);
                 
         std::stringstream ss ;
         
@@ -405,18 +395,92 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray tag_detect
             << "Target Pos(x y z): "    << targetUtmPosition.x << ","
                                         << targetUtmPosition.y << ","
                                         << targetUtmPosition.z << std::endl
-            << "Desired AngleDU(y,p,r): "     << msgDesiredAngleDU.point.z << ","
-                                                << msgDesiredAngleDU.point.y << ","
-                                                << msgDesiredAngleDU.point.x << std::endl;
+            << "Desired AngleDeg(y,p,r): "     << msgDesiredAngleDeg.point.z << ","
+                                                << msgDesiredAngleDeg.point.y << ","
+                                                << msgDesiredAngleDeg.point.x << std::endl;
                                                         
         ROS_INFO("%s", ss.str().c_str());
-
-
-
-
     } //closing brace to if(numTags>0)
-    
 }
+
+
+void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
+{
+
+    DJIDrone& drone = *_ptrDrone;
+
+    if (vecTagDetections.detections.empty())
+    {
+        // There is nothing we can do
+        return;
+    }
+
+    // We assume there is only one tag detection.
+    // Even if there are multiple detections, we still take the first tag.
+    
+    apriltags_ros::AprilTagDetection tag = vecTagDetections.detections.at(0);
+               
+    double x = tag.pose.pose.position.x;
+    // since we want camera frame y to be above the camera, but it treats this as negative y
+    double y = -tag.pose.pose.position.y;
+    double z = tag.pose.pose.position.z;
+    
+    double currentTime = tag.pose.header.stamp.nsec/1000000000.0 + tag.pose.header.stamp.sec;
+    
+    
+    // double rollDeg = 0;
+ 
+    // for exaplanation of calculations, see diagram in Aaron Ward's July 20 report
+    // pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); 
+    //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
+    double pitchDeg = UasMath::ConvertRad2Deg(atan2(y, z));
+
+    // yaw_rads = acos( deltaNorth / distance_Meters );
+    // turns out acos can't be used, since it doesn't do enough to specify the quadrant. Use
+ 
+    double yawDeg = UasMath::ConvertRad2Deg(atan2(x, z)); 
+    //remember north is the x axis, east is the y axis
+    
+        
+    geometry_msgs::PointStamped msgDesiredAngleDeg;	
+    msgDesiredAngleDeg.point.x = 0;
+    msgDesiredAngleDeg.point.y = drone.gimbal.pitch + pitchDeg;
+    msgDesiredAngleDeg.point.z = drone.gimbal.yaw + yawDeg;
+    
+    //send the same time stamp information that was on the apriltags message to gimbal_control
+    msgDesiredAngleDeg.header = tag.pose.header; 
+    
+    _GimbalAnglePub.publish(msgDesiredAngleDeg);
+     
+                
+    std::stringstream ss ;
+    
+    ss  << std::fixed << std::setprecision(7) << std::endl
+        << "Time: " << ros::Time::now().toSec() << std::endl
+        << "Tag Distance(x,y,z): "  << x << ","
+                                    << y << ","
+                                    << z << "," << std::endl
+        << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
+                                    << drone.gimbal.pitch << ","
+                                    << drone.gimbal.roll << "," << std::endl
+        << "Desired Angle Deg(y,p,r): " << msgDesiredAngleDeg.point.z << ","
+                                        << msgDesiredAngleDeg.point.y << ","
+                                        << msgDesiredAngleDeg.point.x << std::endl;
+                                                    
+    ROS_INFO("%s", ss.str().c_str());
+}
+
+
+
+
+void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
+{
+    // PredictDesiredGimbalAngle(vecTagDetections);
+   
+    FindDesiredGimbalAngle(vecTagDetections);
+
+}
+
 
 
 int main(int argc, char **argv)
