@@ -49,12 +49,12 @@ PidController::~PidController()
 }
 
 
-double PidController::GetPlantInput(double dDesiredAngleDU, 
+double PidController::GetPlantInput(double dDesiredAngleDeg, 
                                     double dGimbalAngleDeg)
 {
     
-    return m_bIsIntelligentControl ? RunIntelligentControl(dDesiredAngleDU, dGimbalAngleDeg)
-                                   : RunNormalControl(dDesiredAngleDU, dGimbalAngleDeg);       
+    return m_bIsIntelligentControl ? RunIntelligentControl(dDesiredAngleDeg, dGimbalAngleDeg)
+                                   : RunNormalControl(dDesiredAngleDeg, dGimbalAngleDeg);       
     
 }
 
@@ -86,7 +86,7 @@ void PidController::ConstructorHelper()
     
 }
 
-double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimbalAngleDeg)
+double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGimbalAngleDeg)
 {
      
     // 1. The gimbal reading (dGimbalAngleDeg) is in [-180, 180]
@@ -121,7 +121,7 @@ double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimb
     }
         
     // Normalize desired angle so that the difference between the two is always less than |180.0|
-    double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDU/10,                  
+    double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDeg,                  
                                                                dActualGimbalAngleDeg);   
 
 
@@ -149,7 +149,7 @@ double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimb
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
                 << ros::Time::now().toSec() << "," 
-                << dDesiredAngleDU << "," 
+                << dDesiredAngleDeg << "," 
                 << dNormalizedDesiredAngleDeg << "," 
                 << dAdjustedDesiredAngleDeg << "," 
                 << dErrorDU << "," 
@@ -161,12 +161,12 @@ double PidController::RunIntelligentControl(double dDesiredAngleDU, double dGimb
     
 }
     
-double PidController::RunNormalControl(double dDesiredAngleDU, double dGimbalAngleDeg)
+double PidController::RunNormalControl(double dDesiredAngleDeg, double dGimbalAngleDeg)
 {     
     // The gimbal reading (dGimbalAngleDeg) is in (-180, 180].      
 
     // Normalize desired angle so that the desired angle is always in (-180, 180].
-    double dNormalizedDesiredAngleDeg = NormalizeAngleDeg(dDesiredAngleDU/10);   
+    double dNormalizedDesiredAngleDeg = NormalizeAngleDeg(dDesiredAngleDeg);   
     
 
     double dErrorDU = (dNormalizedDesiredAngleDeg - dGimbalAngleDeg) * 10;
@@ -178,7 +178,7 @@ double PidController::RunNormalControl(double dDesiredAngleDU, double dGimbalAng
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
                 << ros::Time::now().toSec() << "," 
-                << dDesiredAngleDU << "," 
+                << dDesiredAngleDeg << "," 
                 << dNormalizedDesiredAngleDeg << "," 
                 // The following line should be adjusted desired angle,
                 // but in this case it is the same as normalized angle.
@@ -207,8 +207,6 @@ double PidController::NormalizeAngleDeg(double dAngleDeg)
           
                          
 
-
-
 //nonmember methods
 ostream& operator<<(ostream& os, PidController& pid)
 {
@@ -217,71 +215,3 @@ ostream& operator<<(ostream& os, PidController& pid)
 
 
 
-
-	
-	
-	/*
-
-
-
-double getRequiredVelocityPID_yaw ( double desiredAngle_djiUnits, 
-                                    double currentAngle_djiUnits, 
-                                    int signOfMovement,
-                                    // make positive if you started traveling in positive direction, 
-                                    // negative otherwise
-                                    bool& isUnwinding, 
-                                    double tolerance_DjiUnits,
-                                    double latest_dt,
-                                    PIDController * pidInstance)
-{
-
-    double currentError = desiredAngle_djiUnits - currentAngle_djiUnits;
-    bool needToUnwind = needToUniwndGimbal (desiredAngle_djiUnits,
-                                            currentAngle_djiUnits, 
-                                            signOfMovement, 
-                                            tolerance_DjiUnits, 
-                                            false);
-
-    if (needToUnwind == false && isUnwinding == false)
-    {
-        currentError = limitAngleToPi_DjiUnits(currentError);
-    } //uncomment this if you aren't limiting the angles to avoid rotations of more than 180 degrees
-    else if (needToUnwind == true || isUnwinding == true) 
-        //the isUnwinding prevents it from ceasing to unwind partway through, which causes oscillations 
-    {    
-        //testt = true;
-        if(isUnwinding == false)
-        {
-            isUnwinding = true;
-        }
-
-        if (signOfMovement >= 1 && needToUnwind == true)
-        {
-            while(currentError >= 0.0) 
-            {
-                currentError -= 3600;
-            }
-        }
-        else if (signOfMovement <= -1)
-        {
-            while(currentError <= 0.0) 
-            {
-                currentError += 3600;
-            }
-        }             
-        
-        //if it's gone too far. 
-        // Too far and sign = 1 means it's gone too far clockwise, 
-        // too far and sign = -1 means it's gone too far counterclockwise. 
-        // So if the starting sign was 1, we want to always return a negative value if it's gone too far. 
-        // If the starting sign was -1, we want to always return a positive value if it's gone too far.  
-        // With the current set up, sign of the error is the sign of velocity, 
-        // so we'd always want a negative error if starting sign was 1. 
-    }
-
-	double requiredVelocity =  (*pidInstance).calculateDesiredVelocity(currentError, latest_dt);
-   
-    return requiredVelocity;
-	
-}
-		*/

@@ -17,7 +17,7 @@
     <node name="gimbal_control" pkg="gimbal_control" type="gimbal_control" output="screen" cwd="node">
         <param name="gimbal_control_time_step_sec" type="double" value="0.02" />
     </node>
-    <node name="rosbog_record_desired_angles" pkg="rosbag" type="record" args="-o /home/ubuntu/logs/desired_angles /gimbal_control/desired_gimbal_pose" >
+    <node name="rosbog_record_desired_angles" pkg="rosbag" type="record" args="-o /home/ubuntu/bags/desired_angles /gimbal_control/desired_gimbal_pose" >
     </node>
     	
 

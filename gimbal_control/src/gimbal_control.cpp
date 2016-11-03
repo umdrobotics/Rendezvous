@@ -11,7 +11,7 @@
 
 using namespace std;
 
-geometry_msgs::PointStamped _msgDesiredGimbalPoseDU = geometry_msgs::PointStamped();
+geometry_msgs::PointStamped _msgDesiredGimbalPoseDeg = geometry_msgs::PointStamped();
 DJIDrone* _ptrDrone;
 PidController *_roll_rate_controller;
 PidController *_pitch_rate_controller;
@@ -109,27 +109,27 @@ void timerCallback(const ros::TimerEvent&)
 {
     DJIDrone& drone = *_ptrDrone;
     
-    double dMeasuredTimeSec = _msgDesiredGimbalPoseDU.header.stamp.nsec/1000000000.0
-                            + _msgDesiredGimbalPoseDU.header.stamp.sec;
+    double dMeasuredTimeSec = _msgDesiredGimbalPoseDeg.header.stamp.nsec/1000000000.0
+                            + _msgDesiredGimbalPoseDeg.header.stamp.sec;
                             
-    double yawRateInput = 
-        _yaw_rate_controller->GetPlantInput(_msgDesiredGimbalPoseDU.point.z, drone.gimbal.yaw);
+    double yawRateInputDU = 
+        _yaw_rate_controller->GetPlantInput(_msgDesiredGimbalPoseDeg.point.z, drone.gimbal.yaw);
     
-    double pitchRateInput = 
-        _pitch_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDU.point.y, drone.gimbal.pitch);
+    double pitchRateInputDU = 
+        _pitch_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDeg.point.y, drone.gimbal.pitch);
     
-    double rollRateInput = 
-        _roll_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDU.point.x, drone.gimbal.roll);
+    double rollRateInputDU = 
+        _roll_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDeg.point.x, drone.gimbal.roll);
            
-    drone.gimbal_speed_control(rollRateInput, pitchRateInput, yawRateInput);
+    drone.gimbal_speed_control(rollRateInputDU, pitchRateInputDU, yawRateInputDU);
 }
 
-void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPoseDU)
+void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPoseDeg)
 {
-    _msgDesiredGimbalPoseDU = *msgDesiredPoseDU;
-    ROS_INFO_STREAM("Desired Angle (DU) Roll:" << _msgDesiredGimbalPoseDU.point.x 
-                            << " Pitch:" << _msgDesiredGimbalPoseDU.point.y 
-                            << " Yaw:" <<  _msgDesiredGimbalPoseDU.point.z);
+    _msgDesiredGimbalPoseDeg = *msgDesiredPoseDeg;
+    ROS_INFO_STREAM("Desired Angle (Deg) Roll:" << _msgDesiredGimbalPoseDeg.point.x 
+                            << " Pitch:" << _msgDesiredGimbalPoseDeg.point.y 
+                            << " Yaw:" <<  _msgDesiredGimbalPoseDeg.point.z);
 }
 
 int main(int argc, char **argv)
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "gimbal_control");
     ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe("/gimbal_control/desired_gimbal_pose", 1000, listernerCallback);
+    ros::Subscriber sub = nh.subscribe("/gimbal_control/desired_gimbal_pose", 10, listernerCallback);
 
     double dTimeStepSec = 0.02;
     nh.getParam("/gimbal_control/gimbal_control_time_step_sec", dTimeStepSec);   
@@ -196,9 +196,9 @@ int main(int argc, char **argv)
     ROS_INFO_STREAM(*_pitch_rate_controller);
     ROS_INFO_STREAM(*_roll_rate_controller);
     
-    _msgDesiredGimbalPoseDU.point.x = 0.0;
-    _msgDesiredGimbalPoseDU.point.y = -250.0;
-    _msgDesiredGimbalPoseDU.point.z = 0.0;
+    _msgDesiredGimbalPoseDeg.point.x = 0.0;
+    _msgDesiredGimbalPoseDeg.point.y = -10.0;
+    _msgDesiredGimbalPoseDeg.point.z = 0.0;
  
     // Gimbal Angle Tests
     DJIDrone& drone = *_ptrDrone;

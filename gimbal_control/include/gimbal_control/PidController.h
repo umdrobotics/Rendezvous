@@ -51,14 +51,14 @@ private: // methods
     * Returns the plant input  
     * Good for yaw control
     */
-    double RunIntelligentControl(double dDesiredAngleDU, double dGimbalAngleDeg);
+    double RunIntelligentControl(double dDesiredAngleDeg, double dGimbalAngleDeg);
     
     /**
     * RunNormalControl
     * Returns the plant input  
     * Good for pitch and roll control
     */
-    double RunNormalControl(double dDesiredAngleDU, double dGimbalAngleDeg);
+    double RunNormalControl(double dDesiredAngleDeg, double dGimbalAngleDeg);
     
 private: // NOT IMPLEMENTED
 	PidController(const PidController&);  // copy constructor
@@ -80,9 +80,9 @@ public: // methods
     
     virtual ~PidController();
     
-    double CalculateDesiredVelocity(double error_DU, double timeSinceLastStep); 
+    //double CalculateDesiredVelocity(double error_DU, double timeSinceLastStep); 
     
-    double GetPlantInput(double dDesiredAngleDU, double dGimbalAngleDeg);
+    double GetPlantInput(double dDesiredAngleDeg, double dGimbalAngleDeg);
 
     std::ostream& GetString(std::ostream& os);
     
