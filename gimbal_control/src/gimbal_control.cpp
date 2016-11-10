@@ -35,11 +35,11 @@ void SigintHandler(int sig)
 
 void RunShortAngleTests(DJIDrone& drone)
 {    
-    // set roll to -300 DU = -15 degrees with the time to take 1 sec.
+    // set roll to -15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set roll to 300 DU = 15 degrees with the time to take 1 sec.
+    // set roll to 15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
@@ -47,22 +47,22 @@ void RunShortAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set pitch to -450 DU (-45 degreed pitch down)with the time to take 1 sec.
+    // set pitch to -15 degreed (pitch down) with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, -150.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set pitch to 0 DU (0 degreed pitch down)with the time to take 1 sec.
+    // set pitch to 0 degreed with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 }
 
 void RunInitialAngleTests(DJIDrone& drone)
 {
-    // set yaw to 1790 DU (= 179 degrees counterclockwise) with  the time to take 1 sec.
+    // set yaw to 90 degrees (counterclockwise) with  the time to take 1 sec.
     drone.gimbal_angle_control(0.0, 0.0, 900.00, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set yaw to -1790 DU (= -179 degrees clockwise) with  the time to take 1 sec.  
+    // set yaw to -90 degrees (clockwise) with  the time to take 1 sec.  
     drone.gimbal_angle_control(0.0, 0.0, -900.0, 10.0);     
     ros::Duration(1.0).sleep();
 
@@ -70,11 +70,11 @@ void RunInitialAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set yaw to 100 DU (= 10 degrees clockwise) with  the time to take 1 sec.  
+    // set yaw to 20 degrees with  the time to take 1 sec.  
     drone.gimbal_angle_control(0.0, 0.0, 200.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set yaw to -100 DU (= -10 degrees clockwise) with  the time to take 1 sec.  
+    // set yaw to -20 degrees with  the time to take 1 sec.  
     drone.gimbal_angle_control(0.0, 0.0, -200.0, 10.0);    
     ros::Duration(1.0).sleep();
 
@@ -82,11 +82,11 @@ void RunInitialAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set roll to -300 DU = -15 degrees with the time to take 1 sec.
+    // set roll to -15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set roll to 300 DU = 15 degrees with the time to take 1 sec.
+    // set roll to 15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
@@ -94,11 +94,11 @@ void RunInitialAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set pitch to -450 DU (-45 degreed pitch down)with the time to take 1 sec.
+    // set pitch to -45 degrees (pitch down) with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, -450.0, 0.0, 10.0);    
     ros::Duration(2.0).sleep();
 
-    // set pitch to -900 DU (-90 degreed pitch down)with the time to take 1 sec.
+    // set pitch to 0 degree (pitch down) with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(2.0).sleep();
 
