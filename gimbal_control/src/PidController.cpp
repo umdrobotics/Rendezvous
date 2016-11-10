@@ -7,6 +7,9 @@
 #define GIMBAL_SPEED_LIMIT_DU 1800.0
 #define DEFAULT_LOG_FILE_NAME "/PidController_"
 
+#define INITIAL_VALUE = 100000.0 // initial static value which is unrealistic.
+
+ 
 using namespace std;
 
 // public methods
@@ -16,13 +19,12 @@ PidController::PidController()
                             , m_dKp(0.0)
                             , m_dKd(0.0)
                             , m_dKi(0.0)
-                            , m_dTimeStepSec(0.05)
+                            , m_dTimeStepSec(0.02)
                             , m_dDeadZoneAngleDU(10)
                             , m_bIsIntelligentControl(false)
 {    
     ConstructorHelper();   
 }
-
 
 PidController::PidController(std::string sID, 
                             double kp, 
@@ -48,16 +50,13 @@ PidController::~PidController()
     ROS_INFO("Destructing PidController.");
 }
 
-
 double PidController::GetPlantInput(double dDesiredAngleDeg, 
                                     double dGimbalAngleDeg)
 {
     
     return m_bIsIntelligentControl ? RunIntelligentControl(dDesiredAngleDeg, dGimbalAngleDeg)
                                    : RunNormalControl(dDesiredAngleDeg, dGimbalAngleDeg);       
-    
 }
-
 
 ostream& PidController::GetString(ostream& os)
 {
@@ -96,10 +95,10 @@ double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGim
     //    the gimbal angle could be 181 degrees, which is angle measurement of -179.
     //    If it happens we don't want the gimbal rotate 360 degrees to be 180. 
 
-    static double dActualGimbalAngleDeg = 10000.0; // set it with an unrealistic number.
+    static double dActualGimbalAngleDeg = INITIAL_VALUE; // set it with an unrealistic number.
+    static double dPrevGimbalAngleDeg = INITIAL_VALUE;   // set it with an unrealistic number.
     
-    
-    if (dActualGimbalAngleDeg == 10000.0)
+    if (INITIAL_VALUE == dActualGimbalAngleDeg)   // the very first time this if statement is called.
     {
         dActualGimbalAngleDeg = dGimbalAngleDeg;
     }
@@ -119,7 +118,7 @@ double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGim
     {
         dActualGimbalAngleDeg = dGimbalAngleDeg; 
     }
-        
+    
     // Normalize desired angle so that the difference between the two is always less than |180.0|
     double dNormalizedDesiredAngleDeg = NormalizeAngleAboutDeg(dDesiredAngleDeg,                  
                                                                dActualGimbalAngleDeg);   
@@ -139,12 +138,19 @@ double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGim
         // the actual angle could be too small. So we need to unwind. 
         dAdjustedDesiredAngleDeg += 360.0;
     }
-   
-    double dErrorDU = (dAdjustedDesiredAngleDeg - dActualGimbalAngleDeg) * 10;
+
+    if (INITIAL_VALUE == dPrevGimbalAngleDeg) // the very first time this if statement is called.
+    {
+        dPrevGimbalAngleDeg = dActualGimbalAngleDeg;
+    }
+
+       
+    double dErrorDU = 10.0 * (dAdjustedDesiredAngleDeg - dActualGimbalAngleDeg);
+    double dErrorRateDU = 10.0 * (dActualGimbalAngleDeg - dPrevGimbalAngleDeg) / m_dTimeStepSec;
     
     double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
                         0.0 : 
-                        std::max( std::min( m_dKp * dErrorDU, GIMBAL_SPEED_LIMIT_DU), 
+                        std::max( std::min( m_dKp*dErrorDU + m_dKd*dErrorRateDU, GIMBAL_SPEED_LIMIT_DU), 
                                     -GIMBAL_SPEED_LIMIT_DU);
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
@@ -156,6 +162,7 @@ double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGim
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;
 
+    dPrevGimbalAngleDeg = dActualGimbalAngleDeg;
     return plantInput;		
     
     
@@ -165,15 +172,24 @@ double PidController::RunNormalControl(double dDesiredAngleDeg, double dGimbalAn
 {     
     // The gimbal reading (dGimbalAngleDeg) is in (-180, 180].      
 
+
+    static double dPrevGimbalAngleDeg = INITIAL_VALUE;   // set it with an unrealistic number.
+    
+    if (INITIAL_VALUE == dPrevGimbalAngleDeg) // the very first time this if statement is called.
+    {
+        dPrevGimbalAngleDeg = dGimbalAngleDeg;
+    }
+    
     // Normalize desired angle so that the desired angle is always in (-180, 180].
     double dNormalizedDesiredAngleDeg = NormalizeAngleDeg(dDesiredAngleDeg);   
     
 
-    double dErrorDU = (dNormalizedDesiredAngleDeg - dGimbalAngleDeg) * 10;
-    
+    double dErrorDU = 10.0 * (dNormalizedDesiredAngleDeg - dGimbalAngleDeg);
+    double dErrorRateDU = 10.0 * (dGimbalAngleDeg - dPrevGimbalAngleDeg) / m_dTimeStepSec;
+        
     double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
                         0.0 : 
-                        std::max( std::min( m_dKp * dErrorDU, GIMBAL_SPEED_LIMIT_DU), 
+                        std::max( std::min( m_dKp*dErrorDU + m_dKd*dErrorRateDU, GIMBAL_SPEED_LIMIT_DU), 
                                     -GIMBAL_SPEED_LIMIT_DU);
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
@@ -186,6 +202,8 @@ double PidController::RunNormalControl(double dDesiredAngleDeg, double dGimbalAn
                 << dErrorDU << "," 
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;
+
+    dPrevGimbalAngleDeg = dGimbalAngleDeg;
 
     return plantInput;		
 }
