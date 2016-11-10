@@ -7,8 +7,6 @@
 #include <sstream>
 #include <iostream>
 
-#define YAW_LIMIT_DU 3100  // +- ~315 degrees
-
 using namespace std;
 
 geometry_msgs::PointStamped _msgDesiredGimbalPoseDeg = geometry_msgs::PointStamped();
@@ -153,7 +151,7 @@ int main(int argc, char **argv)
     nh.getParam("/YawRatePidCtrlParams/kd", yawrate_kd);
     nh.getParam("/YawRatePidCtrlParams/ki", yawrate_ki);  
 
-    double deadZoneAngleDU = 10.0; // 1 degree
+    double deadZoneAngleDeg = 1.0; // 1 degree
     bool isIntelligentControl = true;
 
     _yaw_rate_controller = new PidController("YawRateCtrl", 
@@ -161,7 +159,7 @@ int main(int argc, char **argv)
                                             yawrate_kd, 
                                             yawrate_ki,
                                             dTimeStepSec,
-                                            deadZoneAngleDU,
+                                            deadZoneAngleDeg,
                                             isIntelligentControl);
         
     double pitchrate_kp = 0.0;
