@@ -1,16 +1,16 @@
 <launch>
     <group ns="YawRatePidCtrlParams">
-        <param name="kp" type="double" value="5.0"/>
+        <param name="kp" type="double" value="3.0"/>
         <param name="kd" type="double" value="0.0"/>
         <param name="ki" type="double" value="0.0"/>
     </group>
     <group ns="PitchRatePidCtrlParams">
-        <param name="kp" type="double" value="5.0"/>
+        <param name="kp" type="double" value="2.0"/>
         <param name="kd" type="double" value="0.0"/>
         <param name="ki" type="double" value="0.0"/>
     </group>
     <group ns="RollRatePidCtrlParams">        
-        <param name="kp" type="double" value="5.0"/>
+        <param name="kp" type="double" value="0.0"/>
         <param name="kd" type="double" value="0.0"/>
         <param name="ki" type="double" value="0.0"/>
     </group>
