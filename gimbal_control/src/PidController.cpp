@@ -19,8 +19,13 @@ PidController::PidController()
                             , m_dKp(0.0)
                             , m_dKd(0.0)
                             , m_dKi(0.0)
+<<<<<<< HEAD
                             , m_dTimeStepSec(0.02)
                             , m_dDeadZoneAngleDU(10)
+=======
+                            , m_dTimeStepSec(0.05)
+                            , m_dDeadZoneAngleDeg(1)
+>>>>>>> f8af97e21d9e8585de5769480f5f1e672dd13878
                             , m_bIsIntelligentControl(false)
 {    
     ConstructorHelper();   
@@ -38,7 +43,7 @@ PidController::PidController(std::string sID,
                             , m_dKd(kd)
                             , m_dKi(ki)
                             , m_dTimeStepSec(timeStepSec)
-                            , m_dDeadZoneAngleDU(deadZoneAngleDU)
+                            , m_dDeadZoneAngleDeg(deadZoneAngleDeg)
                             , m_bIsIntelligentControl(isIntelligentControl)
 {
     ConstructorHelper();   
@@ -81,7 +86,7 @@ void PidController::ConstructorHelper()
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
-    m_ofslog << "#Time,Desired Angle (DU),Normlized Desired(Deg), Adj Desired(Deg), Error (DU), Gimbal Angle(Deg), PlantInput (DU)" << endl;
+    m_ofslog << "#Time,Desired Angle (Deg),Normlized Desired(Deg), Adj Desired(Deg), Error (Deg), Gimbal Angle(Deg), PlantInput (DU)" << endl;
     
 }
 
@@ -148,7 +153,7 @@ double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGim
     double dErrorDU = 10.0 * (dAdjustedDesiredAngleDeg - dActualGimbalAngleDeg);
     double dErrorRateDU = 10.0 * (dActualGimbalAngleDeg - dPrevGimbalAngleDeg) / m_dTimeStepSec;
     
-    double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
+    double plantInputDU = (abs(dErrorDeg) < m_dDeadZoneAngleDeg) ? 
                         0.0 : 
                         std::max( std::min( m_dKp*dErrorDU + m_dKd*dErrorRateDU, GIMBAL_SPEED_LIMIT_DU), 
                                     -GIMBAL_SPEED_LIMIT_DU);
@@ -158,9 +163,9 @@ double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGim
                 << dDesiredAngleDeg << "," 
                 << dNormalizedDesiredAngleDeg << "," 
                 << dAdjustedDesiredAngleDeg << "," 
-                << dErrorDU << "," 
+                << dErrorDeg << "," 
                 << dGimbalAngleDeg << "," 
-                << plantInput << endl;
+                << plantInputDU << endl;
 
     dPrevGimbalAngleDeg = dActualGimbalAngleDeg;
     return plantInput;		
@@ -184,12 +189,20 @@ double PidController::RunNormalControl(double dDesiredAngleDeg, double dGimbalAn
     double dNormalizedDesiredAngleDeg = NormalizeAngleDeg(dDesiredAngleDeg);   
     
 
+<<<<<<< HEAD
     double dErrorDU = 10.0 * (dNormalizedDesiredAngleDeg - dGimbalAngleDeg);
     double dErrorRateDU = 10.0 * (dGimbalAngleDeg - dPrevGimbalAngleDeg) / m_dTimeStepSec;
         
     double plantInput = (abs(dErrorDU) < m_dDeadZoneAngleDU) ? 
                         0.0 : 
                         std::max( std::min( m_dKp*dErrorDU + m_dKd*dErrorRateDU, GIMBAL_SPEED_LIMIT_DU), 
+=======
+    double dErrorDeg = (dNormalizedDesiredAngleDeg - dGimbalAngleDeg);
+    
+    double plantInput = (abs(dErrorDeg) < m_dDeadZoneAngleDeg) ? 
+                        0.0 : 
+                        std::max( std::min( m_dKp * dErrorDeg * 10, GIMBAL_SPEED_LIMIT_DU), 
+>>>>>>> f8af97e21d9e8585de5769480f5f1e672dd13878
                                     -GIMBAL_SPEED_LIMIT_DU);
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
@@ -199,7 +212,7 @@ double PidController::RunNormalControl(double dDesiredAngleDeg, double dGimbalAn
                 // The following line should be adjusted desired angle,
                 // but in this case it is the same as normalized angle.
                 << dNormalizedDesiredAngleDeg << ","   
-                << dErrorDU << "," 
+                << dErrorDeg << "," 
                 << dGimbalAngleDeg << "," 
                 << plantInput << endl;
 

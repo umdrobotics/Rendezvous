@@ -7,8 +7,6 @@
 #include <sstream>
 #include <iostream>
 
-#define YAW_LIMIT_DU 3100  // +- ~315 degrees
-
 using namespace std;
 
 geometry_msgs::PointStamped _msgDesiredGimbalPoseDeg = geometry_msgs::PointStamped();
@@ -35,11 +33,11 @@ void SigintHandler(int sig)
 
 void RunShortAngleTests(DJIDrone& drone)
 {    
-    // set roll to -300 DU = -15 degrees with the time to take 1 sec.
+    // set roll to -15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set roll to 300 DU = 15 degrees with the time to take 1 sec.
+    // set roll to 15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
@@ -47,22 +45,22 @@ void RunShortAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set pitch to -450 DU (-45 degreed pitch down)with the time to take 1 sec.
+    // set pitch to -15 degreed (pitch down) with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, -150.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set pitch to 0 DU (0 degreed pitch down)with the time to take 1 sec.
+    // set pitch to 0 degreed with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 }
 
 void RunInitialAngleTests(DJIDrone& drone)
 {
-    // set yaw to 1790 DU (= 179 degrees counterclockwise) with  the time to take 1 sec.
+    // set yaw to 90 degrees (counterclockwise) with  the time to take 1 sec.
     drone.gimbal_angle_control(0.0, 0.0, 900.00, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set yaw to -1790 DU (= -179 degrees clockwise) with  the time to take 1 sec.  
+    // set yaw to -90 degrees (clockwise) with  the time to take 1 sec.  
     drone.gimbal_angle_control(0.0, 0.0, -900.0, 10.0);     
     ros::Duration(1.0).sleep();
 
@@ -70,11 +68,11 @@ void RunInitialAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set yaw to 100 DU (= 10 degrees clockwise) with  the time to take 1 sec.  
+    // set yaw to 20 degrees with  the time to take 1 sec.  
     drone.gimbal_angle_control(0.0, 0.0, 200.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set yaw to -100 DU (= -10 degrees clockwise) with  the time to take 1 sec.  
+    // set yaw to -20 degrees with  the time to take 1 sec.  
     drone.gimbal_angle_control(0.0, 0.0, -200.0, 10.0);    
     ros::Duration(1.0).sleep();
 
@@ -82,11 +80,11 @@ void RunInitialAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set roll to -300 DU = -15 degrees with the time to take 1 sec.
+    // set roll to -15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set roll to 300 DU = 15 degrees with the time to take 1 sec.
+    // set roll to 15 degrees with the time to take 1 sec.
     drone.gimbal_angle_control(150, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
@@ -94,11 +92,11 @@ void RunInitialAngleTests(DJIDrone& drone)
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(1.0).sleep();
 
-    // set pitch to -450 DU (-45 degreed pitch down)with the time to take 1 sec.
+    // set pitch to -45 degrees (pitch down) with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, -450.0, 0.0, 10.0);    
     ros::Duration(2.0).sleep();
 
-    // set pitch to -900 DU (-90 degreed pitch down)with the time to take 1 sec.
+    // set pitch to 0 degree (pitch down) with the time to take 1 sec.
     drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
     ros::Duration(2.0).sleep();
 
@@ -153,7 +151,7 @@ int main(int argc, char **argv)
     nh.getParam("/YawRatePidCtrlParams/kd", yawrate_kd);
     nh.getParam("/YawRatePidCtrlParams/ki", yawrate_ki);  
 
-    double deadZoneAngleDU = 10.0; // 1 degree
+    double deadZoneAngleDeg = 1.0; // 1 degree
     bool isIntelligentControl = true;
 
     _yaw_rate_controller = new PidController("YawRateCtrl", 
@@ -161,7 +159,7 @@ int main(int argc, char **argv)
                                             yawrate_kd, 
                                             yawrate_ki,
                                             dTimeStepSec,
-                                            deadZoneAngleDU,
+                                            deadZoneAngleDeg,
                                             isIntelligentControl);
         
     double pitchrate_kp = 0.0;

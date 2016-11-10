@@ -20,7 +20,7 @@ private: // members
 	
 	double m_dTimeStepSec;
     
-    double m_dDeadZoneAngleDU; //DJI Unit anything less than 1 degrees, we don't care
+    double m_dDeadZoneAngleDeg; //DJI Unit anything less than 1 degrees, we don't care
 	
     // If m_bIsIntelligentControl is false, the gimbal will rotate only from -180 to 180 degrees.
     // If m_bIsIntelligentControl is true, the gimbal may rotate from -315 to 315 degrees.
@@ -73,7 +73,7 @@ public: // methods
                     double      kd = 0.0, 
                     double      ki = 0.0,
                     double      timeStepSec = 0.02,
-                    double      deadZoneAngleDU = 10.0,
+                    double      deadZoneAngleDeg = 1.0,
                     bool        isIntelligentControl = false
                     );
     
@@ -85,25 +85,7 @@ public: // methods
     double GetPlantInput(double dDesiredAngleDeg, double dGimbalAngleDeg);
 
     std::ostream& GetString(std::ostream& os);
-    
-    
-/*    
-				
-    double getRequiredVelocityPID ( double desiredAngle_djiUnits, 
-                                    double currentAngle_djiUnits,
-                                    double latest_dt);
-                                
-                                
-    double getRequiredVelocityPID_yaw ( double desiredAngle_DU, 
-                                        double currentAngle_DU, 
-                                        int signOfMovement,
-                                        // make positive if you started traveling in positive direction, 
-                                        // negative otherwise
-                                        bool& isUnwinding, 
-                                        double tolerance_DjiUnits,
-                                        double latest_dt);
 
-          */                          											
 };
 
 // non-member methods
