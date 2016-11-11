@@ -11,14 +11,16 @@ using namespace std;
 // public methods
 
 
-// Navigation::Navigation()
-// {     
-// }
+Navigation::Navigation()
+{     
+    ros::NodeHandle nh;
+    m_ptrDrone = new DJIDrone(nh);
 
-Navigation::Navigation(DJIDrone* ptrDrone)
-: m_ptrDrone(ptrDrone)                              
+}
+
+Navigation::Navigation(ros::NodeHandle& nh)
 {    
-    m_drone = &ptrDrone;
+    m_ptrDrone = new DJIDrone(nh);
 }
 
 
@@ -32,6 +34,8 @@ void Navigation::RunNavigation(void)
     DisplayMainMenu();
     int inputValue;
     
+    DJIDrone& drone = *m_ptrDrone;
+    
     while(1)
     {
         ros::spinOnce();
@@ -41,24 +45,24 @@ void Navigation::RunNavigation(void)
         switch (inputValue)
         {
             case 1:
-				/* SDK version query*/
-				drone->check_version();
+                /* SDK version query*/
+				drone.check_version();
 				break;
             case 2:
                 /* request control ability*/
-                drone->request_sdk_permission_control();
+                drone.request_sdk_permission_control();
                 break;
             case 3:
                 /* release control ability*/
-                drone->release_sdk_permission_control();
+                drone.release_sdk_permission_control();
                 break;
             case 4:
                 /* take off */
-                drone->takeoff();
+                drone.takeoff();
                 break;
             case 5:
                 /* landing*/
-                drone->landing();
+                drone.landing();
                 break;
             default:
                 std::cout << "Undefined input value.";

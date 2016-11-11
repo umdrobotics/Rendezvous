@@ -2,14 +2,11 @@
 #include "Navigation/Navigation.h"
 #include "std_msgs/String.h"
 #include <geometry_msgs/PointStamped.h>
-#include <dji_sdk/dji_drone.h>
 #include <signal.h>
 #include <sstream>
 #include <iostream>
 
-using namespace std;
-
-DJIDrone* _ptrDrone;
+// using namespace std;
 
 void SigintHandler(int sig)
 {
@@ -23,15 +20,6 @@ void SigintHandler(int sig)
     ros::shutdown();
 }
 
-void RunInitialAngleTests(DJIDrone& drone)
-{
-
-}
-
-void timerCallback(const ros::TimerEvent&)
-{
-    DJIDrone& drone = *_ptrDrone;
-}
 
 void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPoseDeg)
 {
@@ -46,22 +34,10 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "navigation_node");
     ros::NodeHandle nh;
-
-    _ptrDrone = new DJIDrone(nh);
-
-    // Gimbal Angle Tests
-    DJIDrone& drone = *_ptrDrone;
-        
-    // double dTimeStepSec = 0.1;
-
-    //ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
     
-    Navigation navigator(_ptrDrone);
-    
+    Navigation navigator(nh);    
     navigator.RunNavigation();
-    
-    
-    
+        
     signal(SIGINT, SigintHandler);
     
     ros::spin();

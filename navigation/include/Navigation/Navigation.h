@@ -14,7 +14,7 @@ public: // methode
 
     Navigation();
     
-    Navigation(DJIDrone* ptrDrone);
+    Navigation(ros::NodeHandle& nh);
 		
     virtual ~Navigation();
     
@@ -23,10 +23,10 @@ public: // methode
     std::ostream& GetString(std::ostream& os);
 
 private: // members
-
-    DJIDrone* m_ptrDrone;
+	
+    	DJIDrone* m_ptrDrone;
 	std::ofstream m_ofslog;
-	DJIDrone& m_drone;
+	
 	
 private: // methods
 	
