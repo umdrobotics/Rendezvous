@@ -214,7 +214,6 @@ double PidController::NormalizeAngleAboutDeg(double dAngleDeg, double dCenter)
     while (dAngleDeg <= -180.0 + dCenter) { dAngleDeg += 360.0; }
     while (dAngleDeg > 180.0 + dCenter)  { dAngleDeg -= 360.0; }
     return dAngleDeg;
-    return dAngleDeg;
 }
 
 double PidController::NormalizeAngleDeg(double dAngleDeg)
