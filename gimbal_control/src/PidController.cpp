@@ -4,10 +4,10 @@
 #include <unistd.h>
 #include <limits>
 
-#define GIMBAL_SPEED_LIMIT_DU 1800.0
+#define GIMBAL_SPEED_LIMIT_DPS 180.0   // 180 degrees per second
 #define DEFAULT_LOG_FILE_NAME "/PidController_"
 
-#define INITIAL_VALUE 100000.0 // initial static value which is unrealistic.
+#define INITIAL_VALUE 10000000.0
  
 using namespace std;
 
@@ -21,6 +21,9 @@ PidController::PidController()
                             , m_dTimeStepSec(0.02)
                             , m_dDeadZoneAngleDeg(10)
                             , m_bIsIntelligentControl(false)
+                            , m_dPrevOutputDeg(0.0)
+                            , m_dPrevErrorDeg(0.0)
+                            , m_bIsPrevValueInitialized(false)
 {    
     ConstructorHelper();   
 }
@@ -39,6 +42,9 @@ PidController::PidController(std::string sID,
                             , m_dTimeStepSec(timeStepSec)
                             , m_dDeadZoneAngleDeg(deadZoneAngleDeg)
                             , m_bIsIntelligentControl(isIntelligentControl)
+                            , m_dPrevOutputDeg(0.0)
+                            , m_dPrevErrorDeg(0.0)
+                            , m_bIsPrevValueInitialized(false)
 {
     ConstructorHelper();   
 }
@@ -80,22 +86,25 @@ void PidController::ConstructorHelper()
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
-    m_ofslog << "#Time,Desired Angle (Deg),Normlized Desired(Deg), Adj Desired(Deg), Error (Deg), Gimbal Angle(Deg), PlantInput (DU)" << endl;
+    m_ofslog << "#Time,Desired Angle(deg),Normlized Desired(deg),Adj Desired(deg),Gimbal Angle(deg),Error(deg),Outut Rate (DPS),Plant Input(DPS)" << endl;
     
 }
 
 double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGimbalAngleDeg)
 {
-     
+    // This method has been designed particularly for yaw control. 
     // 1. The gimbal reading (dGimbalAngleDeg) is in [-180, 180]
-    // 2. We don't want the gimbal rotate ~360 degrees 
-    //    when it is ~179 deg and desired angle is ~181.
-    // 3. When desired angle is 180 and there is a small overshoot or disturbance,
-    //    the gimbal angle could be 181 degrees, which is angle measurement of -179.
-    //    If it happens we don't want the gimbal rotate 360 degrees to be 180. 
-
+    // 2. We don't want the gimbal to try to rotate to 359 degrees instead of -1 degree.
+    
     static double dActualGimbalAngleDeg = INITIAL_VALUE; // set it with an unrealistic number.
-    static double dPrevGimbalAngleDeg = INITIAL_VALUE;   // set it with an unrealistic number.
+        
+    if (!m_bIsPrevValueInitialized)
+    {
+        m_bIsPrevValueInitialized = true;
+        m_dPrevOutputDeg = dGimbalAngleDeg;
+        ROS_INFO("Initialize dPrevGimbalAngle with %f\n", m_dPrevOutputDeg);
+    }
+        
     
     if (INITIAL_VALUE == dActualGimbalAngleDeg)   // the very first time this if statement is called.
     {
@@ -138,32 +147,28 @@ double PidController::RunIntelligentControl(double dDesiredAngleDeg, double dGim
         dAdjustedDesiredAngleDeg += 360.0;
     }
 
-    if (INITIAL_VALUE == dPrevGimbalAngleDeg) // the very first time this if statement is called.
-    {
-        dPrevGimbalAngleDeg = dActualGimbalAngleDeg;
-    }
-
        
-    double dErrorDU = 10.0 * (dAdjustedDesiredAngleDeg - dActualGimbalAngleDeg);
-    double dErrorRateDU = 10.0 * (dActualGimbalAngleDeg - dPrevGimbalAngleDeg) / m_dTimeStepSec;
+    double dErrorDeg = dAdjustedDesiredAngleDeg - dActualGimbalAngleDeg;
+    double dOutputRateDPS = -1.0 * (dActualGimbalAngleDeg - m_dPrevOutputDeg) / m_dTimeStepSec;
     
-    double plantInputDU = (abs(dErrorDU) < m_dDeadZoneAngleDeg*10) ? 
-                        0.0 : 
-                        std::max( std::min( m_dKp*dErrorDU + m_dKd*dErrorRateDU, GIMBAL_SPEED_LIMIT_DU), 
-                                    -GIMBAL_SPEED_LIMIT_DU);
+    double plantInputDPS = (abs(dErrorDeg) < m_dDeadZoneAngleDeg) ? 
+                           0.0 : 
+                           std::max( std::min( m_dKp*dErrorDeg + m_dKd*dOutputRateDPS, GIMBAL_SPEED_LIMIT_DPS), 
+                                    -GIMBAL_SPEED_LIMIT_DPS);
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
                 << ros::Time::now().toSec() << "," 
                 << dDesiredAngleDeg << "," 
                 << dNormalizedDesiredAngleDeg << "," 
                 << dAdjustedDesiredAngleDeg << "," 
-                << dErrorDU << "," 
                 << dGimbalAngleDeg << "," 
-                << plantInputDU << endl;
+                << dErrorDeg << "," 
+                << dOutputRateDPS << ","   
+                << plantInputDPS << endl;
 
-    dPrevGimbalAngleDeg = dActualGimbalAngleDeg;
+    m_dPrevOutputDeg = dActualGimbalAngleDeg;
     
-    return plantInputDU;		
+    return plantInputDPS * 10.0;		
     
     
 }
@@ -172,39 +177,39 @@ double PidController::RunNormalControl(double dDesiredAngleDeg, double dGimbalAn
 {     
     // The gimbal reading (dGimbalAngleDeg) is in (-180, 180].      
 
-
-    static double dPrevGimbalAngleDeg = INITIAL_VALUE;   // set it with an unrealistic number.
-    
-    if (INITIAL_VALUE == dPrevGimbalAngleDeg) // the very first time this if statement is called.
+    if (!m_bIsPrevValueInitialized)
     {
-        dPrevGimbalAngleDeg = dGimbalAngleDeg;
+        m_bIsPrevValueInitialized = true;
+        m_dPrevOutputDeg = dGimbalAngleDeg;
+        ROS_INFO("Initialize dPrevGimbalAngle with %f\n", m_dPrevOutputDeg);
     }
     
     // Normalize desired angle so that the desired angle is always in (-180, 180].
     double dNormalizedDesiredAngleDeg = NormalizeAngleDeg(dDesiredAngleDeg);   
     
-    double dErrorDU = 10.0 * (dNormalizedDesiredAngleDeg - dGimbalAngleDeg);
-    double dErrorRateDU = 10.0 * (dGimbalAngleDeg - dPrevGimbalAngleDeg) / m_dTimeStepSec;
+    double dErrorDeg = dNormalizedDesiredAngleDeg - dGimbalAngleDeg;
+      
+    double dOutputRateDPS = -1.0 * (dGimbalAngleDeg - m_dPrevOutputDeg) / m_dTimeStepSec;
         
-    double plantInputDU = (abs(dErrorDU) < m_dDeadZoneAngleDeg*10) ? 
-                        0.0 : 
-                        std::max( std::min( m_dKp*dErrorDU + m_dKd*dErrorRateDU, GIMBAL_SPEED_LIMIT_DU), 
-                                    -GIMBAL_SPEED_LIMIT_DU);
+    double plantInputDPS = (abs(dErrorDeg) < m_dDeadZoneAngleDeg) ? 
+                           0.0 : 
+                           std::max( std::min( m_dKp*dErrorDeg + m_dKd*dOutputRateDPS, GIMBAL_SPEED_LIMIT_DPS), 
+                                    -GIMBAL_SPEED_LIMIT_DPS
+                                   );
     
     m_ofslog    << std::setprecision(std::numeric_limits<double>::max_digits10) 
                 << ros::Time::now().toSec() << "," 
                 << dDesiredAngleDeg << "," 
                 << dNormalizedDesiredAngleDeg << "," 
-                // The following line should be adjusted desired angle,
-                // but in this case it is the same as normalized angle.
-                << dNormalizedDesiredAngleDeg << ","   
-                << dErrorDU << "," 
+                << dNormalizedDesiredAngleDeg << "," 
                 << dGimbalAngleDeg << "," 
-                << plantInputDU << endl;
+                << dErrorDeg << "," 
+                << dOutputRateDPS << ","   
+                << plantInputDPS << endl;
 
-    dPrevGimbalAngleDeg = dGimbalAngleDeg;
+    m_dPrevOutputDeg = dGimbalAngleDeg;
 
-    return plantInputDU;		
+    return plantInputDPS * 10.0;		
 }
     
     

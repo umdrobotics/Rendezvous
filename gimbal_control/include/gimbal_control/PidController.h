@@ -26,6 +26,12 @@ private: // members
     // If m_bIsIntelligentControl is true, the gimbal may rotate from -315 to 315 degrees.
     bool m_bIsIntelligentControl;  
 	
+	double m_dPrevOutputDeg;
+	
+	double m_dPrevErrorDeg;
+	
+	bool m_bIsPrevValueInitialized;
+	                            
 	std::ofstream m_ofslog;
 	
 private: // methods

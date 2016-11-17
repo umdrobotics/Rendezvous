@@ -135,15 +135,19 @@ add_executable(gimbal_control src/PidController.cpp src/gimbal_control.cpp)
 
 add_executable(gimbal_control_tests src/gimbal_control_tests.cpp)
 
+add_executable(gimbal_control_pitch_tests src/gimbal_control_pitch_tests.cpp)
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(gimbal_control gimbal_control_generate_messages_cpp ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 add_dependencies(gimbal_control_tests gimbal_control_generate_messages_cpp)
 
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(gimbal_control ${catkin_LIBRARIES})
 target_link_libraries(gimbal_control_tests ${catkin_LIBRARIES})
+target_link_libraries(gimbal_control_pitch_tests ${catkin_LIBRARIES})
 
 
 #############

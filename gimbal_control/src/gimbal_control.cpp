@@ -170,11 +170,14 @@ int main(int argc, char **argv)
     nh.getParam("/PitchRatePidCtrlParams/kd", pitchrate_kd);
     nh.getParam("/PitchRatePidCtrlParams/ki", pitchrate_ki);     
        
+    isIntelligentControl = false;   
     _pitch_rate_controller = new PidController ("PitchRateCtrl", 
                                                 pitchrate_kp, 
                                                 pitchrate_kd, 
                                                 pitchrate_ki,
-                                                dTimeStepSec);   
+                                                dTimeStepSec,
+                                                deadZoneAngleDeg,
+                                                isIntelligentControl);
     
     double rollrate_kp = 0.0;
     double rollrate_kd = 0.0;
@@ -188,8 +191,10 @@ int main(int argc, char **argv)
                                                 rollrate_kp, 
                                                 rollrate_kd, 
                                                 rollrate_ki,
-                                                dTimeStepSec);
-    
+                                                dTimeStepSec,
+                                                deadZoneAngleDeg,
+                                                isIntelligentControl);
+                                                
     ROS_INFO_STREAM(*_yaw_rate_controller);
     ROS_INFO_STREAM(*_pitch_rate_controller);
     ROS_INFO_STREAM(*_roll_rate_controller);
