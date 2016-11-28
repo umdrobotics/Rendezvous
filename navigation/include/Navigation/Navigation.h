@@ -12,13 +12,18 @@ class Navigation {
 
 public: // methods
 
+    // default constructor
     Navigation();
     
+    // constructor
     Navigation(ros::NodeHandle& nh);
 		
+	// destructor	
     virtual ~Navigation();
     
+    // 
     void RunNavigation(void);
+    
     
     std::ostream& GetString(std::ostream& os);
 
@@ -32,7 +37,7 @@ private: // methods
 	
 	void DisplayMainMenu(void);
     void DrawCircleExample(void);
-    
+    void SearchForTarget(void);
 	
 private: // NOT IMPLEMENTED
 	Navigation(const Navigation&);  // copy constructor

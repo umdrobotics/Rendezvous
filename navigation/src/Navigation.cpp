@@ -46,10 +46,11 @@ void Navigation::RunNavigation(void)
         {
             break;
         }
-        
+
+        DisplayMainMenu();
+                    
         if (!bIsInputValid)
         {
-            DisplayMainMenu();
             bIsInputValid = true;
         }
         
@@ -89,9 +90,14 @@ void Navigation::RunNavigation(void)
             case 8: // draw circle sample
                 DrawCircleExample();
                 break;
-                                
+                      
+            case 9: // search for target
+                SearchForTarget();
+                break;
+                          
             case 99: // Exit the program 
                 bIsExitRequested = true;
+                std::cout << "Press Ctrl-C to quit.\n";
                 break;
                 
             default: // It will take care of invalid inputs 
@@ -118,7 +124,7 @@ void Navigation::DisplayMainMenu(void)
 	printf("| [6]  Landing                  | [26] Mission Pause               |\n");	
 	printf("| [7]  Go Home                  | [27] Mission Resume              |\n");	
 	printf("| [8]  Draw Circle Sample       | [28] Mission Cancel              |\n");	
-	printf("| [9]  Draw Square Sample       | [29] Mission Waypoint Download   |\n");	
+	printf("| [9]  Search for Target        | [29] Mission Waypoint Download   |\n");	
 	printf("| [10] Local Navigation Test    | [30] Mission Waypoint Set Speed  |\n");	
 	printf("| [11] Global Navigation Test   | [31] Mission Waypoint Get Speed  |\n");	 
 	printf("| [12] Waypoint Navigation Test | [32] Mission Followme Set Target |\n");	
@@ -132,52 +138,48 @@ void Navigation::DisplayMainMenu(void)
     printf("----------------------------------------\r\n");
 }
 
+
+void Navigation::SearchForTarget(void)
+{
+
+
+}
+
+
 void Navigation::DrawCircleExample(void)
 {
     std::cout << "Enter the radius of the circle in meteres (4m < x < 10m)\n";
-    
-    int circleRadius;
-    std::cin >> circleRadius;   
+    int desiredRadius;
+    std::cin >> desiredRadius;   
 
-    int circleAltitude;
-    std::cout << "Enter height in meteres (Relative to take off point. 5m < x < 15m) \n";
-    std::cin >> circleAltitude;  
-
-     if (circleAltitude < 5)
-    {
-        circleAltitude = 5;
-    }
-    else if (circleAltitude > 15)
-    {
-        circleAltitude = 15;
-    }           
+    std::cout << "Enter height in meteres (Relative to take off point. 1m < x < 5m) \n";
+    int desiredAltitude;
+    std::cin >> desiredAltitude;  
     
-    if (circleRadius < 4)
-    {
-        circleRadius = 4;
-    }
-    else if (circleRadius > 10)
-    {
-        circleRadius = 10;
-    } 
+    int flyingRadius = std::max(4, std::min(10, desiredRadius));
+    ROS_INFO("The flying radius is %d meters\n", flyingRadius);
+    
+    int droneAltitude = std::max(1, std::min(5, desiredAltitude));
+    ROS_INFO("The drone altitude is %d meters\n", droneAltitude);
+                                    
     
     DJIDrone& drone = *m_ptrDrone;
     
+    ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
+
     float x_center = drone.local_position.x;
     float y_center = drone.local_position.y;
-            
-    ROS_INFO("Local Position: %f, %f\n", x_center, y_center);
-    
+                
     float circleRadiusIncrements = 0.01;
 	        
     for(int j = 0; j < 1000; j ++)
     {   
-        if (circleRadiusIncrements < circleRadius)
+        if (circleRadiusIncrements < flyingRadius)
 	    {
             float x =  x_center + circleRadiusIncrements;
             float y =  y_center;
 	        circleRadiusIncrements = circleRadiusIncrements + 0.01;
-            drone.local_position_control(x ,y ,circleAltitude, 0);
+            drone.local_position_control(x, y, droneAltitude, 0);
             usleep(20000);
 	    }
         else
@@ -188,15 +190,28 @@ void Navigation::DrawCircleExample(void)
     
     int Phi = 0;
     
-    for(int i = 0; i < 1890; i ++)
+    for(int i = 0; i < 1000; i ++)
     {   
-        float x =  x_center + circleRadius*cos((Phi/300));
-        float y =  y_center + circleRadius*sin((Phi/300));
+        float x =  x_center + flyingRadius*cos((Phi/120));
+        float y =  y_center + flyingRadius*sin((Phi/120));
         Phi = Phi+1;
-        drone.local_position_control(x ,y ,circleAltitude, 0);
-        usleep(20000);
+        drone.local_position_control(x, y, droneAltitude, 0);
+        usleep(50000);
+           
+        ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
+        ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f\n", 
+                    drone.global_position.longitude,
+                    drone.global_position.latitude,
+                    drone.global_position.altitude,
+                    drone.global_position.height
+                 );
+                         
     } 
 }
+
+
+
+
 
 
 
