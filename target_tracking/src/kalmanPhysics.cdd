@@ -13,22 +13,6 @@ using namespace cv;
 using namespace std;
   
 
-void writeToCSV(Vector<Point> loc, Vector<Point> vel, Vector<Point> predLoc)
-{
-ofstream myFile;
-printf("about to open file for Kalman");
-myFile.open("/home/ubuntu/kalmanLog.csv");
-if (myFile.is_open()) {printf("success\n");} else {printf("failure\n");}
-myFile << "locX, locY, velX, velY, predLocX, predLocY, predVelX, predVelY";
-for (int i =0; i= predLoc.size(); i++)
-{
- myFile << loc[i].x << "," << loc[i].y << "," << vel[i].x << "," << vel[i].y << "," << predLoc[i].x << "," << predLoc[i].y << "," << /*predVel[i].x << "," <<  predVel[i].y <<*/ "\n" ;
-
- //cout << loc[i].x << "," << loc[i].y << "," << vel[i].x << "," << vel[i].y << "," << predLoc[i].x << "," << predLoc[i].y << "," << predVel[i].x << "," <<  predVel[i].y << "\n" ;
-} 
-myFile.close(); 
-
-}
 
 
 
@@ -72,12 +56,7 @@ cout <<" initial KF: pre-state: " << KF.statePre <<"\n";
 
 cv::Mat /*void*/ targetTrackStep(KalmanFilter KF, double dt, double xMeasured, double yMeasured)
 {
-//dt = 0.1; //For debugging
 
-
-//try this based on this: http://www.robot-home.it/blog/en/software/ball-tracker-con-filtro-di-kalman/
-// update dt, call predict,  measure, correct(measured)
-//since we have measurements going into this, we'll go: correct, update dt, call predict
 
 Mat_<double> measurement(2,1); 
 measurement.setTo(Scalar(0)); //to make sure it's not filled with garbage values

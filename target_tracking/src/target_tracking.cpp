@@ -7,6 +7,8 @@
 #include <apriltags_ros/AprilTagDetection.h>
 #include <apriltags_ros/AprilTagDetectionArray.h>
 #include <sensor_msgs/NavSatFix.h>
+#include "opencv2/highgui/highgui.hpp"
+#include "opencv2/video/tracking.hpp"
 
 #include <sstream>
 #include <iostream> // std::cout, std::end, ...
@@ -50,7 +52,7 @@ double inertialFrameToBody_yaw(double angleToInertial_rad, DJIDrone& drone)
     double pitch_rad;
     double yaw_rad;
 
-   quaternionToRPY( drone.attitude_quaternion, 
+    quaternionToRPY( drone.attitude_quaternion, 
                     roll_rad, 
                     pitch_rad, 
                     yaw_rad); 
@@ -427,9 +429,6 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     
     double currentTime = tag.pose.header.stamp.nsec/1000000000.0 + tag.pose.header.stamp.sec;
     
-    
-    // double rollDeg = 0;
- 
     // for exaplanation of calculations, see diagram in Aaron Ward's July 20 report
     // pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); 
     //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
@@ -491,6 +490,12 @@ int main(int argc, char **argv)
 
     _ptrDrone = new DJIDrone(nh);
     DJIDrone& drone = *_ptrDrone;
+
+    cv::KalmanFilter KF(4, 2, 0, CV_64F);
+    KF.statePre.at<double>(0) = 0;
+    KF.statePre.at<double>(1) = 0;
+    KF.statePre.at<double>(2) = 0; //x velocity
+    KF.statePre.at<double>(3) = 0; //y velocity
 
     // set the gimbal pitch  to -25 for tests.
     drone.gimbal_angle_control(0.0, -250.0, 0.0, 10.0);    

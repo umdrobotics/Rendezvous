@@ -1,28 +1,31 @@
-/******************************************
- * OpenCV Tutorial: Ball Tracking using   *
- * Kalman Filter                          *
- ******************************************/
-//modified from http://www.robot-home.it/blog/en/software/ball-tracker-con-filtro-di-kalman/
 
+#include "target_tracking/KalmanFilter.h"
 // Module "core"
-#include <opencv2/core/core.hpp>
+
+#include <sstream>  // stringstream, ...
+#include <iostream> // std::cout, std::end, ...
+#include <iomanip>  // std::setprecision
+// #include <signal.h>
+
+
+//#include <opencv2/core/core.hpp>
  
 // Module "highgui"
-#include <opencv2/highgui/highgui.hpp>
+//#include <opencv2/highgui/highgui.hpp>
  
 // Module "imgproc"
-#include <opencv2/imgproc/imgproc.hpp>
+//#include <opencv2/imgproc/imgproc.hpp>
  
 // Module "video"
-#include <opencv2/video/video.hpp>
+//#include <opencv2/video/video.hpp>
  
 // Output
-#include <cstdlib>
+//#include <cstdlib>
  
 // Vector
-#include <vector>
+//#include <vector>
  
-using namespace std;
+//using namespace std;
  
 
  
@@ -31,7 +34,8 @@ KalmanFilter::KalmanFilter ()
                             , m_nMeasurementSize(2)
                             , m_nInputSize(0)
                             , m_nCVType(CV_64F)
-                            , m_nKF(0)
+                            , m_bHasFirstMeasurementProcessed(false)
+                            , m_kf(cv::KalmanFilter(4, 2, 0, CV_64F))
 {
     ConstructorHelper();  
 } 
@@ -39,108 +43,93 @@ KalmanFilter::KalmanFilter ()
 KalmanFilter::KalmanFilter (int nStateSize, 
                             int nMeasurementSize,
                             int nInputSize,
-                            unsigned int m_nCVType)
+                            unsigned int nCVType)
                             : m_nStateSize(nStateSize)
                             , m_nMeasurementSize(nMeasurementSize)
                             , m_nInputSize(nInputSize)
                             , m_nCVType(nCVType)
                             , m_bHasFirstMeasurementProcessed(false)
-                            , m_ptrKF(0)
-                            , m_matCurrentState(0)
-                            , m_matMeasurement(0)
+                            , m_kf(cv::KalmanFilter(nStateSize, nMeasurementSize, nInputSize, nCVType))
+                            , m_matCurrentState(cv::Mat(m_nStateSize, 1, m_nCVType))
+                            , m_matMeasurement(cv::Mat(m_nStateSize, 1, m_nCVType))
 {
     ConstructorHelper();  
 }
 
 void KalmanFilter::ConstructorHelper()
 {    
-   m_ptrKF = new cv::KalmanFilter(m_nStateSize, m_nMeasurementSize, m_nInputSize, m_nCVType);
-   m_ptrCurrentState = new cv::Mat(m_nStateSize, 1, m_nCVType);       // [x,y,v_x,v_y]
-   m_ptrMeasurement = new cv::Mat(m_nMeasurementSize, 1, m_nCVType);  // [z_x,z_y]
-   
-   KalmanFilter& kf = *m_ptr;
-   //cv::Mat procNoise(stateSize, 1, type)
-   // [E_x,E_y,E_v_x,E_v_y,E_w,E_h]
- 
-   // Transition State Matrix A
+   // Transition State Matrix F
    // Note: set dT at each processing step!
    // [ 1 0 dT 0  ]
    // [ 0 1 0  dT ]
    // [ 0 0 1  0  ]
    // [ 0 0 0  1  ]
-   cv::setIdentity(kf.transitionMatrix);
+   cv::setIdentity(m_kf.transitionMatrix);
  
    // Measure Matrix H
    // [ 1 0 0 0 ]
    // [ 0 1 0 0 ]
-   kf.measurementMatrix = cv::Mat::zeros(m_nMeasurementSize, m_nStateSize, type);
-   kf.measurementMatrix.at(0) = 1.0f;
-   kf.measurementMatrix.at(5) = 1.0f;
+   m_kf.measurementMatrix = cv::Mat::zeros(m_nMeasurementSize, m_nStateSize, m_nCVType);
+   m_kf.measurementMatrix.at<double>(0) = 1.0f;
+   m_kf.measurementMatrix.at<double>(5) = 1.0f;
  
    // Process Noise Covariance Matrix Q
    // [ Ex 0  0    0    ]
    // [ 0  Ey 0    0    ]
    // [ 0  0  Ev_x 0    ]
    // [ 0  0  0    Ev_y ]
-   cv::setIdentity(kf.processNoiseCov, cv::Scalar(1e-2));
-   //kf.processNoiseCov.at(0) = 1e-2;
-   //kf.processNoiseCov.at(5) = 1e-2;
-   //kf.processNoiseCov.at(10) = 2.0f;
-   //kf.processNoiseCov.at(15) = 1.0f;
+   cv::setIdentity(m_kf.processNoiseCov, cv::Scalar(1e-2));
  
    // Measures Noise Covariance Matrix R
-   cv::setIdentity(kf.measurementNoiseCov, cv::Scalar(1e-1));
-
+   // [ Ex 0  ]
+   // [ 0  Ey ]
+   cv::setIdentity(m_kf.measurementNoiseCov, cv::Scalar(1e-1));
+ 
 }
 
-cv::Mat KalmanFilter::ProcessMeasurement(double dT, double xIn, double yIn)
+
+cv::Mat KalmanFilter::ProcessMeasurement(double dT, double targetX, double targetY)
 {
+    
    // Transition State Matrix A
    // Note: set dT at each processing step!
    // [ 1 0 dT 0  ]
    // [ 0 1 0  dT ]
    // [ 0 0 1  0  ]
    // [ 0 0 0  1  ]
-    kf.transitionMatrix.at<double>(2) = dT;
-    kf.transitionMatrix.at<double>(7) = dT;
+    m_kf.transitionMatrix.at<double>(2) = dT;
+    m_kf.transitionMatrix.at<double>(7) = dT;
  
     // Kalman Update
 
-    cv::Mat meas(m_nMeasurementSize, 1, CV_64F); //(measSize, 1, type);
-	meas.at<double>(0) = xIn;
-	meas.at<double>(1) = yIn;    
+    cv::Mat measurement(m_nMeasurementSize, 1, CV_64F); //(measSize, 1, type);
+	measurement.at<double>(0) = targetX;
+	measurement.at<double>(1) = targetY;
 
+    
     if(!m_bHasFirstMeasurementProcessed){
         
-        //Initialization
-        cv::setIdentity(kf.errorCovPre);
-   
-        /*kf.errorCovPre.at(0) = 1; // px
-        kf.errorCovPre.at(7) = 1; // px
-        kf.errorCovPre.at(14) = 1;
-        kf.errorCovPre.at(21) = 1;
-        kf.errorCovPre.at(28) = 1; // px
-        kf.errorCovPre.at(35) = 1; // px
-
-        state.at(0) = meas.at(0);
-        state.at(1) = meas.at(1);
-        state.at(2) = 0;
-        state.at(3) = 0;
-        state.at(4) = meas.at(2);
-        state.at(5) = meas.at(3);*/
+        m_kf.statePre.at<double>(0) = targetX;
+        m_kf.statePre.at<double>(1) = targetY;
+        m_kf.statePre.at<double>(2) = 0.0;
+        m_kf.statePre.at<double>(3) = 0.0;
+        
+        cv::setIdentity(m_kf.errorCovPre);
+        cv::setIdentity(m_kf.errorCovPost, cv::Scalar::all(.1));
         m_bHasFirstMeasurementProcessed = true;
     }
     else
     { 
-        kf.correct(meas); 
-    }// Kalman Correction
+        m_kf.correct(measurement); 
+    }
  
-    cv::Mat state(m_nStateSize, 1, m_nCVType); //(statesize,1,type);
-    state = kf.predict();
+    // cv::Mat state(m_nStateSize, 1, m_nCVType); 
+    cv::Mat state = m_kf.predict();
+    
     if(!m_bHasFirstMeasurementProcessed)
     {
-        state.at<double>(0) = xIn;
-        state.at<double>(1) = yIn;
+        state.at<double>(0) = targetX;
+        state.at<double>(1) = targetY;
         state.at<double>(2) = 0;
         state.at<double>(3) = 0;
     }			
@@ -148,6 +137,7 @@ cv::Mat KalmanFilter::ProcessMeasurement(double dT, double xIn, double yIn)
     //cout << "State post:" << endl << state << endl;   
     return state ;
 } 
+
 
 
 cv::Mat loopStepWebWithoutMeasurement(cv::KalmanFilter kf, double dT , cv::Mat latestState)
@@ -320,3 +310,33 @@ cout <<"prediction number "<<i <<" : " <<targetLocPrediction<<" actual x y " << 
 }
 }
 */
+
+
+/*
+void WriteToCSV(vector<Point> loc, vector<Point> vel, Vector<Point> predLoc)
+{
+    ofstream myFile;
+    printf("about to open file for Kalman");
+
+    myFile.open("/home/ubuntu/kalmanLog.csv");
+    if (myFile.is_open()) {printf("success\n");} else {printf("failure\n");}
+
+    myFile << "locX, locY, velX, velY, predLocX, predLocY, predVelX, predVelY";
+
+    for (int i =0; i= predLoc.size(); i++)
+    {
+        myFile  << loc[i].x << "," 
+                << loc[i].y << "," 
+                << vel[i].x << "," 
+                << vel[i].y << "," 
+                << predLoc[i].x << "," 
+                << predLoc[i].y << "," 
+                << std:endl;
+    } 
+
+    myFile.close(); 
+
+}
+
+*/
+
