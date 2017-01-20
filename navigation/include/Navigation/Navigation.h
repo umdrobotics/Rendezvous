@@ -38,6 +38,9 @@ private: // methods
 	void DisplayMainMenu(void);
     void DrawCircleExample(void);
     void SearchForTarget(void);
+    void Positioning(void);
+    void Waypoint_mission_upload(void);
+    
 	
 private: // NOT IMPLEMENTED
 	Navigation(const Navigation&);  // copy constructor
