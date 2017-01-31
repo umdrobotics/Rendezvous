@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include "target_tracking/KalmanFilter.h"
 #include "std_msgs/String.h"
 #include <geometry_msgs/PointStamped.h>
 #include <target_tracking/conversion.h>
@@ -491,18 +492,11 @@ int main(int argc, char **argv)
     _ptrDrone = new DJIDrone(nh);
     DJIDrone& drone = *_ptrDrone;
 
-    cv::KalmanFilter KF(4, 2, 0, CV_64F);
-    KF.statePre.at<double>(0) = 0;
-    KF.statePre.at<double>(1) = 0;
-    KF.statePre.at<double>(2) = 0; //x velocity
-    KF.statePre.at<double>(3) = 0; //y velocity
-
     // set the gimbal pitch  to -25 for tests.
     drone.gimbal_angle_control(0.0, -250.0, 0.0, 10.0);    
 
     _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 2); 
     // queue size of 2 seems reasonable
-                
     int numMessagesToBuffer = 2;
     ros::Subscriber sub = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     

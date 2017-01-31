@@ -1,3 +1,6 @@
+#ifndef _PID_CONTROLLER_H
+#define _PID_CONTROLLER_H
+
 #include "ros/ros.h" //note this must come before including 
 #include <ostream>
 #include <fstream>
@@ -97,3 +100,5 @@ public: // methods
 // non-member methods
 std::ostream& operator<<(std::ostream& os, PidController& pc);
 
+
+#endif

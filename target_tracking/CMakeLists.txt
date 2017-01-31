@@ -113,6 +113,8 @@ catkin_package(
 ## Build ##
 ###########
 
+add_definitions(-DROSCONSOLE_MIN_SEVERITY=ROSCONSOLE_SEVERITY_DEBUG)
+
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(include)
@@ -133,12 +135,18 @@ include_directories(
 ## Declare a C++ executable
 add_executable(target_tracking src/KalmanFilter.cpp src/target_tracking.cpp)
 
+add_executable(kf_tests src/KalmanFilter.cpp src/kf_tests.cpp)
+
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 add_dependencies(target_tracking ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
+add_dependencies(kf_tests ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
 ## Specify libraries to link a library or executable target against
 target_link_libraries(target_tracking  ${catkin_LIBRARIES})
+
+target_link_libraries(kf_tests  ${catkin_LIBRARIES})
 
 #############
 ## Install ##

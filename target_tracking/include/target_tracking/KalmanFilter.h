@@ -1,10 +1,9 @@
-/******************************************
- * OpenCV Tutorial: Ball Tracking using   *
- * Kalman Filter                          *
- ******************************************/
+
+
 #ifndef _KALMAN_FILTER_H
 #define _KALMAN_FILTER_H
 
+#include "ros/ros.h" //note this must come before including 
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/video/tracking.hpp"
  
@@ -53,13 +52,13 @@ private: // methods
    
     void ConstructorHelper();
 
-private: // NOT IMPLEMENTED
+private: // NOT IMPLEMENTED. Do not implement until necessary
 	KalmanFilter(const KalmanFilter&);  // copy constructor
 	KalmanFilter& operator=(const KalmanFilter&); // assignment
 
 public:
 
-// ctor
+    // ctor
     KalmanFilter();
     
     KalmanFilter(int nStateSize, 
@@ -70,8 +69,16 @@ public:
     
     cv::Mat ProcessMeasurement(double dT, double xIn, double yIn);
 
+    virtual ~KalmanFilter();
     
+    std::ostream& GetString(std::ostream& os);
+    
+    std::ostream& GetCurrentState(std::ostream& os);
 };
+
+// non-member methods
+std::ostream& operator<<(std::ostream& os, KalmanFilter& kf);
+
 
 #endif
 

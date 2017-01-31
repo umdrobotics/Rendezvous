@@ -25,22 +25,25 @@
 // Vector
 //#include <vector>
  
-//using namespace std;
+using namespace std;
  
+#define ROSCONSOLE_MIN_SEVERITY ROSCONSOLE_SEVERITY_DEBUG
 
- 
-KalmanFilter::KalmanFilter ()
+KalmanFilter::KalmanFilter()
                             : m_nStateSize(4)
                             , m_nMeasurementSize(2)
                             , m_nInputSize(0)
                             , m_nCVType(CV_64F)
                             , m_bHasFirstMeasurementProcessed(false)
                             , m_kf(cv::KalmanFilter(4, 2, 0, CV_64F))
+                            , m_matCurrentState(cv::Mat(4, 1, CV_64F))
+                            , m_matMeasurement(cv::Mat(4, 1, CV_64F))
 {
     ConstructorHelper();  
 } 
+
  
-KalmanFilter::KalmanFilter (int nStateSize, 
+KalmanFilter::KalmanFilter(int nStateSize, 
                             int nMeasurementSize,
                             int nInputSize,
                             unsigned int nCVType)
@@ -56,36 +59,28 @@ KalmanFilter::KalmanFilter (int nStateSize,
     ConstructorHelper();  
 }
 
-void KalmanFilter::ConstructorHelper()
-{    
-   // Transition State Matrix F
-   // Note: set dT at each processing step!
-   // [ 1 0 dT 0  ]
-   // [ 0 1 0  dT ]
-   // [ 0 0 1  0  ]
-   // [ 0 0 0  1  ]
-   cv::setIdentity(m_kf.transitionMatrix);
- 
-   // Measure Matrix H
-   // [ 1 0 0 0 ]
-   // [ 0 1 0 0 ]
-   m_kf.measurementMatrix = cv::Mat::zeros(m_nMeasurementSize, m_nStateSize, m_nCVType);
-   m_kf.measurementMatrix.at<double>(0) = 1.0f;
-   m_kf.measurementMatrix.at<double>(5) = 1.0f;
- 
-   // Process Noise Covariance Matrix Q
-   // [ Ex 0  0    0    ]
-   // [ 0  Ey 0    0    ]
-   // [ 0  0  Ev_x 0    ]
-   // [ 0  0  0    Ev_y ]
-   cv::setIdentity(m_kf.processNoiseCov, cv::Scalar(1e-2));
- 
-   // Measures Noise Covariance Matrix R
-   // [ Ex 0  ]
-   // [ 0  Ey ]
-   cv::setIdentity(m_kf.measurementNoiseCov, cv::Scalar(1e-1));
- 
+
+KalmanFilter::~KalmanFilter()
+{
+    ROS_INFO("Destructing KalmanFilter.");
 }
+
+ostream& KalmanFilter::GetString(ostream& os)
+{
+    return os << "State Size:" << m_nStateSize 
+              << ", Measurement Size:" << m_nMeasurementSize
+              << ", Input Size:" << m_nInputSize
+              << ", CV Type:" << m_nCVType
+              << ", Initialized?:" << m_bHasFirstMeasurementProcessed;
+}
+
+ostream& KalmanFilter::GetCurrentState(ostream& os)
+{
+    
+    return os << m_matCurrentState;
+    
+}
+
 
 
 cv::Mat KalmanFilter::ProcessMeasurement(double dT, double targetX, double targetY)
@@ -106,7 +101,10 @@ cv::Mat KalmanFilter::ProcessMeasurement(double dT, double targetX, double targe
 	measurement.at<double>(0) = targetX;
 	measurement.at<double>(1) = targetY;
 
-    
+    ROS_INFO_STREAM("StatePre 1: " << m_kf.statePre);
+	ROS_INFO_STREAM("StatePost 1: " << m_kf.statePost);
+
+
     if(!m_bHasFirstMeasurementProcessed){
         
         m_kf.statePre.at<double>(0) = targetX;
@@ -120,22 +118,28 @@ cv::Mat KalmanFilter::ProcessMeasurement(double dT, double targetX, double targe
     }
     else
     { 
-        m_kf.correct(measurement); 
+        m_kf.predict();
     }
  
+ 	cv::Mat state = m_kf.correct(measurement); 
+
+    ROS_INFO_STREAM("StatePre 2: " << m_kf.statePre);
+	ROS_INFO_STREAM("StatePost 2: " << m_kf.statePost);
+
+	return state;
     // cv::Mat state(m_nStateSize, 1, m_nCVType); 
-    cv::Mat state = m_kf.predict();
+    // cv::Mat state = m_kf.predict();
     
-    if(!m_bHasFirstMeasurementProcessed)
-    {
-        state.at<double>(0) = targetX;
-        state.at<double>(1) = targetY;
-        state.at<double>(2) = 0;
-        state.at<double>(3) = 0;
-    }			
+    // if(!m_bHasFirstMeasurementProcessed)
+    // {
+    //     state.at<double>(0) = targetX;
+    //     state.at<double>(1) = targetY;
+    //     state.at<double>(2) = 0;
+    //     state.at<double>(3) = 0;
+    // }			
         
     //cout << "State post:" << endl << state << endl;   
-    return state ;
+    // return state ;
 } 
 
 
@@ -163,6 +167,53 @@ cv::Mat loopStepWebWithoutMeasurement(cv::KalmanFilter kf, double dT , cv::Mat l
     //cout << "State post no measurement:" << endl << state << endl;   
     return state ;
 } ///end function
+
+
+
+// private methods 
+    
+void KalmanFilter::ConstructorHelper()
+{    
+   // Transition State Matrix F
+   // Note: set dT at each processing step!
+   // [ 1 0 dT 0  ]
+   // [ 0 1 0  dT ]
+   // [ 0 0 1  0  ]
+   // [ 0 0 0  1  ]
+   cv::setIdentity(m_kf.transitionMatrix);
+ 
+   // Measure Matrix H
+   // [ 1 0 0 0 ]
+   // [ 0 1 0 0 ]
+   m_kf.measurementMatrix = cv::Mat::zeros(m_nMeasurementSize, m_nStateSize, m_nCVType);
+   m_kf.measurementMatrix.at<double>(0) = 1.0f;
+   m_kf.measurementMatrix.at<double>(5) = 1.0f;
+ 
+   // Process Noise Covariance Matrix Q
+   // [ Ex 0  0    0    ]
+   // [ 0  Ey 0    0    ]
+   // [ 0  0  Ev_x 0    ]
+   // [ 0  0  0    Ev_y ]
+   cv::setIdentity(m_kf.processNoiseCov, cv::Scalar(2.5e-1));
+ 
+   // Measures Noise Covariance Matrix R
+   // [ Ex 0  ]
+   // [ 0  Ey ]
+   //cv::setIdentity(m_kf.measurementNoiseCov, cv::Scalar(1e-1));
+ 	cv::setIdentity(m_kf.measurementNoiseCov, cv::Scalar(4.0));
+ 
+}
+
+
+
+//nonmember methods
+ostream& operator<<(ostream& os, KalmanFilter& kf)
+{
+    return kf.GetString(os);
+}
+
+
+
 
 
 //this has good insight into how to do found not found control, test it later
