@@ -12,17 +12,28 @@
 using namespace std;
 // public methods
 
+geometry_msgs::PointStamped desiredGimbalPoseDeg;
+
+extern geometry_msgs::Point _droneUtmPosition;
+extern geometry_msgs::Point _targetGpsPosition;
+extern geometry_msgs::Point _targetUtmPosition;
+
+extern ros::Publisher gimbal_pose_pub1;
 
 Navigation::Navigation()
 {     
     ros::NodeHandle nh;
     m_ptrDrone = new DJIDrone(nh);
 
+    targetLocked = 0;
+
 }
 
 Navigation::Navigation(ros::NodeHandle& nh)
 {    
     m_ptrDrone = new DJIDrone(nh);
+
+    targetLocked = 0;
 }
 
 
@@ -99,10 +110,6 @@ void Navigation::RunNavigation(void)
                 SearchForTarget();
                 break;
 				
-			case 13: // positioning
-				Positioning();
-				break;
-				
 			case 22: // Waypoint Mission Upload
 				Waypoint_mission_upload();
 				break;
@@ -156,7 +163,6 @@ void Navigation::DisplayMainMenu(void)
 	printf("| [10] Local Navigation Test    | [30] Mission Waypoint Set Speed  |\n");	
 	printf("| [11] Global Navigation Test   | [31] Mission Waypoint Get Speed  |\n");	 
 	printf("| [12] Waypoint Navigation Test | [32] Mission Followme Set Target |\n");	
-	printf("| [13] Positioning				| 								   |\n");
     printf("|                                    \n");
     printf("| [54] Geolocalization/Gimbal tests and AprilTag recognition)   |\n");
     printf("|                                    \n");
@@ -170,6 +176,59 @@ void Navigation::DisplayMainMenu(void)
 
 void Navigation::SearchForTarget(void)
 {
+    ROS_INFO("Starting to search for target-----------------------");
+
+    int limitRadius = 20; 
+    int flyingRadius = 1;
+    int droneAltitude = 3;
+    int Phi = 0;
+
+    
+    DJIDrone& drone = *m_ptrDrone;
+
+
+    desiredGimbalPoseDeg.point.x = 0.0;  // roll
+    desiredGimbalPoseDeg.point.y = 45.0;  // pitch
+    desiredGimbalPoseDeg.point.z = 0.0;   // yaw 
+    
+    ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
+    float x_center = drone.local_position.x;
+    float y_center = drone.local_position.y;
+                
+    float circleRadiusIncrements = 2.0;
+    float gimbalYawIncrements = 5.0;
+
+    while(flyingRadius < limitRadius && 0 == targetLocked)
+    {
+        for(int i = 0; i < 1000 && 0 == targetLocked; i ++)
+        {   
+            //set up drone task
+            float x =  x_center + flyingRadius*cos((Phi/120));
+            float y =  y_center + flyingRadius*sin((Phi/120));
+            Phi = Phi+1;
+            drone.local_position_control(x, y, droneAltitude, 0);
+            
+            //set up gimbal task
+            if(desiredGimbalPoseDeg.point.z > 29.0) //if yaw is greater than or equal to 30deg. 
+                gimbalYawIncrements = -5.0;         //gimbal swing back
+            else if(desiredGimbalPoseDeg.point.z < -29.0) //if yaw is less than or equal to 30deg.
+                gimbalYawIncrements = 5.0;          //gimbal swing back again
+            desiredGimbalPoseDeg.point.z += gimbalYawIncrements;
+            gimbal_pose_pub1.publish(desiredGimbalPoseDeg);
+            
+            
+            usleep(20000);
+
+        } 
+        
+        flyingRadius += circleRadiusIncrements; 
+        
+    }
+    
+    if(flyingRadius < 20)
+        ROS_INFO("Target FOUND!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    else if(flyingRadius > 20)
+        ROS_INFO("Didn't find anything! Try to change searching range or search again. ");
 
 
 }
@@ -238,140 +297,32 @@ void Navigation::DrawCircleExample(void)
     } 
 }
 
-void Navigation::Positioning(void)
-{
-	
-}
 
 void Navigation::Waypoint_mission_upload(void)
 {
+    static float x;
+    static float y;
+    float z;
+    float delta_x; 
+    float delta_y;
+    float delta_z;
+    int n;
+                
     DJIDrone& drone = *m_ptrDrone;
     
-    
-    dji_sdk::MissionWaypointTask waypoint_task;
-	dji_sdk::MissionWaypoint 	 waypoint;
-	dji_sdk::MissionHotpointTask hotpoint_task;
-	dji_sdk::MissionFollowmeTask followme_task;
-	dji_sdk::MissionFollowmeTarget followme_target;
-	
-	
-	// Clear the vector of previous waypoints 
-    waypoint_task.mission_waypoint.clear();
-                
-	//mission waypoint upload
-	waypoint_task.velocity_range = 10;
-	waypoint_task.idle_velocity = 3;
-	waypoint_task.action_on_finish = 0;
-	waypoint_task.mission_exec_times = 1;
-	waypoint_task.yaw_mode = 4;
-	waypoint_task.trace_mode = 0;
-	waypoint_task.action_on_rc_lost = 0;
-	waypoint_task.gimbal_pitch_mode = 0;
+    n = 20;
+    for(int i = 1; i < n+1; i ++)
+    {   
+        delta_x = _targetGpsPosition.x - drone.global_position.latitude;
+        delta_y = _targetGpsPosition.y - drone.global_position.longitude;
+        delta_z = _targetUtmPosition.z - drone.global_position.height;
 
-    static int num_waypoints = 4; 
-    static int altitude = 4.5;
-    // Currently hard coded, should be dynamic
-    static float orig_lat = 42.3184;      //42.318498726 -83.2265324272
-    static float orig_long = -83.2265;
-    
-	//Waypoint 1
-	waypoint.latitude = orig_lat;
-	waypoint.longitude = orig_long+=.0001;
-	waypoint.altitude = 3.5;
-	waypoint.damping_distance = 0;
-    waypoint.target_yaw = 0;
-    waypoint.target_gimbal_pitch = 0;
-    waypoint.turn_mode = 0;
-    waypoint.has_action = 0;
-	waypoint_task.mission_waypoint.push_back(waypoint);
-	
-	//Waypoint 2
-	waypoint.latitude = orig_lat;
-	waypoint.longitude = orig_long+=.0002;
-	waypoint.altitude = 2.5;
-	waypoint.damping_distance = 0;
-    waypoint.target_yaw = 0;
-    waypoint.target_gimbal_pitch = 0;
-    waypoint.turn_mode = 0;
-    waypoint.has_action = 0;
-	waypoint_task.mission_waypoint.push_back(waypoint);
-	
-	//Waypoint 3
-	waypoint.latitude = orig_lat;
-	waypoint.longitude = orig_long+=.0003;
-	waypoint.altitude = 1.5;
-	waypoint.damping_distance = 0;
-    waypoint.target_yaw = 0;
-    waypoint.target_gimbal_pitch = 0;
-    waypoint.turn_mode = 0;
-    waypoint.has_action = 0;
-	waypoint_task.mission_waypoint.push_back(waypoint);
-	
-	//Waypoint 4
-	waypoint.latitude = orig_lat;
-	waypoint.longitude = orig_long+=.0004;
-	waypoint.altitude = 0;
-	waypoint.damping_distance = 0;
-    waypoint.target_yaw = 0;
-    waypoint.target_gimbal_pitch = 0;
-    waypoint.turn_mode = 0;
-    waypoint.has_action = 0;
-	waypoint_task.mission_waypoint.push_back(waypoint);
-	
-	
-	
-	/*
-	for(int i = 0; i < num_waypoints; i++)
-    {
-                    
-        // Careens in zig-zag pattern
-    	waypoint.latitude = (orig_lat+=.0001);
-        if (i % 2 == 1){
-    		waypoint.longitude = orig_long+=.0001;
-        } else {
-    		 waypoint.longitude = orig_long;
-        }
-    	waypoint.altitude = altitude-=10;
-    	waypoint.damping_distance = 0;
-    	waypoint.target_yaw = 0;
-    	waypoint.target_gimbal_pitch = 0;
-    	waypoint.turn_mode = 0;
-    	waypoint.has_action = 0;
-    	/*
-    	waypoint.action_time_limit = 10;
-    	waypoint.waypoint_action.action_repeat = 1;
-    	waypoint.waypoint_action.command_list[0] = 1;
-    	waypoint.waypoint_action.command_parameter[0] = 1;
-    	*/
-    /*
-    	waypoint_task.mission_waypoint.push_back(waypoint);
-    } 
-    */   
-
-	
-    /* 
-
-	waypoint.latitude = 22.540015;
-	waypoint.longitude = 113.94659;
-	waypoint.altitude = 120;
-	waypoint.damping_distance = 2;
-	waypoint.target_yaw = 180;
-	waypoint.target_gimbal_pitch = 0;
-	waypoint.turn_mode = 0;
-	waypoint.has_action = 0;
-	waypoint.action_time_limit = 10;
-	waypoint.waypoint_action.action_repeat = 1;
-	waypoint.waypoint_action.command_list[0] = 1;
-	waypoint.waypoint_action.command_list[1] = 1;
-	waypoint.waypoint_action.command_parameter[0] = 1;
-	waypoint.waypoint_action.command_parameter[1] = 1;
-
-
-	waypoint_task.mission_waypoint.push_back(waypoint);
-
-    */
-
-	drone.mission_waypoint_upload(waypoint_task);
+        x = drone.global_position.latitude + delta_x*i/n;
+        y = drone.global_position.longitude + delta_y*i/n;
+        z = drone.global_position.height - delta_z*i/n; 
+        drone.global_position_control(x ,y ,z , 0);
+        usleep(20000);
+    }
 }
 
 

@@ -23,9 +23,14 @@ public: // methods
     
     // 
     void RunNavigation(void);
+    void SearchForTarget(void);
+    void Waypoint_mission_upload(void);
     
     
     std::ostream& GetString(std::ostream& os);
+
+
+	int targetLocked;
 
 private: // members
 	
@@ -37,9 +42,6 @@ private: // methods
 	
 	void DisplayMainMenu(void);
     void DrawCircleExample(void);
-    void SearchForTarget(void);
-    void Positioning(void);
-    void Waypoint_mission_upload(void);
     
 	
 private: // NOT IMPLEMENTED

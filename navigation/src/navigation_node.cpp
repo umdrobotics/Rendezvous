@@ -8,6 +8,17 @@
 
 // using namespace std;
 
+ros::NodeHandle nh;
+Navigation navigator(nh);
+
+ros::Publisher gimbal_pose_pub1;
+
+geometry_msgs::Point _droneUtmPosition;
+geometry_msgs::Point _targetGpsPosition;
+geometry_msgs::Point _targetUtmPosition;
+
+
+
 void SigintHandler(int sig)
 {
     // Do some custom action.
@@ -29,15 +40,55 @@ void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPo
     //                        << " Yaw:" <<  _msgDesiredGimbalPoseDeg.point.z);
 }
 
+void droneUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgDroneUtmPos)
+{
+    _droneUtmPosition.x = msgDroneUtmPos->point.x;
+	_droneUtmPosition.y = msgDroneUtmPos->point.y;
+	_droneUtmPosition.z = msgDroneUtmPos->point.z;
+
+}
+
+void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGpsPos)
+{
+	if (0 < sizeof(msgTargetGpsPos)) 
+    {
+		_targetGpsPosition.x = msgTargetGpsPos->point.x;
+		_targetGpsPosition.y = msgTargetGpsPos->point.y;
+		_targetGpsPosition.z = msgTargetGpsPos->point.z;
+		
+		navigator.targetLocked = 1;
+		
+	}
+		
+
+}
+void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtmPos)
+{
+    _targetUtmPosition.x = msgTargetUtmPos->point.x;
+	_targetUtmPosition.y = msgTargetUtmPos->point.y;
+	_targetUtmPosition.z = msgTargetUtmPos->point.z;
+
+}
+
 int main(int argc, char **argv)
 {
 
     ros::init(argc, argv, "navigation_node");
-    ros::NodeHandle nh;
+
 
     signal(SIGINT, SigintHandler);
+    
+    gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
         
-    Navigation navigator(nh);    
+	
+	int numMessagesToBuffer = 2;
+    ros::Subscriber sub1 = nh.subscribe("/dji_sdk/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
+	ros::Subscriber sub2 = nh.subscribe("/dji_sdk/target_gps_position", numMessagesToBuffer, targetGpsCallback);
+	ros::Subscriber sub3 = nh.subscribe("/dji_sdk/target_utm_position", numMessagesToBuffer, targetUtmCallback);
+   
+
+
+
     navigator.RunNavigation();
         
 
