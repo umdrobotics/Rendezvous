@@ -55,7 +55,7 @@ void TestGPS(const ros::TimerEvent&){
     pitch_rad = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
     yaw_rad   = atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1));
     
-    cout << "Position output:" << drone.global_position.latitude << "," << drone.global_position.longitude << "," << drone.global_position.altitude << "," << drone.global_position.height << "," << "GPS Health:" << drone.global_position.health << endl ;
+    //cout << "Position output:" << drone.global_position.latitude << "," << drone.global_position.longitude << "," << drone.global_position.altitude << "," << drone.global_position.height << endl ;
     //cout << "Roll Pitch Yaw output:" << roll_rad << "," << pitch_rad << "," << yaw_rad << endl ;
     
     //Write data to the log.
@@ -67,9 +67,7 @@ void TestGPS(const ros::TimerEvent&){
                 << drone.global_position.height << "," 
                 << yaw_rad << "," 
                 << pitch_rad << ","   
-                << roll_rad << ","
-                << drone.global_position.health << ","
-				<< endl;
+                << roll_rad << endl;
 }
 
 
@@ -87,7 +85,7 @@ int main(int argc, char **argv){
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
     
-    m_ofslog << "#Time,Latitude(deg),Longitude(deg),Altitude(meter),Height(meter),Yaw(rad),Pitch(rad),Roll(rad),GPS_health" << endl;
+    m_ofslog << "#Time,Latitude(deg),Longitude(deg),Altitude(meter),Height(meter),Yaw(rad),Pitch(rad),Roll(rad)" << endl;
     
     
     
