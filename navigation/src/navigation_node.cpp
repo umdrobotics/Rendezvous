@@ -67,9 +67,9 @@ void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGps
 		
 	}
 
-	ROS_INFO_STREAM("Target GPS Position: X = " << msgTargetGpsPos->point.x 
-                           << " Y = " << msgTargetGpsPos.point.y 
-                           << " Z = " <<  msgTargetGpsPos.point.z);
+	// ROS_INFO_STREAM("Target GPS Position: X = " << msgTargetGpsPos->point.x 
+ //                           << " Y = " << msgTargetGpsPos.point.y 
+ //                           << " Z = " <<  msgTargetGpsPos.point.z);
 		
 
 }
