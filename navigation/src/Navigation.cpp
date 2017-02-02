@@ -309,17 +309,21 @@ void Navigation::Waypoint_mission_upload(void)
     int n;
                 
     DJIDrone& drone = *m_ptrDrone;
+
+    ROS_INFO_STREAM("Target GPS Position: X = " << _targetGpsPosition.x 
+                           << " Y = " << _targetGpsPosition.y 
+                           << " Z = " <<  _targetGpsPosition.z);
     
     n = 20;
     for(int i = 1; i < n+1; i ++)
     {   
         delta_x = _targetGpsPosition.x - drone.global_position.latitude;
         delta_y = _targetGpsPosition.y - drone.global_position.longitude;
-        delta_z = _targetUtmPosition.z - drone.global_position.height;
+        delta_z = _targetGpsPosition.z - drone.global_position.height;
 
         x = drone.global_position.latitude + delta_x*i/n;
         y = drone.global_position.longitude + delta_y*i/n;
-        z = drone.global_position.height - delta_z*i/n; 
+        z = drone.global_position.height + delta_z*i/n; 
         drone.global_position_control(x ,y ,z , 0);
         usleep(20000);
     }

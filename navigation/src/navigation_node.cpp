@@ -42,9 +42,16 @@ void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPo
 
 void droneUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgDroneUtmPos)
 {
-    _droneUtmPosition.x = msgDroneUtmPos->point.x;
-	_droneUtmPosition.y = msgDroneUtmPos->point.y;
-	_droneUtmPosition.z = msgDroneUtmPos->point.z;
+	if (0 < sizeof(msgDroneUtmPos)) 
+    {	
+    	_droneUtmPosition.x = msgDroneUtmPos->point.x;
+		_droneUtmPosition.y = msgDroneUtmPos->point.y;
+		_droneUtmPosition.z = msgDroneUtmPos->point.z;
+	}
+
+	// ROS_INFO_STREAM("Drone UTM Position: X = " << msgDroneUtmPos->point.x 
+ //                           << " Y = " << msgDroneUtmPos.point.y 
+ //                           << " Z = " << msgDroneUtmPos.point.z);
 
 }
 
@@ -59,14 +66,25 @@ void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGps
 		navigator.targetLocked = 1;
 		
 	}
+
+	ROS_INFO_STREAM("Target GPS Position: X = " << msgTargetGpsPos->point.x 
+                           << " Y = " << msgTargetGpsPos.point.y 
+                           << " Z = " <<  msgTargetGpsPos.point.z);
 		
 
 }
 void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtmPos)
 {
-    _targetUtmPosition.x = msgTargetUtmPos->point.x;
-	_targetUtmPosition.y = msgTargetUtmPos->point.y;
-	_targetUtmPosition.z = msgTargetUtmPos->point.z;
+    if (0 < sizeof(msgTargetUtmPos))
+    {	
+    	_targetUtmPosition.x = msgTargetUtmPos->point.x;
+		_targetUtmPosition.y = msgTargetUtmPos->point.y;
+		_targetUtmPosition.z = msgTargetUtmPos->point.z;
+	}
+
+	// ROS_INFO_STREAM("Target UTM Position: X = " << msgTargetUtmPos->point.x 
+ //                           << " Y = " << msgTargetUtmPos.point.y 
+ //                           << " Z = " <<  msgTargetUtmPos.point.z);
 
 }
 
