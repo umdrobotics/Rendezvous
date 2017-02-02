@@ -20,6 +20,14 @@
 DJIDrone* _ptrDrone;
 ros::Publisher _GimbalAnglePub;
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+//Yi Added Code
+ros::Publisher _DroneUTMPub;
+ros::Publisher _TargetGPSPub;
+ros::Publisher _TargetUTMPub;
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
 void SigintHandler(int sig)
 {
     ROS_INFO("It is requested to terminate gimbal_control...");
@@ -330,7 +338,15 @@ void PredictDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray tag_d
         //droneUtmPosition.x = easting;
         //droneUtmPosition.y = northing;
         droneUtmPosition.z = drone.global_position.altitude;
-        	
+        
+        ////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Yi Added Code
+		geometry_msgs::PointStamped msgDroneUtmPosition;
+		msgDroneUtmPosition.point.x = droneUtmPosition.x;
+        msgDroneUtmPosition.point.y = droneUtmPosition.y;
+        msgDroneUtmPosition.point.z = droneUtmPosition.z;
+		
+        ////////////////////////////////////////////////////////////////////////////////////////////////////
         	
         // UTMobject latestTargetLocation; 
         geometry_msgs::Point targetUtmPosition
@@ -341,7 +357,33 @@ void PredictDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray tag_d
 			                                                    //LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS 
                                                                 // THIS IS AN OUTPUT VARIABLE
                                                                 dLastRecordedHeightAboveTargetM);
+		
 
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Yi Added Code
+		geometry_msgs::PointStamped msgTargetUtmPosition;
+		msgTargetUtmPosition.point.x = targetUtmPosition.x;
+        msgTargetUtmPosition.point.y = targetUtmPosition.y;
+        msgTargetUtmPosition.point.z = targetUtmPosition.z;
+		
+		
+		
+		//Calculate Target GPS location 
+		geometry_msgs::Point targetGpsPosition;
+		
+		gps_common::UTMtoLL(targetUtmPosition.x,
+							targetUtmPosition.y,
+							&zone,
+							targetGpsPosition.x,
+							targetGpsPosition.y);
+		
+		geometry_msgs::PointStamped msgTargetGpsPosition;
+		msgTargetGpsPosition.point.x = targetGpsPosition.x;
+        msgTargetGpsPosition.point.y = targetGpsPosition.y;
+        msgTargetGpsPosition.point.z = targetUtmPosition.z;		
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////
+		
         
         // then need to modify the gimbal angle to have it point appropriately. 
         // This will be done with multiple variables that will be modified by a function, 
@@ -377,6 +419,21 @@ void PredictDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray tag_d
         msgDesiredAngleDeg.header = current.pose.header; //send the same time stamp information that was on the apriltags message to the PID node
         
         _GimbalAnglePub.publish(msgDesiredAngleDeg);
+
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////
+		//Yi Added Code
+		msgDroneUtmPosition.header = current.pose.header;
+		msgTargetGpsPosition.header = current.pose.header;
+		msgTargetUtmPosition.header = current.pose.header;
+		
+		_DroneUTMPub.publish(msgDroneUtmPosition);
+		_TargetGPSPub.publish(msgTargetGpsPosition);
+		_TargetUTMPub.publish(msgTargetUtmPosition);
+		
+		
+		////////////////////////////////////////////////////////////////////////////////////////////////////////
+
                 
         std::stringstream ss ;
         
@@ -496,6 +553,15 @@ int main(int argc, char **argv)
     drone.gimbal_angle_control(0.0, -250.0, 0.0, 10.0);    
 
     _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 2); 
+    
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+	//Yi Added Code
+	_DroneUTMPub = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/drone_utm_position", 2); 
+	_TargetGPSPub = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/target_gps_position", 2); 
+	_TargetUTMPub = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/target_utm_position", 2); 
+	////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     // queue size of 2 seems reasonable
     int numMessagesToBuffer = 2;
     ros::Subscriber sub = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
