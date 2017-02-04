@@ -8,7 +8,7 @@
 
 // using namespace std;
 
-int targetLocked = 0;
+
 
 
 ros::Publisher gimbal_pose_pub1;
@@ -63,7 +63,7 @@ void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGps
 		_targetGpsPosition.y = msgTargetGpsPos->point.y;
 		_targetGpsPosition.z = msgTargetGpsPos->point.z;
 		
-		targetLocked = 1;
+		navigator.targetLocked = 1;
 		
 	}
 

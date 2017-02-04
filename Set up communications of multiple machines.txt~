@@ -1,0 +1,43 @@
+Firstly, we need to set up the host and network for master and remote machine: 
+(For here, we use NUC6i7 for master and manifold52 for remote machine.)
+
+
+Connect NUC6i7 and manifold52 to the same LAN. Now we are using Pico Station. 
+
+
+On NUC6i7:
+1)	Set IP address: 192.168.1.17; 
+2)	" sudo gedit /etc/hostname " , change hostname into "NUC6i7" ;
+3)	" sudo gedit /etc/hosts ", modify into this:
+
+127.0.0.1	localhost
+127.0.1.1	manifold52
+
+192.168.1.15	NUC6i5
+192.168.1.17	NUC6i7
+192.168.1.51	manifold51
+192.168.1.52	manifold52
+192.168.1.72	jetson-2
+
+4)	" sudo /etc/init.d/networking restart ";
+5)	" sudo apt-get install chrony ";
+6)	" sudo apt-get install openssh-server ";
+7)	" gedit .bashrc " and add these in the bottom: 
+    	" export ROS_HOSTNAME=`hostname`
+     	  export ROS_MASTER_URI=http://`hostname`:11311 ";
+8)	" source ~/.bashrc ".
+
+
+
+On manifold52: 
+1)	Set IP address: 192.168.1.52; 
+2)	" sudo gedit /etc/hostname " , change hostname into "manifold52" ; 
+3)	" sudo gedit /etc/hosts ", modify as before;
+4)	" sudo /etc/init.d/networking restart ";  
+5)	" sudo apt-get install chrony ";
+6)	" sudo apt-get install openssh-server ";
+7)	" gedit .bashrc " and add these in the bottom: 
+    	" export ROS_HOSTNAME=`hostname`
+	  export ROS_MASTER_URI=http://NUC6i7:11311 " 
+	//Note: At this point, NUC6i7 is the master. Should be changed if master is changed. 
+8)	" source ~/.bashrc ".

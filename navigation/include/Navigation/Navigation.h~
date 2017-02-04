@@ -22,7 +22,6 @@ public: // methods
     virtual ~Navigation();
     
     // 
-	void NavigationTest(void);
     void RunNavigation(void);
     void SearchForTarget(void);
     void Waypoint_mission_upload(void);
