@@ -22,9 +22,9 @@
 #include <geometry_msgs/Vector3Stamped.h> //velocity
 #include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
 
-ros::Publisher depth_image_pub;
-ros::Publisher left_image_pub;
-ros::Publisher right_image_pub;
+//ros::Publisher depth_image_pub;
+//ros::Publisher left_image_pub;
+//ros::Publisher right_image_pub;
 ros::Publisher imu_pub;
 ros::Publisher obstacle_distance_pub;
 ros::Publisher velocity_pub;
@@ -42,10 +42,10 @@ uint8_t         verbosity = 0;
 e_vbus_index	CAMERA_ID = e_vbus5;  // the guidance pointing down
 DJI_lock        g_lock;
 DJI_event       g_event;
-Mat             g_greyscale_image_left(HEIGHT, WIDTH, CV_8UC1);
-Mat				g_greyscale_image_right(HEIGHT, WIDTH, CV_8UC1);
-Mat				g_depth(HEIGHT,WIDTH,CV_16SC1);
-Mat				depth8(HEIGHT, WIDTH, CV_8UC1);
+// Mat             g_greyscale_image_left(HEIGHT, WIDTH, CV_8UC1);
+// Mat				g_greyscale_image_right(HEIGHT, WIDTH, CV_8UC1);
+// Mat				g_depth(HEIGHT,WIDTH,CV_16SC1);
+// Mat				depth8(HEIGHT, WIDTH, CV_8UC1);
 
 std::ostream& operator<<(std::ostream& out, const e_sdk_err_code value){
 	const char* s = 0;
@@ -78,6 +78,7 @@ int my_callback(int data_type, int data_len, char *content)
     g_lock.enter();
 
     /* image data */
+    /*
     if (e_image == data_type && NULL != content)
     {        
         image_data* data = (image_data*)content;
@@ -125,7 +126,7 @@ int my_callback(int data_type, int data_len, char *content)
 		
         key = waitKey(1);
     }
-
+    */
     /* imu */
     if ( e_imu == data_type && NULL != content )
     {
@@ -255,9 +256,9 @@ int main(int argc, char** argv)
     /* initialize ros */
     ros::init(argc, argv, "GuidanceNode");
     ros::NodeHandle my_node;
-    depth_image_pub			= my_node.advertise<sensor_msgs::Image>("/guidance/depth_image",1);
-    left_image_pub			= my_node.advertise<sensor_msgs::Image>("/guidance/left_image",1);
-    right_image_pub			= my_node.advertise<sensor_msgs::Image>("/guidance/right_image",1);
+    // depth_image_pub			= my_node.advertise<sensor_msgs::Image>("/guidance/depth_image",1);
+    // left_image_pub			= my_node.advertise<sensor_msgs::Image>("/guidance/left_image",1);
+    // right_image_pub			= my_node.advertise<sensor_msgs::Image>("/guidance/right_image",1);
     imu_pub  				= my_node.advertise<geometry_msgs::TransformStamped>("/guidance/imu",1);
     velocity_pub  			= my_node.advertise<geometry_msgs::Vector3Stamped>("/guidance/velocity",1);
     obstacle_distance_pub	= my_node.advertise<sensor_msgs::LaserScan>("/guidance/obstacle_distance",1);
