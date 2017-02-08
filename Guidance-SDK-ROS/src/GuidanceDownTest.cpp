@@ -1,0 +1,102 @@
+/*
+ * main_sdk0428.cpp
+ *
+ *  Created on: Apr 29, 2015
+ *      Author: craig
+ */
+
+#include <stdio.h>
+#include <string.h>
+#include <ros/ros.h>
+//#include <cv_bridge/cv_bridge.h>
+//#include <sensor_msgs/Image.h>
+//#include <sensor_msgs/image_encodings.h>
+
+//#include <opencv2/opencv.hpp>
+
+#include <geometry_msgs/TransformStamped.h> //IMU
+#include <geometry_msgs/Vector3Stamped.h> //velocity
+#include <sensor_msgs/LaserScan.h> //obstacle distance && ultrasonic
+
+
+ros::Subscriber imu_sub;
+ros::Subscriber velocity_sub;
+ros::Subscriber obstacle_distance_sub;
+ros::Subscriber ultrasonic_sub;
+ros::Subscriber position_sub;
+
+//using namespace cv;
+#define WIDTH 320
+#define HEIGHT 240
+
+
+/* imu */
+void imu_callback(const geometry_msgs::TransformStamped& g_imu)
+{
+    printf( "frame_id: %s, stamp: %d, imu: [%f %f %f %f %f %f %f]\n", 
+            g_imu.header.frame_id.c_str(), 
+            g_imu.header.stamp.sec,
+            g_imu.transform.translation.x, 
+            g_imu.transform.translation.y, 
+            g_imu.transform.translation.z,
+            g_imu.transform.rotation.x, 
+            g_imu.transform.rotation.y, 
+            g_imu.transform.rotation.z, 
+            g_imu.transform.rotation.w );
+}
+
+/* velocity */
+void velocity_callback(const geometry_msgs::Vector3Stamped& g_vo)
+{
+    printf( "frame_id: %s, stamp: %d, velocity: [%f %f %f]\n", 
+            g_vo.header.frame_id.c_str(), 
+            g_vo.header.stamp.sec,
+            g_vo.vector.x, g_vo.vector.y, g_vo.vector.z );
+}
+
+/* obstacle distance */
+void obstacle_distance_callback(const sensor_msgs::LaserScan& g_oa)
+{
+    printf( "frame_id: %s, stamp: %d, obstacle distance: %f\n", 
+            g_oa.header.frame_id.c_str(), 
+            g_oa.header.stamp.sec,
+            g_oa.ranges[0]);
+}
+
+/* ultrasonic */
+void ultrasonic_callback(const sensor_msgs::LaserScan& g_ul)
+{
+    printf( "frame_id: %s, stamp: %d, distance: %f, reliability: %d\n", 
+            g_ul.header.frame_id.c_str(), 
+            g_ul.header.stamp.sec,
+            g_ul.ranges[0],
+            (int)g_ul.intensities[0] );
+}
+
+/* motion */
+void position_callback(const geometry_msgs::Vector3Stamped& g_pos)
+{
+    printf("frame_id: %s, stamp: %d, global position: [%f %f %f]\n", 
+            g_pos.header.frame_id.c_str(), 
+            g_pos.header.stamp.sec,
+            g_pos.vector.x, g_pos.vector.y, g_pos.vector.z);
+}
+
+int main(int argc, char** argv)
+{
+    ros::init(argc, argv, "GuidanceDownTest");
+    ros::NodeHandle my_node;
+
+    imu_sub               = my_node.subscribe("/guidance/imu", 1, imu_callback);
+    velocity_sub          = my_node.subscribe("/guidance/velocity", 1, velocity_callback);
+    obstacle_distance_sub = my_node.subscribe("/guidance/obstacle_distance", 1, obstacle_distance_callback);
+    ultrasonic_sub = my_node.subscribe("/guidance/ultrasonic", 1, ultrasonic_callback);
+    position_sub = my_node.subscribe("/guidance/position", 1, position_callback);
+
+    while (ros::ok())
+        ros::spinOnce();
+
+    return 0;
+}
+
+/* vim: set et fenc=utf-8 ff=unix sts=0 sw=4 ts=4 : */

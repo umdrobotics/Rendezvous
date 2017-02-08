@@ -49,6 +49,11 @@ add_executable(guidanceDown
   src/GuidanceDown.cpp
   src/DJI_utility.cpp)
 
+
+add_executable(guidanceDownTest
+  src/GuidanceDownTest.cpp)
+
+
 add_executable(guidanceNode
   src/GuidanceNode.cpp
   src/DJI_utility.cpp)
