@@ -1,0 +1,3 @@
+
+rostopic echo -b guidance_data_2017-02-08-16-53-03.bag -p /guidance/ultrasonic > ultrasonic.txt
+
