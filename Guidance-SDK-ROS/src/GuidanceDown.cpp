@@ -227,11 +227,16 @@ void SigintHandler(int sig)
     int err_code = stop_transfer();
     if( err_code ){ 
         release_transfer();
+        std::cout<<"Error: "<<(e_sdk_err_code)err_code<<" at "<<__LINE__<<","<<__FILE__<<std::endl; 
     }
 	//make sure the ack packet from GUIDANCE is received
-	sleep(1);
+	ros::Duration(0.5).sleep();
 	std::cout << "release_transfer" << std::endl;
 	err_code = release_transfer();
+	if( err_code ){ 
+        release_transfer();
+        std::cout<<"Error: "<<(e_sdk_err_code)err_code<<" at "<<__LINE__<<","<<__FILE__<<std::endl; 
+    }
     ROS_INFO("Shutting down guidance...");
    // All the default sigint handler does is call shutdown()
 
@@ -357,7 +362,7 @@ int main(int argc, char** argv)
 	err_code = stop_transfer();
 	RETURN_IF_ERR(err_code);
 	//make sure the ack packet from GUIDANCE is received
-	sleep(1);
+	ros::Duration(1).sleep()
 	std::cout << "release_transfer" << std::endl;
 	err_code = release_transfer();
 	RETURN_IF_ERR(err_code);
