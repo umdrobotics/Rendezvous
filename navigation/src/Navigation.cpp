@@ -50,7 +50,6 @@ void Navigation::RunNavigation(void)
     bool bIsExitRequested = false;
     
     
-    
     while(1)
     {
         ros::spinOnce();
@@ -67,6 +66,7 @@ void Navigation::RunNavigation(void)
             bIsInputValid = true;
         }
         
+	
         std::cout << "Enter Input Value: ";
         std::cin >> inputValue;
          
@@ -339,7 +339,7 @@ void Navigation::Waypoint_mission_upload(void)
 	z = drone.global_position.height;
 	distance = (x - drone.global_position.altitude)*(x - drone.global_position.altitude) + (y - drone.global_position.longitude)*(y - drone.global_position.longitude); 
 
-    while(distance > 0.000001) 
+    while(distance > 0) 
 	{ 
         drone.global_position_control(x, y, z, 0);
         usleep(20000);
