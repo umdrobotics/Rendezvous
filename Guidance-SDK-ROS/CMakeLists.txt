@@ -45,6 +45,10 @@ link_libraries(
   usb-1.0
   yaml-cpp)
 
+add_executable(guidanceDown
+  src/GuidanceDown.cpp
+  src/DJI_utility.cpp)
+
 add_executable(guidanceNode
   src/GuidanceNode.cpp
   src/DJI_utility.cpp)
