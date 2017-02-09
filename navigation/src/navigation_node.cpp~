@@ -10,16 +10,18 @@
 #include <fstream>
 #include <unistd.h>
 #include <limits>
-
-
-#define DEFAULT_LOG_FILE_NAME "/Navigation_data_"
+#include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
 
 using namespace std;
 
-int targetLocked = 0;
+
+#define DEFAULT_LOG_FILE_NAME "/Navigation_data_"
 std::ofstream m_ofslog;
+
 DJIDrone* _ptrDrone;
 
+int targetLocked = 0;
+float realtimeHeight = 0;
 ros::Publisher gimbal_pose_pub1;
 
 geometry_msgs::Point _droneUtmPosition;
@@ -83,8 +85,8 @@ void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGps
  //                           << " Y = " << msgTargetGpsPos.point.y 
  //                           << " Z = " <<  msgTargetGpsPos.point.z);
 		
-
 }
+
 void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtmPos)
 {
     if (0 < sizeof(msgTargetUtmPos))
@@ -100,8 +102,15 @@ void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtm
 
 }
 
-void WritingLog(const ros::TimerEvent&){
+void guidanceCallback(sensor_msgs::LaserScan msgUltraSonicDown)
+{
+    if (0 < sizeof(msgUltraSonicDown)) 
+        realtimeHeight = msgUltraSonicDown.ranges[0];
+    ROS_INFO("Real time Height = %f cm", realtimeHeight);
+}
 
+void WritingLog(const ros::TimerEvent&){
+    //To record the Global position, Local position, Target GPS position, Orientation, Velocity and Gimbal angle. 
 	DJIDrone& drone=*_ptrDrone;
 
     dji_sdk::AttitudeQuaternion q;
@@ -157,15 +166,17 @@ int main(int argc, char **argv)
 
     signal(SIGINT, SigintHandler);
     
+
+    //A publisher to control the gimbal angle. 
     gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
         
-	
-	int numMessagesToBuffer = 2;
+	int numMessagesToBuffer = 10;
     ros::Subscriber sub1 = nh.subscribe("/dji_sdk/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
 	ros::Subscriber sub2 = nh.subscribe("/dji_sdk/target_gps_position", numMessagesToBuffer, targetGpsCallback);
 	ros::Subscriber sub3 = nh.subscribe("/dji_sdk/target_utm_position", numMessagesToBuffer, targetUtmCallback);
+    ros::Subscriber guidance_sub = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, guidanceCallback);
    
-
+    //Write log. 
 	char* rosHome = "/home/ubuntu";
     ROS_ASSERT_MSG(rosHome, "Can't find the environment variable, ROS_HOME");
     
@@ -174,19 +185,18 @@ int main(int argc, char **argv)
     ss << rosHome << DEFAULT_LOG_FILE_NAME << time_now << ".log";
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
-	
 	m_ofslog << "#Time,Latitude(deg),Longitude(deg),Altitude(meter),Height(meter),Local Position.x(meter),Local Position.y(meter),Local Position.z(meter),Target GPS location.x(deg),Target GPS location.y(deg),Target GPS location.z(meter),Yaw(rad),Pitch(rad),Roll(rad),Velocity.vx(m/s),Velocity.vy(m/s),Velocity.vz(m/s),Gimbal.yaw(deg),Gimbal.pitch(deg),Gimbal.roll(deg)" << endl;
 
-    _ptrDrone = new DJIDrone(nh);
-
-
+    //Create a timer to write log. 
+    //_ptrDrone = new DJIDrone(nh);
     double dTimeStepSec = 0.02;
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), WritingLog);
+
 
 	Navigation navigator(nh);
     navigator.RunNavigation();
 
-	signal(SIGINT, SigintHandler);
+
 
     ros::spin();
              

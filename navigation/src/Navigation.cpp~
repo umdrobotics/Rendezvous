@@ -12,15 +12,16 @@
 using namespace std;
 // public methods
 
+extern ros::Publisher gimbal_pose_pub1;
 geometry_msgs::PointStamped desiredGimbalPoseDeg;
 
 extern geometry_msgs::Point _droneUtmPosition;
 extern geometry_msgs::Point _targetGpsPosition;
 extern geometry_msgs::Point _targetUtmPosition;
 
-extern ros::Publisher gimbal_pose_pub1;
-
 extern int targetLocked;
+extern float realtimeHeight;
+
 
 Navigation::Navigation()
 {     
@@ -48,7 +49,6 @@ void Navigation::RunNavigation(void)
     
     bool bIsInputValid = false;
     bool bIsExitRequested = false;
-    
     
     
     while(1)
@@ -179,43 +179,45 @@ void Navigation::DisplayMainMenu(void)
 
 void Navigation::SearchForTarget(void)
 {
-    ROS_INFO("Starting to search for target-----------------------");
-
-    int limitRadius = 10; 
-    int flyingRadius = 1;
-    int droneAltitude = 3;
-    int Phi = 0;
-
-    
-    DJIDrone& drone = *m_ptrDrone;
+	DJIDrone& drone = *m_ptrDrone;
 
 
-    desiredGimbalPoseDeg.point.x = 0.0;  // roll
-    desiredGimbalPoseDeg.point.y = -45.0;  // pitch
-    desiredGimbalPoseDeg.point.z = 0.0;   // yaw 
-    
+    ROS_INFO("------------Initializing searching for target-----------");
+    float flyingRadius = 1;
+    float limitRadius = 10; 
+    float circleRadiusIncrements = 2.0;
+    float droneAltitude = 3;
+    float Phi = 0;
+    ROS_INFO("Initial Radius = %f m, Increment = %f m, Max Radius = %f m", flyingRadius, circleRadiusIncrements, limitRadius);
+    ROS_INFO("Initial Height = %f m", droneAltitude);
+
     ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
     float x_center = drone.local_position.x;
     float y_center = drone.local_position.y;
-                
-    float circleRadiusIncrements = 2.0;
-    float gimbalYawIncrements = 1;
 
+
+    float gimbalYawIncrements = 1;
+    desiredGimbalPoseDeg.point.x = 0.0;  // roll
+    desiredGimbalPoseDeg.point.y = -45.0;  // pitch
+    desiredGimbalPoseDeg.point.z = 0.0;   // yaw 
+    ROS_INFO("Initial Gimbal Angle: roll = %f deg, pitch = %f deg, yaw = %f deg.", desiredGimbalPoseDeg.point.x, desiredGimbalPoseDeg.point.y, desiredGimbalPoseDeg.point.z);
+    
+
+
+    ROS_INFO("---------------------Start searching---------------------");
     while(flyingRadius < limitRadius && 0 == targetLocked)
     {
-        for(int i = 0; i < 1000 && 0 == targetLocked; i ++)
+        for(int i = 0; i < 1890 && 0 == targetLocked; i ++)
         {   
             //set up drone task
-            float x =  x_center + flyingRadius*cos((Phi/120));
-            float y =  y_center + flyingRadius*sin((Phi/120));
+            float x =  x_center + flyingRadius*cos((Phi/300));
+            float y =  y_center + flyingRadius*sin((Phi/300));
             Phi = Phi+1;
             drone.local_position_control(x, y, droneAltitude, 0);
             
             //set up gimbal task
-            if(desiredGimbalPoseDeg.point.z > 30.0) //if yaw is greater than or equal to 30deg. 
-                gimbalYawIncrements = -1;         //gimbal swing back
-            else if(desiredGimbalPoseDeg.point.z < -30.0) //if yaw is less than or equal to 30deg.
-                gimbalYawIncrements = 1;          //gimbal swing back again
+            if(desiredGimbalPoseDeg.point.z > 30.0 || desiredGimbalPoseDeg.point.z < -30.0) //if yaw is greater than or equal to 30deg or less than or equal to 30deg. 
+                gimbalYawIncrements = -gimbalYawIncrements;         //gimbal swing back
             desiredGimbalPoseDeg.point.z += gimbalYawIncrements;
             gimbal_pose_pub1.publish(desiredGimbalPoseDeg);
             
@@ -228,7 +230,7 @@ void Navigation::SearchForTarget(void)
         
     }
     
-    if(flyingRadius < 20)
+    if(flyingRadius < 20 && 0 == targetLocked)
         ROS_INFO("Target FOUND!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     else if(flyingRadius > 20)
         ROS_INFO("Didn't find anything! Try to change searching range or search again. ");
@@ -300,6 +302,7 @@ void Navigation::DrawCircleExample(void)
     } 
 }
 
+
 void Navigation::NavigationTest(void)
 {
 	DJIDrone& drone = *m_ptrDrone;
@@ -310,42 +313,47 @@ void Navigation::NavigationTest(void)
     float x =  x_start;
     float y =  y_start + 5.0;
 	
-	while(drone.local_position.z > 0 ) 
+	while(realtimeHeight < 10 ) 
 	{  
     	drone.local_position_control(x, y, -0.1, 0);
 		usleep(20000);
 	}
 
+	ROS_INFO("The drone is ready to land!");
 }
+
 
 void Navigation::Waypoint_mission_upload(void)
 {
-    static float x;
-    static float y;
-    float z;
-    float delta_x; 
-    float delta_y;
-    float delta_z;
-    float distance;
-                
     DJIDrone& drone = *m_ptrDrone;
 
-    ROS_INFO_STREAM("Target GPS Position: X = " << _targetGpsPosition.x 
-                           << " \nY = " << _targetGpsPosition.y 
-                           << " \nZ = " <<  _targetGpsPosition.z);
+//    ROS_INFO("Drone UTM Position:  X = " << _droneUtmPosition.x << "\n"
+//          << "                     Y = " << _droneUtmPosition.y << "\n"
+//          << "                     Z = " << _droneUtmPosition.z << "\n");
+//    ROS_INFO("Target UTM Position: X = " << _targetUtmPosition.x << "\n"
+//          << "                     Y = " << _targetUtmPosition.y << "\n"
+//          << "                     Z = " << _targetUtmPosition.z << "\n");
 
 
-    x = _targetGpsPosition.x;
-	y = _targetGpsPosition.y;
-	z = drone.global_position.height;
-	distance = (x - drone.global_position.altitude)*(x - drone.global_position.altitude) + (y - drone.global_position.longitude)*(y - drone.global_position.longitude); 
+    float xm = drone.local_position.x ;
+    float ym = drone.local_position.y ;
+    float zm = 3;
+    float delta_xm = _targetUtmPosition.x - _droneUtmPosition.x; 
+    float delta_ym = _targetUtmPosition.y - _droneUtmPosition.y;
+    float delta_zm = _targetUtmPosition.z - _droneUtmPosition.z;
+    float distance;
+                
 
-    while(distance > 0) 
+    xm += delta_xm; 
+    ym += delta_ym;
+	distance = abs(delta_xm) + abs(delta_ym); 
+
+    while(distance > 0.5) 
 	{ 
-        drone.global_position_control(x, y, z, 0);
+        drone.local_position_control(xm, ym, zm, 0);
         usleep(20000);
 
-		distance = (x - drone.global_position.altitude)*(x - drone.global_position.altitude) + (y - drone.global_position.longitude)*(y - drone.global_position.longitude);
+		distance = abs(_targetUtmPosition.x - _droneUtmPosition.x) + abs(_targetUtmPosition.y - _droneUtmPosition.y);
     }
 
 
