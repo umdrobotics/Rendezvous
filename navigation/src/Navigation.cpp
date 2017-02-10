@@ -307,6 +307,7 @@ void Navigation::NavigationTest(void)
 {
 	DJIDrone& drone = *m_ptrDrone;
 
+
 	float x_start = drone.local_position.x ;
 	float y_start = drone.local_position.y ;
 
@@ -314,7 +315,8 @@ void Navigation::NavigationTest(void)
     float y =  y_start + 5.0;
 	
 	while(realtimeHeight > 0.1 ) 
-	{  
+	{   
+		ROS_INFO("Real time Height = %f m", realtimeHeight);
     	drone.local_position_control(x, y, -0.01, 0);
 		usleep(20000);
 	}
