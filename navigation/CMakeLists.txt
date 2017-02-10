@@ -126,7 +126,7 @@ include_directories(${catkin_INCLUDE_DIRS})
 # add_dependencies(navigation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(navigation_node src/navigation_node.cpp src/Navigation.cpp)
+add_executable(navigation_node src/navigation_node.cpp)
 target_link_libraries(navigation_node
   ${catkin_LIBRARIES}
 )
