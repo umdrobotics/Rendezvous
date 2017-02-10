@@ -11,12 +11,15 @@
 DJIDrone* _ptrDrone;
 
 int targetLocked = 0;
-float realtimeHeight = 0;
+
+sensor_msgs::LaserScan _msgUltraSonic;
+
 ros::Publisher gimbal_pose_pub1;
 
 geometry_msgs::Point _droneUtmPosition;
 geometry_msgs::Point _targetGpsPosition;
 geometry_msgs::Point _targetUtmPosition;
+
 
 
 void ShutDown(void)
@@ -94,13 +97,18 @@ void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtm
 
 }
 
-void guidanceCallback(sensor_msgs::LaserScan msgUltraSonicDown)
-{
-    if (0 < sizeof(msgUltraSonicDown)) 
-        realtimeHeight = msgUltraSonicDown.ranges[0];
-    ROS_INFO("Real time Height = %f m", realtimeHeight);
+
+void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
+{    
+    _msgUltraSonic.header.frame_id = msgUltraSonic.header.frame_id;
+    _msgUltraSonic.header.stamp.sec = msgUltraSonic.header.stamp.sec;
+    _msgUltraSonic.ranges[0] = msgUltraSonic.ranges[0];
+    _msgUltraSonic.intensities[0] = msgUltraSonic.intensities[0];
+
+
 }
-                                                    
+
+
 
 void SearchForTarget(void)
 {
@@ -113,7 +121,8 @@ void SearchForTarget(void)
     float circleRadiusIncrements = 2.0;
     float droneAltitude = 3;
     float Phi = 0;
-    ROS_INFO("Initial Radius = %f m, Increment = %f m, Max Radius = %f m", flyingRadius, circleRadiusIncrements, limitRadius);
+    ROS_INFO("Initial Radius = %f m, Increment = %f m, Max Radius = %f m", 
+                flyingRadius, circleRadiusIncrements, limitRadius);
     ROS_INFO("Initial Height = %f m", droneAltitude);
 
     ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
@@ -127,7 +136,10 @@ void SearchForTarget(void)
     desiredGimbalPoseDeg.point.x = 0.0;  // roll
     desiredGimbalPoseDeg.point.y = -45.0;  // pitch
     desiredGimbalPoseDeg.point.z = 0.0;   // yaw 
-    ROS_INFO("Initial Gimbal Angle: roll = %f deg, pitch = %f deg, yaw = %f deg.", desiredGimbalPoseDeg.point.x, desiredGimbalPoseDeg.point.y, desiredGimbalPoseDeg.point.z);
+    ROS_INFO("Initial Gimbal Angle: roll = %f deg, pitch = %f deg, yaw = %f deg.", 
+                desiredGimbalPoseDeg.point.x, 
+                desiredGimbalPoseDeg.point.y, 
+                desiredGimbalPoseDeg.point.z);
     
 
 
@@ -143,8 +155,12 @@ void SearchForTarget(void)
             drone.local_position_control(x, y, droneAltitude, 0);
             
             //set up gimbal task
-            if(desiredGimbalPoseDeg.point.z > 30.0 || desiredGimbalPoseDeg.point.z < -30.0) //if yaw is greater than or equal to 30deg or less than or equal to 30deg. 
+            //if yaw is greater than or equal to 30deg or less than or equal to 30deg. 
+            if(desiredGimbalPoseDeg.point.z > 30.0 || desiredGimbalPoseDeg.point.z < -30.0) 
+            { 
                 gimbalYawIncrements = -gimbalYawIncrements;         //gimbal swing back
+            }
+            
             desiredGimbalPoseDeg.point.z += gimbalYawIncrements;
             gimbal_pose_pub1.publish(desiredGimbalPoseDeg);
             
@@ -225,11 +241,30 @@ void DrawCircleExample(void)
                     drone.global_position.latitude,
                     drone.global_position.altitude,
                     drone.global_position.height
-                 );
-                         
+                 );                         
     } 
 }
 
+// Use this function to test anything you want
+void RandomTests(void)
+{
+    ROS_INFO("Starting Random Tests");
+  
+    for (int i=0; i<10;i++)
+    {
+        printf( "frame_id: %s, stamp: %d, distance: %f, reliability: %d\n", 
+        _msgUltraSonic.header.frame_id.c_str(), 
+        _msgUltraSonic.header.stamp.sec,
+        _msgUltraSonic.ranges[0],
+        (int)_msgUltraSonic.intensities[0] );
+
+        usleep(200000);
+        ros::spinOnce();
+    }
+
+    ROS_INFO("Tests are done");
+      
+}
 
 void NavigationTest(void)
 {
@@ -240,13 +275,30 @@ void NavigationTest(void)
     float y_start = drone.local_position.y ;
 
     float x =  x_start;
-    float y =  y_start + 5.0;
+    float y =  y_start; // + 5.0;
     
-    while(realtimeHeight > 0.1 ) 
-    {   
-        ROS_INFO("Real time Height = %f m", realtimeHeight);
-        drone.local_position_control(x, y, -0.01, 0);
-        usleep(20000);
+      
+    while(1)
+    {
+        ros::spinOnce();
+
+        ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
+        ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
+        ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f\n", 
+                    drone.global_position.longitude,
+                    drone.global_position.latitude,
+                    drone.global_position.altitude,
+                    drone.global_position.height
+                 );     
+
+        if (_msgUltraSonic.ranges[0] < 0.1)
+        {
+            break;
+        }    
+
+        drone.local_position_control(x, y, 0.0, 0);
+	    ros::Duration(0.02).sleep();
+        
     }
 
     ROS_INFO("The drone is ready to land!");
@@ -306,10 +358,10 @@ void DisplayMainMenu(void)
     printf("| [10] Local Navigation Test    | [30] Mission Waypoint Set Speed  |\n");   
     printf("| [11] Global Navigation Test   | [31] Mission Waypoint Get Speed  |\n");    
     printf("| [12] Waypoint Navigation Test | [32] Mission Followme Set Target |\n");   
-    printf("|                                    \n");
-    printf("| [54] Geolocalization/Gimbal tests and AprilTag recognition)   |\n");
-    printf("|                                    \n");
-    printf("| [99] Exit                           \n");
+    printf("|                                                                  |\n");
+    printf("| [54] Geolocalization/Gimbal tests and AprilTag recognition)      |\n");
+    printf("| [98] Random Tests                                                |\n");
+    printf("| [99] Exit                                                        |\n");
     printf("+-----------------------------------------------------------------+\n");
     printf("input a number then press enter key\r\n");
     printf("use `rostopic echo` to query drone status\r\n");
@@ -371,7 +423,7 @@ void RunNavigation(void)
                 break;
                 
             case 6: // landing
-                drone.landing();
+                drone.landing();RandomTests();
                 break;
                                 
             case 7: // go home
@@ -396,7 +448,7 @@ void RunNavigation(void)
                      
             case 25: // Mission Start
                 drone.mission_start();
-                break;
+                break;RandomTests();
                 
             case 26: //mission pause
                 drone.mission_pause();
@@ -405,11 +457,15 @@ void RunNavigation(void)
             case 27: //mission resume
                 drone.mission_resume();
                 break;
-                
+
             case 28: //mission cancel
                 drone.mission_cancel();
                 break;
                 
+            case 98: //mission cancel
+                RandomTests();
+                break;
+
             case 99: // Exit the program 
                 bIsExitRequested = true;
                 std::cout << "Shutting Down.\n";
@@ -434,25 +490,29 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     signal(SIGINT, SigintHandler);
 
-
+    // Initialize global variables
     _ptrDrone = new DJIDrone(nh);
-
-
+	_msgUltraSonic.ranges.resize(1);
+	_msgUltraSonic.intensities.resize(1);
 
     
 
     //A publisher to control the gimbal angle. 
     gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
         
-	int numMessagesToBuffer = 10;
-    ros::Subscriber sub1 = nh.subscribe("/dji_sdk/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
-	ros::Subscriber sub2 = nh.subscribe("/dji_sdk/target_gps_position", numMessagesToBuffer, targetGpsCallback);
-	ros::Subscriber sub3 = nh.subscribe("/dji_sdk/target_utm_position", numMessagesToBuffer, targetUtmCallback);
-    ros::Subscriber guidance_sub = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, guidanceCallback);
+    // Subscribe topics    
+	int numMessagesToBuffer = 1;
+    ros::Subscriber sub1 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
+
+    ros::Subscriber sub2 = nh.subscribe("/dji_sdk/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
+	ros::Subscriber sub3 = nh.subscribe("/dji_sdk/target_gps_position", numMessagesToBuffer, targetGpsCallback);
+	ros::Subscriber sub4 = nh.subscribe("/dji_sdk/target_utm_position", numMessagesToBuffer, targetUtmCallback);
    
+    ros::spinOnce();
+
     RunNavigation();
 
-    ros::spin();
+
              
     return 0;    
 

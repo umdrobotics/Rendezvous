@@ -2,6 +2,7 @@ build/
 bin/
 lib/
 *~
+*.cpp~
 
 # Except for this lib 
 !Guidance-SDK-ROS/lib/
