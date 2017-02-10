@@ -552,13 +552,13 @@ int main(int argc, char **argv)
     // set the gimbal pitch  to -25 for tests.
     drone.gimbal_angle_control(0.0, -250.0, 0.0, 10.0);    
 
-    _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 2); 
+    _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/desired_gimbal_pose", 2); 
     
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Yi Added Code
-	_DroneUTMPub = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/drone_utm_position", 2); 
-	_TargetGPSPub = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/target_gps_position", 2); 
-	_TargetUTMPub = nh.advertise<geometry_msgs::PointStamped>("/dji_sdk/target_utm_position", 2); 
+	_DroneUTMPub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/drone_utm_position", 2); 
+	_TargetGPSPub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/target_gps_position", 2); 
+	_TargetUTMPub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/target_utm_position", 2); 
 	////////////////////////////////////////////////////////////////////////////////////////////////////
 
 

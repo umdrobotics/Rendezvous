@@ -135,7 +135,9 @@ int main(int argc, char **argv)
 
     ros::init(argc, argv, "gimbal_control");
     ros::NodeHandle nh;
-    ros::Subscriber sub = nh.subscribe("/gimbal_control/desired_gimbal_pose", 10, listernerCallback);
+    signal(SIGINT, SigintHandler);
+
+    ros::Subscriber sub = nh.subscribe("/target_tracking/desired_gimbal_pose", 10, listernerCallback);
 
     double dTimeStepSec = 0.02;
     nh.getParam("/gimbal_control/gimbal_control_time_step_sec", dTimeStepSec);   
@@ -212,7 +214,7 @@ int main(int argc, char **argv)
 
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
     
-    signal(SIGINT, SigintHandler);
+
     
     ros::spin();
              

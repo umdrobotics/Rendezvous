@@ -338,7 +338,6 @@ void Waypoint_mission_upload(void)
         distance = abs(_targetUtmPosition.x - _droneUtmPosition.x) + abs(_targetUtmPosition.y - _droneUtmPosition.y);
     }
 
-
 }
 
 
@@ -484,9 +483,7 @@ void RunNavigation(void)
 
 int main(int argc, char **argv)
 {
-
-    ros::init(argc, argv, "navigation_node");
-	
+    ros::init(argc, argv, "navigation_node");	
     ros::NodeHandle nh;
     signal(SIGINT, SigintHandler);
 
@@ -495,18 +492,17 @@ int main(int argc, char **argv)
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
 
-    
 
     //A publisher to control the gimbal angle. 
-    gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
+    gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/desired_gimbal_pose", 1000);
         
-    // Subscribe topics    
+
+    // Subscribers    
 	int numMessagesToBuffer = 1;
     ros::Subscriber sub1 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
-
-    ros::Subscriber sub2 = nh.subscribe("/dji_sdk/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
-	ros::Subscriber sub3 = nh.subscribe("/dji_sdk/target_gps_position", numMessagesToBuffer, targetGpsCallback);
-	ros::Subscriber sub4 = nh.subscribe("/dji_sdk/target_utm_position", numMessagesToBuffer, targetUtmCallback);
+    ros::Subscriber sub2 = nh.subscribe("/target_tracking/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
+	ros::Subscriber sub3 = nh.subscribe("/target_tracking/target_gps_position", numMessagesToBuffer, targetGpsCallback);
+	ros::Subscriber sub4 = nh.subscribe("/target_tracking/target_utm_position", numMessagesToBuffer, targetUtmCallback);
    
     ros::spinOnce();
 
