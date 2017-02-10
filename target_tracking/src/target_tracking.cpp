@@ -545,6 +545,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "target_tracking");
     ROS_INFO("target tracking");
     ros::NodeHandle nh;
+    signal(SIGINT, SigintHandler);    
 
     _ptrDrone = new DJIDrone(nh);
     DJIDrone& drone = *_ptrDrone;
@@ -566,7 +567,7 @@ int main(int argc, char **argv)
     int numMessagesToBuffer = 2;
     ros::Subscriber sub = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     
-    signal(SIGINT, SigintHandler);    
+
     ros::spin();
     
     return 0;    
