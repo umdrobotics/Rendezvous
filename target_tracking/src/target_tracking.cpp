@@ -464,6 +464,8 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 {
 
     DJIDrone& drone = *_ptrDrone;
+	char zone;
+    double dLastRecordedHeightAboveTargetM = 0.0;
 
     if (vecTagDetections.detections.empty())
     {
@@ -504,8 +506,102 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     msgDesiredAngleDeg.header = tag.pose.header; 
     
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
+
+
+
+
+
+
+	//Test
+	tag.pose.pose.position.y *= -1;
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+    //Get drone UTM position
+    geometry_msgs::Point droneUtmPosition;    
+    gps_common::LLtoUTM(drone.global_position.latitude, 
+                        drone.global_position.longitude, 
+                        droneUtmPosition.x, 
+                        droneUtmPosition.y, 
+                        &zone);
+    //droneUtmPosition.x = easting;
+    //droneUtmPosition.y = northing;
+    droneUtmPosition.z = drone.global_position.altitude;
+
+    //Create message
+    geometry_msgs::PointStamped msgDroneUtmPosition;
+    msgDroneUtmPosition.header = tag.pose.header;
+    msgDroneUtmPosition.point.x = droneUtmPosition.x;
+    msgDroneUtmPosition.point.y = droneUtmPosition.y;
+    msgDroneUtmPosition.point.z = droneUtmPosition.z;
+    _DroneUTMPub.publish(msgDroneUtmPosition);
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+    // Get target UTM position
+    // UTMobject latestTargetLocation; 
+    geometry_msgs::Point targetUtmPosition
+        = targetDistanceMetersToUTM_WithHeightDifference (  tag.pose.pose.position,
+                                                            drone.gimbal,
+                                                            droneUtmPosition,
+                                                            //TODO decide if we should use .height instead
+                                                            //LAST_RECORDED_HEIGHT_ABOVE_TARGET_METERS 
+                                                            // THIS IS AN OUTPUT VARIABLE
+                                                            dLastRecordedHeightAboveTargetM);
+
+    //Create message
+    geometry_msgs::PointStamped msgTargetUtmPosition;
+    msgTargetUtmPosition.header = tag.pose.header;
+    msgTargetUtmPosition.point.x = targetUtmPosition.x;
+    msgTargetUtmPosition.point.y = targetUtmPosition.y;
+    msgTargetUtmPosition.point.z = targetUtmPosition.z;
+    _TargetUTMPub.publish(msgTargetUtmPosition);
+
+
+    ////////////////////////////////////////////////////////////////////////////////////////
+    //Get target GPS position
+    geometry_msgs::Point targetGpsPosition;
+    gps_common::UTMtoLL(targetUtmPosition.x,
+                        targetUtmPosition.y,
+                        &zone,
+                        targetGpsPosition.x,
+                        targetGpsPosition.y);
+
+    //Create message    
+    geometry_msgs::PointStamped msgTargetGpsPosition;
+    msgTargetGpsPosition.header = tag.pose.header;
+    msgTargetGpsPosition.point.x = targetGpsPosition.x;
+    msgTargetGpsPosition.point.y = targetGpsPosition.y;
+    msgTargetGpsPosition.point.z = targetUtmPosition.z;
+    _TargetGPSPub.publish(msgTargetGpsPosition);
+
+
+	std::stringstream ss ;
+        
+    ss  << std::fixed << std::setprecision(7) << std::endl
+        << "Time: " << ros::Time::now().toSec() << std::endl
+        << "Drone Pos(lat,lon,alt,heigt): "   << drone.global_position.latitude << "," 
+                                              << drone.global_position.longitude << ","
+                                              << drone.global_position.altitude << "," 
+                                              << drone.global_position.height << std::endl
+        << "Drone Pos(x,y,z): " << droneUtmPosition.x << "," 
+                                << droneUtmPosition.y << ","
+                                << droneUtmPosition.z << "," << std::endl
+        << "Tag Distance(x,y,z): "  << tag.pose.pose.position.x << ","
+                                    << tag.pose.pose.position.y << ","
+                                    << tag.pose.pose.position.z << "," << std::endl
+        << "Target Pos(x y z): "    << targetUtmPosition.x << ","
+                                    << targetUtmPosition.y << ","
+                                    << targetUtmPosition.z << std::endl
+        << "Target Pos(lat,lon,alt): "  << targetGpsPosition.x << "," 
+                                        << targetGpsPosition.y << ","
+                                        << targetUtmPosition.z << std::endl;
+
+
+
+
      
-                
+    /*           
     std::stringstream ss ;
     
     ss  << std::fixed << std::setprecision(7) << std::endl
@@ -519,8 +615,9 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         << "Desired Angle Deg(y,p,r): " << msgDesiredAngleDeg.point.z << ","
                                         << msgDesiredAngleDeg.point.y << ","
                                         << msgDesiredAngleDeg.point.x << std::endl;
-                                                    
+    */               
     ROS_INFO("%s", ss.str().c_str());
+	
 }
 
 void FindTargetLocation(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
@@ -630,7 +727,7 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDete
     // PredictDesiredGimbalAngle(vecTagDetections);
    
     FindDesiredGimbalAngle(vecTagDetections);
-    FindTargetLocation(vecTagDetections);
+    //FindTargetLocation(vecTagDetections);
 
 }
 

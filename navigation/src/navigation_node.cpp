@@ -10,11 +10,11 @@
 
 DJIDrone* _ptrDrone;
 
-int targetLocked = 0;
+int _targetLocked = 0;
 
 sensor_msgs::LaserScan _msgUltraSonic;
 
-ros::Publisher gimbal_pose_pub1;
+ros::Publisher _gimbal_pose_pub1;
 
 geometry_msgs::Point _droneUtmPosition;
 geometry_msgs::Point _targetGpsPosition;
@@ -72,7 +72,7 @@ void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGps
 		_targetGpsPosition.y = msgTargetGpsPos->point.y;
 		_targetGpsPosition.z = msgTargetGpsPos->point.z;
 		
-		targetLocked = 1;
+		_targetLocked = 1;
 		
 	}
 
@@ -144,10 +144,19 @@ void SearchForTarget(void)
 
 
     ROS_INFO("---------------------Start searching---------------------");
-    while(flyingRadius < limitRadius && 0 == targetLocked)
+    ros::spinOnce();
+    while(flyingRadius < limitRadius)
     {
-        for(int i = 0; i < 1890 && 0 == targetLocked; i ++)
+        if(1 == _targetLocked){
+                break;
+            }
+
+        for(int i = 0; i < 1890; i ++)
         {   
+            if(1 == _targetLocked){
+                break;
+            }
+
             //set up drone task
             float x =  x_center + flyingRadius*cos((Phi/300));
             float y =  y_center + flyingRadius*sin((Phi/300));
@@ -162,10 +171,11 @@ void SearchForTarget(void)
             }
             
             desiredGimbalPoseDeg.point.z += gimbalYawIncrements;
-            gimbal_pose_pub1.publish(desiredGimbalPoseDeg);
+            _gimbal_pose_pub1.publish(desiredGimbalPoseDeg);
             
             
             usleep(20000);
+            ros::spinOnce();
 
         } 
         
@@ -173,7 +183,7 @@ void SearchForTarget(void)
         
     }
     
-    if(flyingRadius < 20 && 0 == targetLocked)
+    if(flyingRadius < 20 && 1 == _targetLocked)
         ROS_INFO("Target FOUND!!!!!!!!!!!!!!!!!!!!!!!!!!!");
     else if(flyingRadius > 20)
         ROS_INFO("Didn't find anything! Try to change searching range or search again. ");
@@ -291,7 +301,7 @@ void NavigationTest(void)
                     drone.global_position.height
                  );     
 
-        if (_msgUltraSonic.ranges[0] < 0.1)
+        if (_msgUltraSonic.ranges[0] < 0.1 && (int)_msgUltraSonic.intensities[0] == 1)
         {
             break;
         }    
@@ -309,35 +319,58 @@ void Waypoint_mission_upload(void)
 {
     DJIDrone& drone = *_ptrDrone;
 
-//    ROS_INFO("Drone UTM Position:  X = " << _droneUtmPosition.x << "\n"
-//          << "                     Y = " << _droneUtmPosition.y << "\n"
-//          << "                     Z = " << _droneUtmPosition.z << "\n");
-//    ROS_INFO("Target UTM Position: X = " << _targetUtmPosition.x << "\n"
-//          << "                     Y = " << _targetUtmPosition.y << "\n"
-//          << "                     Z = " << _targetUtmPosition.z << "\n");
+	ros::spinOnce();
+	ROS_INFO("Drone UTM Position:  X = %f m\n", _droneUtmPosition.x);
+    ROS_INFO("                     Y = %f m\n", _droneUtmPosition.y);
+    ROS_INFO("                     Z = %f m\n", _droneUtmPosition.z);
+   	ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
+    ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
+    ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );
 
 
-    float xm = drone.local_position.x ;
-    float ym = drone.local_position.y ;
-    float zm = 3;
-    float delta_xm = _targetUtmPosition.x - _droneUtmPosition.x; 
-    float delta_ym = _targetUtmPosition.y - _droneUtmPosition.y;
-    float delta_zm = _targetUtmPosition.z - _droneUtmPosition.z;
-    float distance;
+    float x_start = drone.local_position.x ;
+    float y_start = drone.local_position.y ;
+
+    float delta_x = _targetUtmPosition.x - _droneUtmPosition.x; 
+    float delta_y = _targetUtmPosition.y - _droneUtmPosition.y;
+    //float delta_z = _targetUtmPosition.z - _droneUtmPosition.z;
+    //float distance;
                 
+    float x =  x_start + delta_x;
+    float y =  y_start + delta_y; // + 5.0;
+    ROS_INFO("X = %f m, Y = %f m", x, y);
+    //distance = abs(delta_xm) + abs(delta_ym); 
 
-    xm += delta_xm; 
-    ym += delta_ym;
-    distance = abs(delta_xm) + abs(delta_ym); 
-
-    while(distance > 0.5) 
+    while(1) 
     { 
-        drone.local_position_control(xm, ym, zm, 0);
-        usleep(20000);
+        ros::spinOnce();
 
-        distance = abs(_targetUtmPosition.x - _droneUtmPosition.x) + abs(_targetUtmPosition.y - _droneUtmPosition.y);
+        ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
+        ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
+        ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f\n", 
+                    drone.global_position.longitude,
+                    drone.global_position.latitude,
+                    drone.global_position.altitude,
+                    drone.global_position.height
+                 ); 
+		ROS_INFO("Drone UTM Position:  X = %f m\n", _droneUtmPosition.x);
+    	ROS_INFO("                     Y = %f m\n", _droneUtmPosition.y);
+    	ROS_INFO("                     Z = %f m\n", _droneUtmPosition.z);
+   		ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
+    	ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
+    	ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );    
+
+        if (_msgUltraSonic.ranges[0] < 0.1 && (int)_msgUltraSonic.intensities[0] == 1)
+        {
+            break;
+        }    
+
+        drone.local_position_control(x, y, 0.0, 0);
+	    ros::Duration(0.02).sleep();
+        //distance = abs(_targetUtmPosition.x - _droneUtmPosition.x) + abs(_targetUtmPosition.y - _droneUtmPosition.y);
     }
 
+    ROS_INFO("The drone is ready to land!");
 }
 
 
@@ -483,7 +516,9 @@ void RunNavigation(void)
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "navigation_node");	
+
+    ros::init(argc, argv, "navigation_node");
+	
     ros::NodeHandle nh;
     signal(SIGINT, SigintHandler);
 
@@ -492,14 +527,15 @@ int main(int argc, char **argv)
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
 
+    
 
     //A publisher to control the gimbal angle. 
-    gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/desired_gimbal_pose", 1000);
+    _gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/desired_gimbal_pose", 1000);
         
-
-    // Subscribers    
+    // Subscriber    
 	int numMessagesToBuffer = 1;
     ros::Subscriber sub1 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
+
     ros::Subscriber sub2 = nh.subscribe("/target_tracking/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
 	ros::Subscriber sub3 = nh.subscribe("/target_tracking/target_gps_position", numMessagesToBuffer, targetGpsCallback);
 	ros::Subscriber sub4 = nh.subscribe("/target_tracking/target_utm_position", numMessagesToBuffer, targetUtmCallback);
