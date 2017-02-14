@@ -107,16 +107,17 @@ void timerCallback(const ros::TimerEvent&)
 {
     DJIDrone& drone = *_ptrDrone;
     
-                            
+    ROS_INFO_STREAM("Desired Angle (Deg) Roll:" << _msgDesiredGimbalPoseDeg.point.x 
+                            << " Pitch:" << _msgDesiredGimbalPoseDeg.point.y 
+                            << " Yaw:" <<  _msgDesiredGimbalPoseDeg.point.z);               
     double yawRateInputDU = 
         _yaw_rate_controller->GetPlantInput(_msgDesiredGimbalPoseDeg.point.z, drone.gimbal.yaw);
     
     double pitchRateInputDU = 
         _pitch_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDeg.point.y, drone.gimbal.pitch);
     
-    double rollRateInputDU = 
-        _roll_rate_controller->GetPlantInput (_msgDesiredGimbalPoseDeg.point.x, drone.gimbal.roll);
-           
+    double rollRateInputDU = 0.0; // We don't use roll control
+
     drone.gimbal_speed_control(rollRateInputDU, pitchRateInputDU, yawRateInputDU);
 }
 
