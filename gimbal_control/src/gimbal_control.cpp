@@ -107,8 +107,6 @@ void timerCallback(const ros::TimerEvent&)
 {
     DJIDrone& drone = *_ptrDrone;
     
-    double dMeasuredTimeSec = _msgDesiredGimbalPoseDeg.header.stamp.nsec/1000000000.0
-                            + _msgDesiredGimbalPoseDeg.header.stamp.sec;
                             
     double yawRateInputDU = 
         _yaw_rate_controller->GetPlantInput(_msgDesiredGimbalPoseDeg.point.z, drone.gimbal.yaw);
@@ -137,7 +135,7 @@ int main(int argc, char **argv)
     ros::NodeHandle nh;
     signal(SIGINT, SigintHandler);
 
-    ros::Subscriber sub = nh.subscribe("/target_tracking/desired_gimbal_pose", 10, listernerCallback);
+    ros::Subscriber sub = nh.subscribe("/gimbal_control/desired_gimbal_pose", 10, listernerCallback);
 
     double dTimeStepSec = 0.02;
     nh.getParam("/gimbal_control/gimbal_control_time_step_sec", dTimeStepSec);   
