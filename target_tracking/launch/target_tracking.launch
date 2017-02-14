@@ -1,7 +1,8 @@
 <launch>
     <node name="target_tracking" pkg="target_tracking" type="target_tracking" output="screen" cwd="node">
     </node>
-	<node name="rosbag_record_tags" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/target_tracking //gimbal_control/desired_gimbal_pose /target_tracking/drone_utm_position /target_tracking/target_gps_position /target_tracking/target_utm_position" >
+	<node name="rosbag_record_tags" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/target_tracking /target_tracking/drone_utm_position /target_tracking/target_gps_position /target_tracking/target_utm_position" >
+    </node>
 </launch>
 
 
