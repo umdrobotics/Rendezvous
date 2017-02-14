@@ -6,6 +6,10 @@
 #include <signal.h>
 #include <sstream>
 #include <iostream>
+#include <cmath>
+
+#define RADIANS_PER_DEGREE (M_PI/180.0);
+#define DEGREES_PER_RADIAN (180.0/M_PI);
 
 using namespace std;
 
@@ -103,13 +107,18 @@ void RunInitialAngleTests(DJIDrone& drone)
 }
 
 
+void QuaternionToRPY(dji_sdk::AttitudeQuaternion q, float& roll, float& pitch,  float& yaw) //roll pitch and yaw are output variables
+{ 
+     roll  = atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2));
+     pitch = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
+     yaw   = atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1));
+}
+
+
 void timerCallback(const ros::TimerEvent&)
 {
     DJIDrone& drone = *_ptrDrone;
-    
-    ROS_INFO_STREAM("Desired Angle (Deg) Roll:" << _msgDesiredGimbalPoseDeg.point.x 
-                            << " Pitch:" << _msgDesiredGimbalPoseDeg.point.y 
-                            << " Yaw:" <<  _msgDesiredGimbalPoseDeg.point.z);               
+               
     double yawRateInputDU = 
         _yaw_rate_controller->GetPlantInput(_msgDesiredGimbalPoseDeg.point.z, drone.gimbal.yaw);
     
@@ -200,17 +209,22 @@ int main(int argc, char **argv)
     ROS_INFO_STREAM(*_pitch_rate_controller);
     ROS_INFO_STREAM(*_roll_rate_controller);
     
-    _msgDesiredGimbalPoseDeg.point.x = 0.0;
-    _msgDesiredGimbalPoseDeg.point.y = -10.0;
-    _msgDesiredGimbalPoseDeg.point.z = 0.0;
- 
     // Gimbal Angle Tests
     DJIDrone& drone = *_ptrDrone;
     
     RunShortAngleTests(drone);
     //RunInitialAngleTests(drone);
     
-
+	ros::spinOnce();
+    float roll, pitch, yaw;
+	QuaternionToRPY(drone.attitude_quaternion, roll, pitch, yaw);
+	ROS_INFO("Vehicle Attitude: Roll:%f, Pitch:%f, Yaw:%f\n", roll, pitch, yaw);
+    
+    _msgDesiredGimbalPoseDeg.point.x = 0.0;
+    _msgDesiredGimbalPoseDeg.point.y = -10.0;
+    _msgDesiredGimbalPoseDeg.point.z = yaw * DEGREES_PER_RADIAN;
+ 
+    
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
     
 
