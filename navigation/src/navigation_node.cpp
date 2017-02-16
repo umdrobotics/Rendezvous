@@ -16,9 +16,10 @@ sensor_msgs::LaserScan _msgUltraSonic;
 
 ros::Publisher _gimbal_pose_pub1;
 
-geometry_msgs::Point _droneUtmPosition;
-geometry_msgs::Point _targetGpsPosition;
-geometry_msgs::Point _targetUtmPosition;
+// geometry_msgs::Point _droneUtmPosition;
+// geometry_msgs::Point _targetGpsPosition;
+// geometry_msgs::Point _targetUtmPosition;
+geometry_msgs::Point _toTargetDistance;
 
 
 
@@ -49,53 +50,53 @@ void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPo
     //                        << " Yaw:" <<  _msgDesiredGimbalPoseDeg.point.z);
 }
 
-void droneUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgDroneUtmPos)
-{
-	if (0 < sizeof(msgDroneUtmPos)) 
-    {	
-    	_droneUtmPosition.x = msgDroneUtmPos->point.x;
-		_droneUtmPosition.y = msgDroneUtmPos->point.y;
-		_droneUtmPosition.z = msgDroneUtmPos->point.z;
-	}
+// void droneUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgDroneUtmPos)
+// {
+// 	if (0 < sizeof(msgDroneUtmPos)) 
+//     {	
+//     	_droneUtmPosition.x = msgDroneUtmPos->point.x;
+// 		_droneUtmPosition.y = msgDroneUtmPos->point.y;
+// 		_droneUtmPosition.z = msgDroneUtmPos->point.z;
+// 	}
 
-	// ROS_INFO_STREAM("Drone UTM Position: X = " << msgDroneUtmPos->point.x 
- //                           << " Y = " << msgDroneUtmPos.point.y 
- //                           << " Z = " << msgDroneUtmPos.point.z);
+// 	// ROS_INFO_STREAM("Drone UTM Position: X = " << msgDroneUtmPos->point.x 
+//  //                           << " Y = " << msgDroneUtmPos.point.y 
+//  //                           << " Z = " << msgDroneUtmPos.point.z);
 
-}
+// }
 
-void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGpsPos)
-{
-	if (0 < sizeof(msgTargetGpsPos)) 
-    {
-		_targetGpsPosition.x = msgTargetGpsPos->point.x;
-		_targetGpsPosition.y = msgTargetGpsPos->point.y;
-		_targetGpsPosition.z = msgTargetGpsPos->point.z;
+// void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGpsPos)
+// {
+// 	if (0 < sizeof(msgTargetGpsPos)) 
+//     {
+// 		_targetGpsPosition.x = msgTargetGpsPos->point.x;
+// 		_targetGpsPosition.y = msgTargetGpsPos->point.y;
+// 		_targetGpsPosition.z = msgTargetGpsPos->point.z;
 		
-		_targetLocked = 1;
+// 		_targetLocked = 1;
 		
-	}
+// 	}
 
-	// ROS_INFO_STREAM("Target GPS Position: X = " << msgTargetGpsPos->point.x 
- //                           << " Y = " << msgTargetGpsPos.point.y 
- //                           << " Z = " <<  msgTargetGpsPos.point.z);
+// 	// ROS_INFO_STREAM("Target GPS Position: X = " << msgTargetGpsPos->point.x 
+//  //                           << " Y = " << msgTargetGpsPos.point.y 
+//  //                           << " Z = " <<  msgTargetGpsPos.point.z);
 		
-}
+// }
 
-void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtmPos)
-{
-    if (0 < sizeof(msgTargetUtmPos))
-    {	
-    	_targetUtmPosition.x = msgTargetUtmPos->point.x;
-		_targetUtmPosition.y = msgTargetUtmPos->point.y;
-		_targetUtmPosition.z = msgTargetUtmPos->point.z;
-	}
+// void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtmPos)
+// {
+//     if (0 < sizeof(msgTargetUtmPos))
+//     {	
+//     	_targetUtmPosition.x = msgTargetUtmPos->point.x;
+// 		_targetUtmPosition.y = msgTargetUtmPos->point.y;
+// 		_targetUtmPosition.z = msgTargetUtmPos->point.z;
+// 	}
 
-	// ROS_INFO_STREAM("Target UTM Position: X = " << msgTargetUtmPos->point.x 
- //                           << " Y = " << msgTargetUtmPos.point.y 
- //                           << " Z = " <<  msgTargetUtmPos.point.z);
+// 	// ROS_INFO_STREAM("Target UTM Position: X = " << msgTargetUtmPos->point.x 
+//  //                           << " Y = " << msgTargetUtmPos.point.y 
+//  //                           << " Z = " <<  msgTargetUtmPos.point.z);
 
-}
+// }
 
 
 void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
@@ -108,6 +109,20 @@ void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
 
 }
 
+
+void targetDistanceCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetDistance)
+{
+	if (0 < sizeof(msgTargetDistance)) 
+    {
+		_toTargetDistance.x = msgTargetDistance->point.x;
+		_toTargetDistance.y = msgTargetDistance->point.y;
+		_toTargetDistance.z = msgTargetDistance->point.z;
+		
+		_targetLocked = 1;
+		
+	}
+		
+}
 
 
 void SearchForTarget(void)
@@ -320,19 +335,21 @@ void Waypoint_mission_upload(void)
     DJIDrone& drone = *_ptrDrone;
 
 	ros::spinOnce();
-	ROS_INFO("Drone UTM Position:  X = %f m\n", _droneUtmPosition.x);
-    ROS_INFO("                     Y = %f m\n", _droneUtmPosition.y);
-    ROS_INFO("                     Z = %f m\n", _droneUtmPosition.z);
-   	ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
-    ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
-    ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );
-
+	ROS_INFO("To Target Distance:  North  = %f m\n", _toTargetDistance.x);
+    ROS_INFO("                     East   = %f m\n", _toTargetDistance.y);
+    ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);
+   	// ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
+    // ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
+    // ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );
+   	// ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
+    // ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
+    // ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );
 
     float x_start = drone.local_position.x ;
     float y_start = drone.local_position.y ;
 
-    float delta_x = _targetUtmPosition.x - _droneUtmPosition.x; 
-    float delta_y = _targetUtmPosition.y - _droneUtmPosition.y;
+    float delta_x = _toTargetDistance.x; 
+    float delta_y = _toTargetDistance.y;
     //float delta_z = _targetUtmPosition.z - _droneUtmPosition.z;
     //float distance;
                 
@@ -353,12 +370,10 @@ void Waypoint_mission_upload(void)
                     drone.global_position.altitude,
                     drone.global_position.height
                  ); 
-		ROS_INFO("Drone UTM Position:  X = %f m\n", _droneUtmPosition.x);
-    	ROS_INFO("                     Y = %f m\n", _droneUtmPosition.y);
-    	ROS_INFO("                     Z = %f m\n", _droneUtmPosition.z);
-   		ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
-    	ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
-    	ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );    
+		ROS_INFO("To Target Distance:  North  = %f m\n", _toTargetDistance.x);
+    	ROS_INFO("                     East   = %f m\n", _toTargetDistance.y);
+    	ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);   
+
 
         if (_msgUltraSonic.ranges[0] < 0.1 && (int)_msgUltraSonic.intensities[0] == 1)
         {
@@ -535,10 +550,10 @@ int main(int argc, char **argv)
     // Subscriber    
 	int numMessagesToBuffer = 1;
     ros::Subscriber sub1 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
-
-    ros::Subscriber sub2 = nh.subscribe("/target_tracking/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
-	ros::Subscriber sub3 = nh.subscribe("/target_tracking/target_gps_position", numMessagesToBuffer, targetGpsCallback);
-	ros::Subscriber sub4 = nh.subscribe("/target_tracking/target_utm_position", numMessagesToBuffer, targetUtmCallback);
+	ros::Subscriber sub2 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
+ //    ros::Subscriber sub2 = nh.subscribe("/target_tracking/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
+	// ros::Subscriber sub3 = nh.subscribe("/target_tracking/target_gps_position", numMessagesToBuffer, targetGpsCallback);
+	// ros::Subscriber sub4 = nh.subscribe("/target_tracking/target_utm_position", numMessagesToBuffer, targetUtmCallback);
    
     ros::spinOnce();
 
