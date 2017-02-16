@@ -370,8 +370,8 @@ void Waypoint_mission_upload(void)
                     drone.global_position.altitude,
                     drone.global_position.height
                  ); 
-		ROS_INFO("To Target Distance:  North  = %f m\n", _toTargetDistance.x);
-    	ROS_INFO("                     East   = %f m\n", _toTargetDistance.y);
+		ROS_INFO("To Target Distance:  North  = %f m", _toTargetDistance.x);
+    	ROS_INFO("                     East   = %f m", _toTargetDistance.y);
     	ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);   
 
 
@@ -545,7 +545,7 @@ int main(int argc, char **argv)
     
 
     //A publisher to control the gimbal angle. 
-    _gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/desired_gimbal_pose", 1000);
+    _gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
         
     // Subscriber    
 	int numMessagesToBuffer = 1;
