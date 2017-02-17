@@ -347,16 +347,30 @@ void Waypoint_mission_upload(void)
 
     float x_start = drone.local_position.x ;
     float y_start = drone.local_position.y ;
-
     float delta_x = _toTargetDistance.x; 
     float delta_y = _toTargetDistance.y;
-    //float delta_z = _targetUtmPosition.z - _droneUtmPosition.z;
-    //float distance;
-                
+    
     float x =  x_start + delta_x;
     float y =  y_start + delta_y; // + 5.0;
-    ROS_INFO("X = %f m, Y = %f m", x, y);
-    //distance = abs(delta_xm) + abs(delta_ym); 
+    float z =  drone.global_position.height;
+    float distance = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    ROS_INFO("X = %f m, Y = %f m, distance = %f m ", x, y, distance);
+     
+
+    float limitRadius = 1;
+    while(distance > limitRadius)
+    {
+    	ros::spinOnce();
+    	float distance = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    	ROS_INFO("Distance = %f m, Height = %f m ", distance, drone.global_position.height);
+
+    	drone.local_position_control(x, y, z, 0);
+	    ros::Duration(0.02).sleep();
+
+    }
+
+    ROS_INFO("The drone is ready to descending!!!!!!!!!!!!!!!!!!!!!!");
+
 
     while(1) 
     { 
@@ -375,6 +389,8 @@ void Waypoint_mission_upload(void)
     	ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);   
 
 
+
+
         if (_msgUltraSonic.ranges[0] < 0.1 && (int)_msgUltraSonic.intensities[0] == 1)
         {
             break;
@@ -382,10 +398,9 @@ void Waypoint_mission_upload(void)
 
         drone.local_position_control(x, y, 0.0, 0);
 	    ros::Duration(0.02).sleep();
-        //distance = abs(_targetUtmPosition.x - _droneUtmPosition.x) + abs(_targetUtmPosition.y - _droneUtmPosition.y);
     }
 
-    ROS_INFO("The drone is ready to land!");
+    ROS_INFO("The drone is ready to land!!!!!!!!!!!!!!!!!!!!!!!!!!");
 }
 
 
