@@ -127,19 +127,18 @@ include_directories(${catkin_INCLUDE_DIRS})
 
 ## Declare a C++ executable
 add_executable(navigation_node src/navigation_node.cpp)
-target_link_libraries(navigation_node
-  ${catkin_LIBRARIES}
-)
+add_executable(navigation_menu src/navigation_menu.cpp)
+
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
 # add_dependencies(navigation_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(navigation_node navigation_generate_messages_cpp)
+add_dependencies(navigation_menu navigation_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(navigation_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(navigation_node ${catkin_LIBRARIES} )
+target_link_libraries(navigation_menu ${catkin_LIBRARIES} )
 
 #############
 ## Install ##

@@ -10,6 +10,6 @@
 		<param name="enc_key" type="string" value="a7ca9a24b3536e091c3d00dda7ce74a3edb4196a8329c376eb798d77e50466b7"/>
 		<param name="groundstation_enable" type="int" value="1"/>
 	</node>
-    <node name="rosbag_record_dji_sdk" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/dji_sdk_data /dji_sdk/flight_status /dji_sdk/flight_control_info /dji_sdk/gimbal /dji_sdk/global_position /dji_sdk/local_position /dji_sdk/velocity /dji_sdk/compass" >
+    <node name="rosbag_record_dji_sdk" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/dji_sdk_data /dji_sdk/flight_status /dji_sdk/flight_control_info /dji_sdk/gimbal /dji_sdk/global_position /dji_sdk/local_position" >
     </node>
 </launch>
