@@ -449,13 +449,10 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     // pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); 
     //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
     double pitchDeg = UasMath::ConvertRad2Deg(atan2(y, z));
-
-    // yaw_rads = acos( deltaNorth / distance_Meters );
-    // turns out acos can't be used, since it doesn't do enough to specify the quadrant. Use
  
     double yawDeg = UasMath::ConvertRad2Deg(atan2(x, z)); 
     //remember north is the x axis, east is the y axis
-    
+   
         
     geometry_msgs::PointStamped msgDesiredAngleDeg;	
     msgDesiredAngleDeg.point.x = 0;
@@ -466,8 +463,6 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     msgDesiredAngleDeg.header = tag.pose.header; 
     
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
-
-
 
 
 	//Test

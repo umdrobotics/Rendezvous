@@ -22,23 +22,25 @@ void SigintHandler(int sig)
 void DisplayMainMenu(void)
 {
     printf("\r\n");
-    printf("+-------------------------- < Main menu > -------------------------+\n");
-    printf("| [1]  Request Control          | [21] Set Msg Frequency Test      |\n");   
-    printf("| [2]  Release Control          | [22] Waypoint Mission Upload     |\n");   
-    printf("| [3]  Arm the Drone            | [23]                             |\n");   
-    printf("| [4]  Disarm the Drone         | [24] Followme Mission Upload     |\n");   
-    printf("| [5]  Takeoff                  | [25] Mission Start               |\n");   
-    printf("| [6]  Landing                  | [26] Mission Pause               |\n");   
-    printf("| [7]  Go Home                  | [27] Mission Resume              |\n");   
-    printf("| [8]  Draw Circle Sample       | [28] Mission Cancel              |\n");   
-    printf("| [9]  Search for Target        | [29] Mission Waypoint Download   |\n");   
-    printf("| [10] Local Navigation Test    | [30] Mission Waypoint Set Speed  |\n");   
-    printf("| [11] Global Navigation Test   | [31] Mission Waypoint Get Speed  |\n");    
-    printf("| [12] Waypoint Navigation Test | [32] Mission Followme Set Target |\n");   
-    printf("|                                                                  |\n");
-    printf("| [98] Random Tests                                                |\n");
-    printf("| [99] Exit                     | [0] Display this menu            |\n");
-    printf("+-----------------------------------------------------------------+\n");
+    printf("+-------------------------- < Main menu > ---------------------------+\n");
+    printf("| [1]  Request Control            | [21]                             |\n");   
+    printf("| [2]  Release Control            | [22] Waypoint Mission Upload     |\n");   
+    printf("| [3]  Arm the Drone              | [23] Search for Target           |\n");   
+    printf("| [4]  Disarm the Drone           | [24]                             |\n");   
+    printf("| [5]  Takeoff                    | [25] Landing Test                |\n");   
+    printf("| [6]  Landing                    | [26]                             |\n");   
+    printf("| [7]  Go Home                    | [27]                             |\n");   
+    printf("| [8]  Mission Start              | [28]                             |\n");   
+    printf("| [9]  Mission Cancel             | [29]                             |\n");   
+    printf("| [10] Mission Pause              | [30]                             |\n");   
+    printf("| [11] Mission Resume             | [31] Ultrasonic Test             |\n");   
+    printf("| [12] Mission Waypoint Download  | [32]                             |\n");   
+    printf("| [13] Mission Waypoint Set Speed | [33]                             |\n");   
+    printf("| [14] Followme Mission Upload    | [34] Temporary Test              |\n");
+    printf("|                                 |                                  |\n");
+    printf("| [98] Stop Current Task          |                                  |\n");
+    printf("| [99] Exit                       | [0] Display this menu            |\n");
+    printf("+--------------------------------------------------------------------+\n");
     printf("input a number then press enter key\r\n");
     printf("use `rostopic echo` to query drone status\r\n");
     printf("----------------------------------------\r\n");
@@ -59,7 +61,8 @@ int main(int argc, char **argv)
     bool bIsInputValid = true;
     bool bIsExitRequested = false;
     
-    
+    std_msgs::UInt16 msgNavigationTask;
+
     while(1)
     {
         ros::spinOnce();
@@ -104,11 +107,10 @@ int main(int argc, char **argv)
             break;
         }
  
-        std_msgs::UInt16 msgNavigationMenu;
+        msgNavigationTask.data = inputValue;
 
-        msgNavigationMenu.data = inputValue;
-
-        NavigationMenuPub.publish(msgNavigationMenu);
+        // Publish navigation task if inputValue > 0 and < 99
+        NavigationMenuPub.publish(msgNavigationTask);
         
     }
 

@@ -1,16 +1,20 @@
 #include "ros/ros.h"
 #include <dji_sdk/dji_drone.h>
 #include "std_msgs/String.h"
+#include "std_msgs/UInt16.h"
 #include <geometry_msgs/PointStamped.h>
 #include <signal.h>
 #include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
 
 //using namespace std;
 
-
 DJIDrone* _ptrDrone;
 
 int _targetLocked = 0;
+
+int _nNavigationTask = 0;
+
+bool _bIsDroneLandingPrinted = false;
 
 sensor_msgs::LaserScan _msgUltraSonic;
 
@@ -42,13 +46,6 @@ void SigintHandler(int sig)
 }
 
 
-void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPoseDeg)
-{
-    //_msgDesiredGimbalPoseDeg = *msgDesiredPoseDeg;
-    //ROS_INFO_STREAM("Desired Angle (Deg) Roll:" << _msgDesiredGimbalPoseDeg.point.x 
-    //                        << " Pitch:" << _msgDesiredGimbalPoseDeg.point.y 
-    //                        << " Yaw:" <<  _msgDesiredGimbalPoseDeg.point.z);
-}
 
 // void droneUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgDroneUtmPos)
 // {
@@ -105,7 +102,6 @@ void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
     _msgUltraSonic.header.stamp.sec = msgUltraSonic.header.stamp.sec;
     _msgUltraSonic.ranges[0] = msgUltraSonic.ranges[0];
     _msgUltraSonic.intensities[0] = msgUltraSonic.intensities[0];
-
 
 }
 
@@ -206,127 +202,45 @@ void SearchForTarget(void)
 
 }
 
-
-void DrawCircleExample(void)
-{
-
-    std::cout << "Enter the radius of the circle in meteres (4m < x < 10m)\n";
-    int desiredRadius;
-    std::cin >> desiredRadius;   
-
-    std::cout << "Enter height in meteres (Relative to take off point. 1m < x < 5m) \n";
-    int desiredAltitude;
-    std::cin >> desiredAltitude;  
-    
-    int flyingRadius = std::max(4, std::min(10, desiredRadius));
-    ROS_INFO("The flying radius is %d meters\n", flyingRadius);
-    
-    int droneAltitude = std::max(1, std::min(5, desiredAltitude));
-    ROS_INFO("The drone altitude is %d meters\n", droneAltitude);
-                                    
-    
-    DJIDrone& drone = *_ptrDrone;
-    
-    ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
-
-    float x_center = drone.local_position.x;
-    float y_center = drone.local_position.y;
-                
-    float circleRadiusIncrements = 0.01;
-            
-    for(int j = 0; j < 1000; j ++)
-    {   
-        if (circleRadiusIncrements < flyingRadius)
-        {
-            float x =  x_center + circleRadiusIncrements;
-            float y =  y_center;
-            circleRadiusIncrements = circleRadiusIncrements + 0.01;
-            drone.local_position_control(x, y, droneAltitude, 0);
-            usleep(20000);
-        }
-        else
-        {
-            break;
-        }
-    }
-    
-    int Phi = 0;
-    
-    for(int i = 0; i < 1000; i ++)
-    {   
-        float x =  x_center + flyingRadius*cos((Phi/120));
-        float y =  y_center + flyingRadius*sin((Phi/120));
-        Phi = Phi+1;
-        drone.local_position_control(x, y, droneAltitude, 0);
-        usleep(50000);
-           
-        ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
-        ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f\n", 
-                    drone.global_position.longitude,
-                    drone.global_position.latitude,
-                    drone.global_position.altitude,
-                    drone.global_position.height
-                 );                         
-    } 
-}
-
 // Use this function to test anything you want
-void RandomTests(void)
+void UltrasonicTest(void)
 {
-    ROS_INFO("Starting Random Tests");
-  
-    for (int i=0; i<10;i++)
-    {
-        printf( "frame_id: %s, stamp: %d, distance: %f, reliability: %d\n", 
-        _msgUltraSonic.header.frame_id.c_str(), 
-        _msgUltraSonic.header.stamp.sec,
-        _msgUltraSonic.ranges[0],
-        (int)_msgUltraSonic.intensities[0] );
-
-        usleep(200000);
-        ros::spinOnce();
-    }
-
-    ROS_INFO("Tests are done");
+    ROS_INFO("frame_id: %s, stamp: %d, distance: %f, reliability: %d", 
+            _msgUltraSonic.header.frame_id.c_str(), 
+            _msgUltraSonic.header.stamp.sec,
+            _msgUltraSonic.ranges[0],
+            (int)_msgUltraSonic.intensities[0] );
       
 }
 
-void NavigationTest(void)
+void LandingTest(void)
 {
     DJIDrone& drone = *_ptrDrone;
 
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
 
-    float x_start = drone.local_position.x ;
-    float y_start = drone.local_position.y ;
-
-    float x =  x_start;
-    float y =  y_start; // + 5.0;
-    
-      
-    while(1)
+    if (bIsDroneLanded)
     {
-        ros::spinOnce();
-
+        if (!_bIsDroneLandingPrinted)
+        { 
+            ROS_INFO("The drone has landed!");     
+            _bIsDroneLandingPrinted = true;
+        }
+        return;
+    }
+    else
+    {
         ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
-        ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
-        ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f\n", 
+        ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y);
+        ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
                     drone.global_position.longitude,
                     drone.global_position.latitude,
                     drone.global_position.altitude,
                     drone.global_position.height
                  );     
-
-        if (_msgUltraSonic.ranges[0] < 0.1 && (int)_msgUltraSonic.intensities[0] == 1)
-        {
-            break;
-        }    
-
-        drone.local_position_control(x, y, 0.0, 0);
-	    ros::Duration(0.02).sleep();
-        
+        drone.local_position_control(drone.local_position.x, drone.local_position.y, 0.0, 0);
     }
 
-    ROS_INFO("The drone is ready to land!");
 }
 
 
@@ -389,8 +303,6 @@ void Waypoint_mission_upload(void)
     	ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);   
 
 
-
-
         if (_msgUltraSonic.ranges[0] < 0.1 && (int)_msgUltraSonic.intensities[0] == 1)
         {
             break;
@@ -404,144 +316,167 @@ void Waypoint_mission_upload(void)
 }
 
 
-void DisplayMainMenu(void)
+void TemporaryTest(void)
 {
-    printf("\r\n");
-    printf("+-------------------------- < Main menu > -------------------------+\n");
-    printf("| [1]  Request Control          | [21] Set Msg Frequency Test      |\n");   
-    printf("| [2]  Release Control          | [22] Waypoint Mission Upload     |\n");   
-    printf("| [3]  Arm the Drone            | [23]                             |\n");   
-    printf("| [4]  Disarm the Drone         | [24] Followme Mission Upload     |\n");   
-    printf("| [5]  Takeoff                  | [25] Mission Start               |\n");   
-    printf("| [6]  Landing                  | [26] Mission Pause               |\n");   
-    printf("| [7]  Go Home                  | [27] Mission Resume              |\n");   
-    printf("| [8]  Draw Circle Sample       | [28] Mission Cancel              |\n");   
-    printf("| [9]  Search for Target        | [29] Mission Waypoint Download   |\n");   
-    printf("| [10] Local Navigation Test    | [30] Mission Waypoint Set Speed  |\n");   
-    printf("| [11] Global Navigation Test   | [31] Mission Waypoint Get Speed  |\n");    
-    printf("| [12] Waypoint Navigation Test | [32] Mission Followme Set Target |\n");   
-    printf("|                                                                  |\n");
-    printf("| [54] Geolocalization/Gimbal tests and AprilTag recognition)      |\n");
-    printf("| [98] Random Tests                                                |\n");
-    printf("| [99] Exit                                                        |\n");
-    printf("+-----------------------------------------------------------------+\n");
-    printf("input a number then press enter key\r\n");
-    printf("use `rostopic echo` to query drone status\r\n");
-    printf("----------------------------------------\r\n");
+
+    ROS_INFO("To Target Distance:  North  = %f m\n", _toTargetDistance.x);
+    ROS_INFO("                     East   = %f m\n", _toTargetDistance.y);
+    ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);
+
 }
 
 
-
-void RunNavigation(void)
+void timerCallback(const ros::TimerEvent&)
 {
-    int inputValue;
+    DJIDrone& drone = *_ptrDrone;
+
+
+    if (_nNavigationTask < 21 || _nNavigationTask > 90)
+    // we don't take care of these cases in this callback function.
+    // They are taken care in navigationTaskCallback.    
+    {
+        return;
+    }
+
+    switch (_nNavigationTask)
+    {
+        case 21: 
+            break;
+         
+        case 22: 
+            break;
+
+        case 23: 
+            break;
+
+        case 25: 
+            LandingTest();
+            break;
+
+        case 31: 
+            UltrasonicTest();
+            break;
+
+        case 34:
+            TemporaryTest(); 
+            break;
+
+        default: // It will take care of invalid inputs 
+            break;
+    }
+
+
+}
+
+void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
+{
+
+    _nNavigationTask = msgNavigationTask.data;
     
     DJIDrone& drone = *_ptrDrone;
-    
-    bool bIsInputValid = false;
-    bool bIsExitRequested = false;
-    
-    
-    while(1)
-    {
-        ros::spinOnce();
-        
-        if (bIsExitRequested)
-        {
-            break;
-        }
-
-        DisplayMainMenu();
-                    
-        if (!bIsInputValid)
-        {
-            bIsInputValid = true;
-        }
-        
-    
-        std::cout << "Enter Input Value: ";
-        std::cin >> inputValue;
          
-        switch (inputValue)
-        {
-            case 1: // request control 
-                drone.request_sdk_permission_control();
-                break;
+    switch (_nNavigationTask)
+    {
+        case 1: // request control 
+            drone.request_sdk_permission_control();
+            ROS_INFO_STREAM("Request SDK permission.");
+            break;
+            
+        case 2: // release control 
+            drone.release_sdk_permission_control();
+            ROS_INFO_STREAM("Release SDK permission.");
+            break;
                 
-            case 2: // release control 
-                drone.release_sdk_permission_control();
-                break;
-                    
-            case 3: // arm 
-                drone.drone_arm();
-                break;
+        case 3: // arm 
+            drone.drone_arm();
+            ROS_INFO_STREAM("Arm drone.");
+            break;
 
-            case 4: // disarm
-                drone.drone_disarm();
-                break;
-                
-            case 5: // take off 
-                drone.takeoff();
-                break;
-                
-            case 6: // landing
-                drone.landing();RandomTests();
-                break;
-                                
-            case 7: // go home
-                drone.gohome();
-                break;
-                
-            case 8: // draw circle sample
-                DrawCircleExample();
-                break;
-                      
-            case 9: // search for target
-                SearchForTarget();
-                break;
+        case 4: // disarm
+            drone.drone_disarm();
+            ROS_INFO_STREAM("Disarm drone.");
+            break;
+            
+        case 5: // take off 
+            drone.takeoff();
+            ROS_INFO_STREAM("Take off.");
+            break;
+        case 6: // landing
+            drone.landing();
+            ROS_INFO_STREAM("Landing.");            
+            break;
+                            
+        case 7: // go home
+            drone.gohome();
+            ROS_INFO_STREAM("Go home.");     
+            break;
+                 
+        case 8: // Mission Start
+            drone.mission_start();
+            ROS_INFO_STREAM("Mission start.");     
+            break;
 
-            case 10: // Navigation test
-                NavigationTest();
-                break;
-                
-            case 22: // Waypoint Mission Upload
-                Waypoint_mission_upload();
-                break;
-                     
-            case 25: // Mission Start
-                drone.mission_start();
-                break;RandomTests();
-                
-            case 26: //mission pause
-                drone.mission_pause();
-                break;
-                
-            case 27: //mission resume
-                drone.mission_resume();
-                break;
+        case 9: //mission cancel
+            drone.mission_cancel();
+            ROS_INFO_STREAM("Mission Cancel.");
+            break;
+                           
+        case 10: //mission pause
+            drone.mission_pause();
+            ROS_INFO_STREAM("Mission Pause.");
+            break;
+            
+        case 11: //mission resume
+            drone.mission_resume();
+            ROS_INFO_STREAM("Mission Resume.");
+            break;
 
-            case 28: //mission cancel
-                drone.mission_cancel();
-                break;
-                
-            case 98: //mission cancel
-                RandomTests();
-                break;
+        case 12: //mission resume
+            //drone.mission_resume();
+            ROS_INFO_STREAM("Mission Waypoint Download - Not implemented.");
+            break;
 
-            case 99: // Exit the program 
-                bIsExitRequested = true;
-                std::cout << "Shutting Down.\n";
-                ShutDown();
-                break;
-                
-            default: // It will take care of invalid inputs 
-                std::cout << "Undefined input value.";
-                bIsInputValid = false;
-                break;
-        }
-        
+        case 13: //mission resume
+            //drone.mission_resume();
+            ROS_INFO_STREAM("Mission Waypoint Set Speed - Not implemented.");
+            break;
+
+        case 14: //mission resume
+            //drone.mission_resume();
+            ROS_INFO_STREAM("Followme Mission Upload - Not implemented.");
+            break;
+         
+        case 21: 
+            ROS_INFO_STREAM("Draw Circle Sample - Not implemented.");
+            break;
+         
+        case 22: 
+            ROS_INFO_STREAM("Waypoint Mission Upload - Not implemented.");
+            break;
+
+        case 23: 
+            ROS_INFO_STREAM("Search for Targetted - Not implemented.");
+            break;
+
+        case 25: 
+            ROS_INFO_STREAM("Landing Test.");
+            _bIsDroneLandingPrinted = false;
+            break;
+
+        case 31: 
+            ROS_INFO_STREAM("Ultrasonic Test.");
+            break;
+
+        case 34: 
+            ROS_INFO_STREAM("Temporary Test - Not implemented.");
+            break;
+
+        default: // It will take care of invalid inputs 
+            break;
     }
+    
 }
+
 
 
 int main(int argc, char **argv)
@@ -556,25 +491,25 @@ int main(int argc, char **argv)
     _ptrDrone = new DJIDrone(nh);
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
-
     
 
     //A publisher to control the gimbal angle. 
     _gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
         
     // Subscriber    
-	int numMessagesToBuffer = 1;
-    ros::Subscriber sub1 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
-	ros::Subscriber sub2 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
- //    ros::Subscriber sub2 = nh.subscribe("/target_tracking/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
+	int numMessagesToBuffer = 10;
+    ros::Subscriber sub1 = nh.subscribe("/navigation_menu/navigation_task", numMessagesToBuffer, navigationTaskCallback);
+    ros::Subscriber sub2 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
+    ros::Subscriber sub3 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
+    // ros::Subscriber sub2 = nh.subscribe("/target_tracking/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
 	// ros::Subscriber sub3 = nh.subscribe("/target_tracking/target_gps_position", numMessagesToBuffer, targetGpsCallback);
 	// ros::Subscriber sub4 = nh.subscribe("/target_tracking/target_utm_position", numMessagesToBuffer, targetUtmCallback);
    
-    ros::spinOnce();
-
-    RunNavigation();
-
-
+    // main control loop = 50 Hz
+    double dTimeStepSec = 0.02;
+    ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
+    
+    ros::spin();
              
     return 0;    
 
