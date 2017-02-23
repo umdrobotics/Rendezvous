@@ -1,0 +1,8 @@
+ubuntu@manifold52 ~
+$ sudo date --set="$(ssh ubuntu@192.168.1.17 date)"
+ubuntu@192.168.1.17's password: 
+[sudo] password for ubuntu: 
+Sorry, try again.
+[sudo] password for ubuntu: 
+Wed Feb 22 11:58:57 EST 2017
+
