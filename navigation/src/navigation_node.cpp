@@ -21,15 +21,11 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsTargetTrackingRunning = false;
 
 sensor_msgs::LaserScan _msgUltraSonic;
-<<<<<<< HEAD
 
 ros::Publisher _GimbalAnglePub;
 ros::Publisher _TargetLocalPosition;
 
-=======
->>>>>>> 0e1352f1424f39e6216d5e0df307e6fa3392dfc2
 geometry_msgs::Point _toTargetDistance;
-ros::Publisher _gimbal_pose_pub1;
 
 
 void ShutDown(void)
@@ -50,12 +46,6 @@ void SigintHandler(int sig)
     ShutDown();
 }
 
-
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 0e1352f1424f39e6216d5e0df307e6fa3392dfc2
 void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
 {    
     _msgUltraSonic.header.frame_id = msgUltraSonic.header.frame_id;
