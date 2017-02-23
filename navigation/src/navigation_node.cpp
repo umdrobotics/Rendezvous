@@ -2,9 +2,13 @@
 #include <dji_sdk/dji_drone.h>
 #include "std_msgs/String.h"
 #include "std_msgs/UInt16.h"
+#include <navigation/conversion.h>
+#include <navigation/UasMath.h>
 #include <geometry_msgs/PointStamped.h>
 #include <signal.h>
 #include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
+#include <apriltags_ros/AprilTagDetection.h>
+#include <apriltags_ros/AprilTagDetectionArray.h>
 
 //using namespace std;
 
@@ -16,13 +20,13 @@ int _nNavigationTask = 0;
 
 bool _bIsDroneLandingPrinted = false;
 
+bool _bIsTargetTrackingRunning = false;
+
 sensor_msgs::LaserScan _msgUltraSonic;
 
-ros::Publisher _gimbal_pose_pub1;
+ros::Publisher _GimbalAnglePub;
+ros::Publisher _TargetLocalPosition;
 
-// geometry_msgs::Point _droneUtmPosition;
-// geometry_msgs::Point _targetGpsPosition;
-// geometry_msgs::Point _targetUtmPosition;
 geometry_msgs::Point _toTargetDistance;
 
 
@@ -46,54 +50,6 @@ void SigintHandler(int sig)
 }
 
 
-
-// void droneUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgDroneUtmPos)
-// {
-// 	if (0 < sizeof(msgDroneUtmPos)) 
-//     {	
-//     	_droneUtmPosition.x = msgDroneUtmPos->point.x;
-// 		_droneUtmPosition.y = msgDroneUtmPos->point.y;
-// 		_droneUtmPosition.z = msgDroneUtmPos->point.z;
-// 	}
-
-// 	// ROS_INFO_STREAM("Drone UTM Position: X = " << msgDroneUtmPos->point.x 
-//  //                           << " Y = " << msgDroneUtmPos.point.y 
-//  //                           << " Z = " << msgDroneUtmPos.point.z);
-
-// }
-
-// void targetGpsCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetGpsPos)
-// {
-// 	if (0 < sizeof(msgTargetGpsPos)) 
-//     {
-// 		_targetGpsPosition.x = msgTargetGpsPos->point.x;
-// 		_targetGpsPosition.y = msgTargetGpsPos->point.y;
-// 		_targetGpsPosition.z = msgTargetGpsPos->point.z;
-		
-// 		_targetLocked = 1;
-		
-// 	}
-
-// 	// ROS_INFO_STREAM("Target GPS Position: X = " << msgTargetGpsPos->point.x 
-//  //                           << " Y = " << msgTargetGpsPos.point.y 
-//  //                           << " Z = " <<  msgTargetGpsPos.point.z);
-		
-// }
-
-// void targetUtmCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetUtmPos)
-// {
-//     if (0 < sizeof(msgTargetUtmPos))
-//     {	
-//     	_targetUtmPosition.x = msgTargetUtmPos->point.x;
-// 		_targetUtmPosition.y = msgTargetUtmPos->point.y;
-// 		_targetUtmPosition.z = msgTargetUtmPos->point.z;
-// 	}
-
-// 	// ROS_INFO_STREAM("Target UTM Position: X = " << msgTargetUtmPos->point.x 
-//  //                           << " Y = " << msgTargetUtmPos.point.y 
-//  //                           << " Z = " <<  msgTargetUtmPos.point.z);
-
-// }
 
 
 void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
@@ -182,7 +138,7 @@ void SearchForTarget(void)
             }
             
             desiredGimbalPoseDeg.point.z += gimbalYawIncrements;
-            _gimbal_pose_pub1.publish(desiredGimbalPoseDeg);
+            _GimbalAnglePub.publish(desiredGimbalPoseDeg);
             
             
             usleep(20000);
@@ -326,6 +282,195 @@ void TemporaryTest(void)
 }
 
 
+geometry_msgs::PointStamped GetTargetOffsetFromUAV( geometry_msgs::Point& tagPosition_M,        
+                                                    dji_sdk::Gimbal& gimbal)                                                    
+{
+    // rotation matrix will be calculated based on instructions 
+    // here: http://planning.cs.uiuc.edu/node102.html
+    // first, rename some variables to make calculations more readable
+
+    double yaw = UasMath::ConvertDeg2Rad(gimbal.yaw);
+    double pitch = UasMath::ConvertDeg2Rad(gimbal.pitch);
+    double roll = UasMath::ConvertDeg2Rad(gimbal.roll);
+    
+    //printf("\n confirm that roll pitch yaw is respectively %f %f %f \n", roll, pitch, yaw); 
+    double cameraRotationMatrix[3][3] = 
+        {   {   
+                cos(yaw)*cos(pitch),
+                cos(yaw)*sin(pitch)*sin(roll)-sin(yaw)*cos(roll), 
+                cos(yaw)*sin(pitch)*cos(roll) + sin(yaw)*sin(roll)
+            },
+            {  
+                sin(yaw)*cos(pitch),
+                sin(yaw)*sin(pitch)*sin(roll) + cos(yaw)*cos(roll),
+                sin(yaw)*sin(pitch)*cos(roll) - cos(yaw)*sin(roll) 
+            },
+            {
+                -1.0*sin(pitch),
+                cos(pitch)*sin(roll),
+                cos(pitch)*cos(roll)
+            },
+        };
+        
+    // WARNING: These x, y, and z values are relative to the camera frame, 
+    // NOT THE GROUND FRAME! 
+    // This is what we want and why we'll multiply by the rotation matrix
+    
+    double targetOffsetFromCamera[3][1] = {{tagPosition_M.x}, {tagPosition_M.y}, {tagPosition_M.z}};
+    
+    // perform matrix multiplication 
+    // (recall that you take the dot product of the 1st matrix rows with the 2nd matrix colums)
+    // process is very simple since 2nd matrix is a vertical vector
+    
+    // first, convert from image plane to real-world coordinates
+    double transformMatrix[3][3] = { {0,0,1}, {1,0,0}, {0,-1,0} };
+
+    //now we can determine the distance in the inertial frame
+    double distanceInRealWorld[3][1];
+  
+
+    for (int row = 0; row < 3; row++)
+    {
+        double sum = 0;
+        for (int column = 0; column < 3; column++)
+        {
+            sum += transformMatrix[row][column] * targetOffsetFromCamera [column][0]; 
+        }
+        distanceInRealWorld[row][0] = sum;
+    } 
+    //end matrix multiplication
+
+    // now we can determine the actual distance from the UAV, by accounting for the camera's orientation
+    double targetOffsetFromUAV[3][1];
+    
+    for (int row = 0; row < 3; row++)
+    {
+        double sum = 0;
+        for (int column = 0; column < 3; column++)
+        {
+            sum += cameraRotationMatrix[row][column] * distanceInRealWorld [column][0]; 
+        }
+        targetOffsetFromUAV[row][0] = sum;
+    } 
+    
+    geometry_msgs::PointStamped output;
+    
+    output.header.stamp = ros::Time::now();
+    output.point.x = targetOffsetFromUAV[0][0];
+    output.point.y = targetOffsetFromUAV[1][0];
+    output.point.z = targetOffsetFromUAV[2][0];
+    
+    return output;
+    
+    //outputDistance[0][0] = targetOffsetFromUAV[0][0];
+    //outputDistance[1][0] = targetOffsetFromUAV[1][0];
+    //outputDistance[2][0] = targetOffsetFromUAV[2][0];
+   
+} ///end GetTargetOffsetFromUAV()
+
+
+
+void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
+{
+
+    DJIDrone& drone = *_ptrDrone;
+	char zone;
+    double dLastRecordedHeightAboveTargetM = 0.0;
+
+    if (vecTagDetections.detections.empty())
+    {
+        // There is nothing we can do
+        return;
+    }
+
+    // We assume there is only one tag detection.
+    // Even if there are multiple detections, we still take the first tag.
+    
+    apriltags_ros::AprilTagDetection tag = vecTagDetections.detections.at(0);
+               
+    double x = tag.pose.pose.position.x;
+    // since we want camera frame y to be above the camera, but it treats this as negative y
+    double y = -tag.pose.pose.position.y;
+    double z = tag.pose.pose.position.z;
+    
+    // double currentTime = tag.pose.header.stamp.nsec/1000000000.0 + tag.pose.header.stamp.sec;
+    
+    // for exaplanation of calculations, see diagram in Aaron Ward's July 20 report
+    // pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); 
+    // this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
+    double pitchDeg = UasMath::ConvertRad2Deg(atan2(y, z));
+ 
+    double yawDeg = UasMath::ConvertRad2Deg(atan2(x, z)); 
+    //remember north is the x axis, east is the y axis
+   
+        
+    geometry_msgs::PointStamped msgDesiredAngleDeg;	
+    msgDesiredAngleDeg.point.x = 0;
+    msgDesiredAngleDeg.point.y = drone.gimbal.pitch + pitchDeg;
+    msgDesiredAngleDeg.point.z = drone.gimbal.yaw + yawDeg;
+  
+    _GimbalAnglePub.publish(msgDesiredAngleDeg);
+
+
+	//Test
+	tag.pose.pose.position.y *= -1;
+
+    // double targetOffsetFromUAV[3][1];
+    geometry_msgs::PointStamped targetoffset = GetTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal);
+
+    geometry_msgs::PointStamped msgTargetLocalPosition;
+    msgTargetLocalPosition.header.stamp = ros::Time::now();
+    msgTargetLocalPosition.point.x = drone.local_position.x + targetoffset.point.x;
+    msgTargetLocalPosition.point.y = drone.local_position.y + targetoffset.point.y;	
+    msgTargetLocalPosition.point.z = 0;
+	
+    _TargetLocalPosition.publish(msgTargetLocalPosition);
+
+	
+
+    //Create message
+    geometry_msgs::PointStamped msgToTargetDistance;
+    msgToTargetDistance.header.stamp = ros::Time::now();
+    msgToTargetDistance.point.x = targetoffset.point.x;
+    msgToTargetDistance.point.y = targetoffset.point.y;	
+    msgToTargetDistance.point.z = drone.global_position.height;
+
+    //_ToTargetDistancePub.publish(msgToTargetDistance);   
+      
+    std::stringstream ss ;
+    
+    ss  << std::fixed << std::setprecision(7) << std::endl
+        << "Time: " << ros::Time::now().toSec() << std::endl
+        << "Tag Distance(x,y,z): "  << x << ","
+                                    << y << ","
+                                    << z << "," << std::endl
+        << "Real Distance(x,y,z): " << targetoffset.point.x << ","
+                                    << targetoffset.point.y << ","
+                                    << targetoffset.point.z << "," << std::endl                                
+        << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
+										<< drone.gimbal.pitch << ","
+										<< drone.gimbal.roll << "," << std::endl
+        << "Desired Angle Deg(y,p,r): " << msgDesiredAngleDeg.point.z << ","
+                                        << msgDesiredAngleDeg.point.y << ","
+                                        << msgDesiredAngleDeg.point.x << std::endl
+        << "Target Local Pos(time: x,y,z): " << msgTargetLocalPosition.header.stamp << ","
+											 << msgTargetLocalPosition.point.x << ","
+											 << msgTargetLocalPosition.point.y << ","
+											 << msgTargetLocalPosition.point.z << "," << std::endl;											               
+    ROS_INFO("%s", ss.str().c_str());
+	
+}
+
+
+void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
+{
+    // If Target Tracking is not running, do nothing.
+    if (!_bIsTargetTrackingRunning) { return; }
+    
+    FindDesiredGimbalAngle(vecTagDetections);
+ }
+
+
 void timerCallback(const ros::TimerEvent&)
 {
     DJIDrone& drone = *_ptrDrone;
@@ -411,14 +556,14 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
             ROS_INFO_STREAM("Go home.");     
             break;
                  
-        case 8: // Mission Start
-            drone.mission_start();
-            ROS_INFO_STREAM("Mission start.");     
+        case 8: // Target Tracking Start
+            _bIsTargetTrackingRunning = true;
+            ROS_INFO_STREAM("Target Tracking start.");     
             break;
 
         case 9: //mission cancel
-            drone.mission_cancel();
-            ROS_INFO_STREAM("Mission Cancel.");
+            _bIsTargetTrackingRunning = false;
+            ROS_INFO_STREAM("Target Tracking Cancel.");
             break;
                            
         case 10: //mission pause
@@ -492,18 +637,21 @@ int main(int argc, char **argv)
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
     
-
-    //A publisher to control the gimbal angle. 
-    _gimbal_pose_pub1 = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 1000);
         
-    // Subscriber    
+    // Subscribers    
 	int numMessagesToBuffer = 10;
     ros::Subscriber sub1 = nh.subscribe("/navigation_menu/navigation_task", numMessagesToBuffer, navigationTaskCallback);
     ros::Subscriber sub2 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
-    ros::Subscriber sub3 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
-    // ros::Subscriber sub2 = nh.subscribe("/target_tracking/drone_utm_position", numMessagesToBuffer, droneUtmCallback);
-	// ros::Subscriber sub3 = nh.subscribe("/target_tracking/target_gps_position", numMessagesToBuffer, targetGpsCallback);
-	// ros::Subscriber sub4 = nh.subscribe("/target_tracking/target_utm_position", numMessagesToBuffer, targetUtmCallback);
+    ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
+    ros::Subscriber sub4 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
+    
+    
+    // Publishers
+    _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 10); 
+    _TargetLocalPosition = nh.advertise<geometry_msgs::PointStamped>("/navigation/target_local_position", 10); 
+    
+    //_ToTargetDistancePub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/to_target_distance", 10);
+
    
     // main control loop = 50 Hz
     double dTimeStepSec = 0.02;
@@ -514,3 +662,11 @@ int main(int argc, char **argv)
     return 0;    
 
 }
+
+
+
+
+
+
+
+

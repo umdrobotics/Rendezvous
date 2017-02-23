@@ -1,0 +1,6 @@
+<launch>
+  <node name="rosbag_record_navigation" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/navig /navigation/target_local_position" >
+  </node>
+</launch>
+
+

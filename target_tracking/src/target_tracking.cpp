@@ -470,14 +470,18 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     getTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal, targetOffsetFromUAV);
 
     geometry_msgs::PointStamped msgTargetLocalPosition;
+    msgTargetLocalPosition.header.stamp = ros::Time::now();
     msgTargetLocalPosition.point.x = drone.local_position.x + targetOffsetFromUAV[0][0];
     msgTargetLocalPosition.point.y = drone.local_position.y + targetOffsetFromUAV[1][0];	
     msgTargetLocalPosition.point.z = 0;
 	
     _TargetLocalPosition.publish(msgTargetLocalPosition);
 
+	
+
     //Create message
     geometry_msgs::PointStamped msgToTargetDistance;
+    msgToTargetDistance.header.stamp = ros::Time::now();
     msgToTargetDistance.point.x = targetOffsetFromUAV[0][0];
     msgToTargetDistance.point.y = targetOffsetFromUAV[1][0];
     msgToTargetDistance.point.z = drone.global_position.height;
@@ -503,8 +507,11 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 										<< drone.gimbal.roll << "," << std::endl
         << "Desired Angle Deg(y,p,r): " << msgDesiredAngleDeg.point.z << ","
                                         << msgDesiredAngleDeg.point.y << ","
-                                        << msgDesiredAngleDeg.point.x << std::endl;
-              
+                                        << msgDesiredAngleDeg.point.x << std::endl
+        << "Target Local Pos(time: x,y,z): " << msgTargetLocalPosition.header.stamp << ","
+											 << msgTargetLocalPosition.point.x << ","
+											 << msgTargetLocalPosition.point.y << ","
+											 << msgTargetLocalPosition.point.z << "," << std::endl;											               
     ROS_INFO("%s", ss.str().c_str());
 	
 }
