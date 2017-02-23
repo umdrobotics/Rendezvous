@@ -221,7 +221,7 @@ int main(int argc, char **argv)
 	ROS_INFO("Vehicle Attitude: Roll:%f, Pitch:%f, Yaw:%f\n", roll, pitch, yaw);
     
     _msgDesiredGimbalPoseDeg.point.x = 0.0;
-    _msgDesiredGimbalPoseDeg.point.y = -10.0;
+    _msgDesiredGimbalPoseDeg.point.y = -50.0;
     _msgDesiredGimbalPoseDeg.point.z = yaw * DEGREES_PER_RADIAN;
  
     
