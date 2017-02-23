@@ -19,6 +19,8 @@
 
 DJIDrone* _ptrDrone;
 ros::Publisher _GimbalAnglePub;
+ros::Publisher _TargetLocalPosition;
+
 // ros::Publisher _DroneUTMPub;
 // ros::Publisher _TargetGPSPub;
 // ros::Publisher _TargetUTMPub;
@@ -115,7 +117,6 @@ void getGimbalAngleToPointAtTarget_rads(geometry_msgs::Point& droneUtmPosition, 
   
   
 }
-
 
  
  
@@ -443,11 +444,11 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     double y = -tag.pose.pose.position.y;
     double z = tag.pose.pose.position.z;
     
-    double currentTime = tag.pose.header.stamp.nsec/1000000000.0 + tag.pose.header.stamp.sec;
+    // double currentTime = tag.pose.header.stamp.nsec/1000000000.0 + tag.pose.header.stamp.sec;
     
     // for exaplanation of calculations, see diagram in Aaron Ward's July 20 report
     // pitch_rads = -1.0 * atan2( heightAboveTarget_Meters,  distance_Meters ); 
-    //this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
+    // this is done correctly since we want to limit it to between 0 and -90 degrees (in fact could just use regular tangent)
     double pitchDeg = UasMath::ConvertRad2Deg(atan2(y, z));
  
     double yawDeg = UasMath::ConvertRad2Deg(atan2(x, z)); 
@@ -458,10 +459,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     msgDesiredAngleDeg.point.x = 0;
     msgDesiredAngleDeg.point.y = drone.gimbal.pitch + pitchDeg;
     msgDesiredAngleDeg.point.z = drone.gimbal.yaw + yawDeg;
-    
-    //send the same time stamp information that was on the apriltags message to gimbal_control
-    msgDesiredAngleDeg.header = tag.pose.header; 
-    
+  
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
 
 
@@ -471,13 +469,22 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     double targetOffsetFromUAV[3][1];
     getTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal, targetOffsetFromUAV);
 
+    geometry_msgs::PointStamped msgTargetLocalPosition;
+    msgTargetLocalPosition.point.x = drone.local_position.x + targetOffsetFromUAV[0][0];
+    msgTargetLocalPosition.point.y = drone.local_position.y + targetOffsetFromUAV[1][0];	
+    msgTargetLocalPosition.point.z = 0;
+	
+    _TargetLocalPosition.publish(msgTargetLocalPosition);
+
     //Create message
     geometry_msgs::PointStamped msgToTargetDistance;
-    msgToTargetDistance.header = tag.pose.header;
     msgToTargetDistance.point.x = targetOffsetFromUAV[0][0];
     msgToTargetDistance.point.y = targetOffsetFromUAV[1][0];
     msgToTargetDistance.point.z = drone.global_position.height;
+
     _ToTargetDistancePub.publish(msgToTargetDistance);   
+
+
 
 
       
@@ -488,12 +495,12 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         << "Tag Distance(x,y,z): "  << x << ","
                                     << y << ","
                                     << z << "," << std::endl
-        << "Real Distance(x,y,z): "  << targetOffsetFromUAV[0][0] << ","
+        << "Real Distance(x,y,z): " << targetOffsetFromUAV[0][0] << ","
                                     << targetOffsetFromUAV[1][0] << ","
                                     << drone.global_position.height << "," << std::endl                                
         << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
-                                    << drone.gimbal.pitch << ","
-                                    << drone.gimbal.roll << "," << std::endl
+										<< drone.gimbal.pitch << ","
+										<< drone.gimbal.roll << "," << std::endl
         << "Desired Angle Deg(y,p,r): " << msgDesiredAngleDeg.point.z << ","
                                         << msgDesiredAngleDeg.point.y << ","
                                         << msgDesiredAngleDeg.point.x << std::endl;
@@ -631,13 +638,14 @@ int main(int argc, char **argv)
     drone.gimbal_angle_control(0.0, -250.0, 0.0, 10.0);    
 
     _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 2); 
-    
+    _TargetLocalPosition = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/target_local_position", 2); 
+    _ToTargetDistancePub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/to_target_distance", 2);
+
 
 	// _DroneUTMPub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/drone_utm_position", 2); 
 	// _TargetGPSPub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/target_gps_position", 2); 
 	// _TargetUTMPub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/target_utm_position", 2); 
-    _ToTargetDistancePub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/to_target_distance", 2);
-
+    
     // queue size of 2 seems reasonable
     int numMessagesToBuffer = 2;
     ros::Subscriber sub = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
