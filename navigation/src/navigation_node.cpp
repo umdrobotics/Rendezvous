@@ -15,20 +15,21 @@
 DJIDrone* _ptrDrone;
 
 int _targetLocked = 0;
-
 int _nNavigationTask = 0;
-
 bool _bIsDroneLandingPrinted = false;
 
 bool _bIsTargetTrackingRunning = false;
 
 sensor_msgs::LaserScan _msgUltraSonic;
+<<<<<<< HEAD
 
 ros::Publisher _GimbalAnglePub;
 ros::Publisher _TargetLocalPosition;
 
+=======
+>>>>>>> 0e1352f1424f39e6216d5e0df307e6fa3392dfc2
 geometry_msgs::Point _toTargetDistance;
-
+ros::Publisher _gimbal_pose_pub1;
 
 
 void ShutDown(void)
@@ -50,8 +51,11 @@ void SigintHandler(int sig)
 }
 
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 0e1352f1424f39e6216d5e0df307e6fa3392dfc2
 void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
 {    
     _msgUltraSonic.header.frame_id = msgUltraSonic.header.frame_id;
@@ -199,6 +203,124 @@ void LandingTest(void)
 
 }
 
+void ApproachLandingTest(void)
+{
+	DJIDrone& drone = *_ptrDrone;
+
+	ros::spinOnce();
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    if (bIsDroneLanded)
+    {
+        if (!_bIsDroneLandingPrinted)
+        { 
+            ROS_INFO("The drone has landed!");     
+            _bIsDroneLandingPrinted = true;
+        }
+        return;
+    }
+
+	ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
+    ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y);
+    ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
+                    drone.global_position.longitude,
+                    drone.global_position.latitude,
+                    drone.global_position.altitude,
+                    drone.global_position.height
+                 ); 
+	ROS_INFO("To Target Distance:  North  = %f m, East   = %f m, Height = %f m.\n", 
+					_toTargetDistance.x, 
+					_toTargetDistance.y, 
+					_toTargetDistance.z);
+
+    float x_start = drone.local_position.x ;
+    float y_start = drone.local_position.y ;
+    float z_start = drone.local_position.z ;
+    float delta_x = _toTargetDistance.x; 
+    float delta_y = _toTargetDistance.y;
+    float x_target =  x_start + delta_x;
+    float y_target =  y_start + delta_y;
+    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    ROS_INFO("X_taregt = %f m, Y_target = %f m, distance_square = %f m ", x_target, y_target, distance_square);
+
+    float limitRadius = 1;
+    float limitRadius_square = limitRadius*limitRadius;
+
+    if(distance_square > limitRadius_square)
+    {
+    	ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
+    	drone.local_position_control(x_target, y_target, z_start, 0);
+	    ros::Duration(0.02).sleep();
+    }
+    else
+    {
+    	ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		drone.local_position_control(x_target, y_target, 0.0, 0);
+		ros::Duration(0.02).sleep();
+    }
+
+}
+
+void VelocityControlTest(void)
+{
+	DJIDrone& drone = *_ptrDrone;
+
+	ros::spinOnce();
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    if (bIsDroneLanded)
+    {
+        if (!_bIsDroneLandingPrinted)
+        { 
+            ROS_INFO("The drone has landed!");     
+            _bIsDroneLandingPrinted = true;
+        }
+        return;
+    }
+
+	ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
+    ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y);
+    ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
+                    drone.global_position.longitude,
+                    drone.global_position.latitude,
+                    drone.global_position.altitude,
+                    drone.global_position.height
+                 ); 
+	ROS_INFO("To Target Distance:  North  = %f m, East   = %f m, Height = %f m.\n", 
+					_toTargetDistance.x, 
+					_toTargetDistance.y, 
+					_toTargetDistance.z);
+
+    float x_start = drone.local_position.x ;
+    float y_start = drone.local_position.y ;
+    float z_start = drone.local_position.z ;
+    float delta_x = _toTargetDistance.x; 
+    float delta_y = _toTargetDistance.y;
+    float x_target =  x_start + delta_x;
+    float y_target =  y_start + delta_y;
+    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    ROS_INFO("X_taregt = %f m, Y_target = %f m, distance_square = %f m ", x_target, y_target, distance_square);
+
+    float limitRadius = 1;
+    float limitRadius_square = limitRadius*limitRadius;
+
+    if(distance_square > limitRadius_square)
+    {
+    	ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
+    	drone.local_position_control(x_target, y_target, z_start, 0);
+	    ros::Duration(0.02).sleep();
+    }
+    else
+    {
+    	ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		drone.local_position_control(x_target, y_target, 0.0, 0);
+		ros::Duration(0.02).sleep();
+    }
+}
+
+void WaypointControlTest(void)
+{
+
+}
+
 
 void Waypoint_mission_upload(void)
 {
@@ -208,33 +330,27 @@ void Waypoint_mission_upload(void)
 	ROS_INFO("To Target Distance:  North  = %f m\n", _toTargetDistance.x);
     ROS_INFO("                     East   = %f m\n", _toTargetDistance.y);
     ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);
-   	// ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
-    // ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
-    // ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );
-   	// ROS_INFO("Target UTM Position: X = %f m\n", _targetUtmPosition.x );
-    // ROS_INFO("                     Y = %f m\n", _targetUtmPosition.y );
-    // ROS_INFO("                     Z = %f m\n", _targetUtmPosition.z );
 
     float x_start = drone.local_position.x ;
     float y_start = drone.local_position.y ;
     float delta_x = _toTargetDistance.x; 
     float delta_y = _toTargetDistance.y;
     
-    float x =  x_start + delta_x;
-    float y =  y_start + delta_y; // + 5.0;
-    float z =  drone.global_position.height;
-    float distance = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    ROS_INFO("X = %f m, Y = %f m, distance = %f m ", x, y, distance);
+    float x_target =  x_start + delta_x;
+    float y_target =  y_start + delta_y; 
+    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    ROS_INFO("X_taregt = %f m, Y_target = %f m, distance_square = %f m ", x_target, y_target, distance_square);
      
 
     float limitRadius = 1;
-    while(distance > limitRadius)
+    float limitRadius_square = limitRadius*limitRadius;
+    while(distance_square > limitRadius_square)
     {
     	ros::spinOnce();
-    	float distance = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    	ROS_INFO("Distance = %f m, Height = %f m ", distance, drone.global_position.height);
+    	float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    	ROS_INFO("Distance_square = %f m, Height = %f m ", distance_square, drone.global_position.height);
 
-    	drone.local_position_control(x, y, z, 0);
+    	drone.local_position_control(x_target, x_target, drone.local_position.z, 0);
 	    ros::Duration(0.02).sleep();
 
     }
@@ -264,7 +380,7 @@ void Waypoint_mission_upload(void)
             break;
         }    
 
-        drone.local_position_control(x, y, 0.0, 0);
+        drone.local_position_control(x_target, x_target, 0.0, 0);
 	    ros::Duration(0.02).sleep();
     }
 
@@ -275,9 +391,48 @@ void Waypoint_mission_upload(void)
 void TemporaryTest(void)
 {
 
-    ROS_INFO("To Target Distance:  North  = %f m\n", _toTargetDistance.x);
-    ROS_INFO("                     East   = %f m\n", _toTargetDistance.y);
-    ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);
+    /*draw square sample
+                for(int i = 0;i < 60;i++)
+                {
+        			drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
+    						Flight::VerticalLogic::VERTICAL_VELOCITY |
+                            Flight::YawLogic::YAW_ANGLE |
+                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
+                            Flight::SmoothMode::SMOOTH_ENABLE,
+                            3, 3, 0, 0 );
+                    usleep(20000);
+                }
+                for(int i = 0;i < 60;i++)
+                {
+                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
+                            Flight::VerticalLogic::VERTICAL_VELOCITY |
+                            Flight::YawLogic::YAW_ANGLE |
+                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
+                            Flight::SmoothMode::SMOOTH_ENABLE,
+                            -3, 3, 0, 0);
+                    usleep(20000);
+                }
+                for(int i = 0;i < 60;i++)
+                {
+                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
+                            Flight::VerticalLogic::VERTICAL_VELOCITY |
+                            Flight::YawLogic::YAW_ANGLE |
+                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
+                            Flight::SmoothMode::SMOOTH_ENABLE,
+                            -3, -3, 0, 0);
+                    usleep(20000);
+                }
+                for(int i = 0;i < 60;i++)
+                {
+                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
+                            Flight::VerticalLogic::VERTICAL_VELOCITY |
+                            Flight::YawLogic::YAW_ANGLE |
+                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
+                            Flight::SmoothMode::SMOOTH_ENABLE,
+                            3, -3, 0, 0);
+                    usleep(20000);
+                }
+                */
 
 }
 
@@ -498,6 +653,18 @@ void timerCallback(const ros::TimerEvent&)
             LandingTest();
             break;
 
+        case 26: 
+            ApproachLandingTest();
+            break;
+
+        case 27: 
+            VelocityControlTest();
+            break;
+
+        case 28: 
+            WaypointControlTest();
+            break;
+
         case 31: 
             UltrasonicTest();
             break;
@@ -606,6 +773,18 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
         case 25: 
             ROS_INFO_STREAM("Landing Test.");
             _bIsDroneLandingPrinted = false;
+            break;
+
+        case 26: 
+            ROS_INFO_STREAM("Approach & Landing Test. ");
+            break;
+
+        case 27: 
+            ROS_INFO_STREAM("Velocity Control Test. ");
+            break;
+
+        case 28: 
+            ROS_INFO_STREAM("Waypoint Control Test.");
             break;
 
         case 31: 

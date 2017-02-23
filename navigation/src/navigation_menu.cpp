@@ -28,9 +28,9 @@ void DisplayMainMenu(void)
     printf("| [3]  Arm the Drone              | [23] Search for Target           |\n");   
     printf("| [4]  Disarm the Drone           | [24]                             |\n");   
     printf("| [5]  Takeoff                    | [25] Landing Test                |\n");   
-    printf("| [6]  Landing                    | [26]                             |\n");   
-    printf("| [7]  Go Home                    | [27]                             |\n");   
-    printf("| [8]  Target Tracking Start      | [28]                             |\n");   
+    printf("| [6]  Landing                    | [26] Approach & Landing Test     |\n");   
+    printf("| [7]  Go Home                    | [27] Velocity Control Test       |\n");   
+    printf("| [8]  Target Tracking Start      | [28] Waypoint Control Test       |\n");   
     printf("| [9]  Target Tracking Cancel     | [29]                             |\n");   
     printf("| [10] Mission Pause              | [30]                             |\n");   
     printf("| [11] Mission Resume             | [31] Ultrasonic Test             |\n");   
