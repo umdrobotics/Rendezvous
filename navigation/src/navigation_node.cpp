@@ -501,8 +501,12 @@ geometry_msgs::PointStamped GetTargetOffsetFromUAV( geometry_msgs::Point& tagPos
     geometry_msgs::PointStamped output;
     
     output.header.stamp = ros::Time::now();
-    output.point.x = targetOffsetFromUAV[0][0];
-    output.point.y = targetOffsetFromUAV[1][0];
+    
+    // Because drone.local_position.x means northing
+    // and drone.local_position.y means easting, 
+    // we want to be consistent on x-y coordinates.
+    output.point.y = targetOffsetFromUAV[0][0];
+    output.point.x = targetOffsetFromUAV[1][0];
     output.point.z = targetOffsetFromUAV[2][0];
     
     return output;
@@ -565,6 +569,9 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 
     geometry_msgs::PointStamped msgTargetLocalPosition;
     msgTargetLocalPosition.header.stamp = ros::Time::now();
+    
+    // drone.local_position.x means northing
+    // drone.local_position.y means easting
     msgTargetLocalPosition.point.x = drone.local_position.x + targetoffset.point.x;
     msgTargetLocalPosition.point.y = drone.local_position.y + targetoffset.point.y;	
     msgTargetLocalPosition.point.z = 0;
