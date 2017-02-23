@@ -470,16 +470,16 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     getTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal, targetOffsetFromUAV);
 
     geometry_msgs::PointStamped msgTargetLocalPosition;
-    msgTargetLocalPosition.point.x = drone.local_position.x + targetOffsetFromUAV[0][0];
-    msgTargetLocalPosition.point.y = drone.local_position.y + targetOffsetFromUAV[1][0];	
+    msgTargetLocalPosition.point.x = drone.local_position.x + targetOffsetFromUAV[1][0];
+    msgTargetLocalPosition.point.y = drone.local_position.y + targetOffsetFromUAV[0][0];	
     msgTargetLocalPosition.point.z = 0;
 	
     _TargetLocalPosition.publish(msgTargetLocalPosition);
 
     //Create message
     geometry_msgs::PointStamped msgToTargetDistance;
-    msgToTargetDistance.point.x = targetOffsetFromUAV[0][0];
-    msgToTargetDistance.point.y = targetOffsetFromUAV[1][0];
+    msgToTargetDistance.point.x = targetOffsetFromUAV[1][0];
+    msgToTargetDistance.point.y = targetOffsetFromUAV[0][0];
     msgToTargetDistance.point.z = drone.global_position.height;
 
     _ToTargetDistancePub.publish(msgToTargetDistance);   
@@ -495,9 +495,9 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         << "Tag Distance(x,y,z): "  << x << ","
                                     << y << ","
                                     << z << "," << std::endl
-        << "Real Distance(x,y,z): " << targetOffsetFromUAV[0][0] << ","
-                                    << targetOffsetFromUAV[1][0] << ","
-                                    << drone.global_position.height << "," << std::endl                                
+        << "Real Distance(Easting,Northing,Height): "   << targetOffsetFromUAV[1][0] << ","
+                                                        << targetOffsetFromUAV[0][0] << ","
+                                                        << drone.global_position.height << "," << std::endl                                
         << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
 										<< drone.gimbal.pitch << ","
 										<< drone.gimbal.roll << "," << std::endl
