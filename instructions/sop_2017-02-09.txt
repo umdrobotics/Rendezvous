@@ -6,6 +6,6 @@ Here is the instructions of latest progress:
 5) On manifold52:	roslaunch dji_sdk dji_sdk.launch &
 6) On manifold52:	export ROS_HOME=/home/ubuntu
 7) On manifold52:	roslaunch gimbal_control gimbal_control.launch
-8) On manifold52:	rosrun target_tracking target_tracking 
+8) On manifold52:	roslaunch target_tracking target_tracking.launch
 9) On manifold52:	roslaunch guidance guidance.launch
 10) On manifold52:	rosrun navigation navigation_node
