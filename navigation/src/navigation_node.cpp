@@ -12,17 +12,25 @@
 
 //using namespace std;
 
+
+#define TARGET_LOST_TIME_OUT_SEC (3.0)
+
+
 DJIDrone* _ptrDrone;
 
 int _targetLocked = 0;
 int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
 
+// Target tracking boolean flags
 bool _bIsTargetTrackingRunning = false;
+bool _bIsTargetBeingTracked = false;
+bool _bIsTargetLost = false;
 
+geometry_msgs::PointStamped _msgTargetLocalPosition;
 sensor_msgs::LaserScan _msgUltraSonic;
 geometry_msgs::Point _toTargetDistance;
-geometry_msgs::Point _TargetLocalPosition;
+
 
 ros::Publisher _GimbalAnglePub;
 ros::Publisher _TargetLocalPositionPub;
@@ -221,9 +229,9 @@ void ApproachLandingTest(void)
                  );
     ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y); 
 	ROS_INFO("Target Local Pos: Northing = %f m, Easting = %f m, Height = %f m.",
-					_TargetLocalPosition.x,
-					_TargetLocalPosition.y,
-					_TargetLocalPosition.z
+					_msgTargetLocalPosition.point.x,
+					_msgTargetLocalPosition.point.y,
+					_msgTargetLocalPosition.point.z
 				 );
 
     // float x_start = drone.local_position.x ;
@@ -233,8 +241,8 @@ void ApproachLandingTest(void)
     // float delta_y = _toTargetDistance.y;
     // float x_target =  x_start + delta_x;
     // float y_target =  y_start + delta_y;
-    float x_target =  _TargetLocalPosition.x;
-    float y_target =  _TargetLocalPosition.y;
+    float x_target =  _msgTargetLocalPosition.point.x;
+    float y_target =  _msgTargetLocalPosition.point.y;
     float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
     ROS_INFO("Distance_square = %f m ", distance_square);
 
@@ -281,9 +289,9 @@ void VelocityControlTest(void)
                  );
     ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y); 
 	ROS_INFO("Target Local Pos: Northing = %f m, Easting = %f m, Height = %f m.",
-					_TargetLocalPosition.x,
-					_TargetLocalPosition.y,
-					_TargetLocalPosition.z
+					_msgTargetLocalPosition.point.x,
+					_msgTargetLocalPosition.point.y,
+					_msgTargetLocalPosition.point.z
 				 );
 
     // float x_start = drone.local_position.x ;
@@ -293,8 +301,8 @@ void VelocityControlTest(void)
     // float delta_y = _toTargetDistance.y;
     // float x_target =  x_start + delta_x;
     // float y_target =  y_start + delta_y;
-    float x_target =  _TargetLocalPosition.x;
-    float y_target =  _TargetLocalPosition.y;
+    float x_target =  _msgTargetLocalPosition.point.x;
+    float y_target =  _msgTargetLocalPosition.point.y;
     float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
     ROS_INFO("Distance_square = %f m ", distance_square);
 
@@ -536,24 +544,20 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     // double targetOffsetFromUAV[3][1];
     geometry_msgs::PointStamped targetoffset = GetTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal);
 
+    _msgTargetLocalPosition.header.stamp = ros::Time::now();
+    // drone.local_position.x means northing
+    // drone.local_position.y means easting
+    _msgTargetLocalPosition.point.x = drone.local_position.x + targetoffset.point.x;
+    _msgTargetLocalPosition.point.y = drone.local_position.y + targetoffset.point.y;    
+    _msgTargetLocalPosition.point.z = 0;
+
+    _TargetLocalPositionPub.publish(_msgTargetLocalPosition);
+
+
     _toTargetDistance.x = targetoffset.point.x;
 	_toTargetDistance.y = targetoffset.point.y;
 	_toTargetDistance.z = targetoffset.point.z;
 
-    geometry_msgs::PointStamped msgTargetLocalPosition;
-    msgTargetLocalPosition.header.stamp = ros::Time::now();
-    
-    // drone.local_position.x means northing
-    // drone.local_position.y means easting
-    msgTargetLocalPosition.point.x = drone.local_position.x + targetoffset.point.x;
-    msgTargetLocalPosition.point.y = drone.local_position.y + targetoffset.point.y;	
-    msgTargetLocalPosition.point.z = 0;
-	
-	_TargetLocalPosition.x = msgTargetLocalPosition.point.x;
-	_TargetLocalPosition.y = msgTargetLocalPosition.point.y;
-	_TargetLocalPosition.z = 0;
-
-    _TargetLocalPositionPub.publish(msgTargetLocalPosition);
     _targetLocked = 1;
 
 
@@ -582,10 +586,10 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         << "Desired Angle Deg(y,p,r): " << msgDesiredAngleDeg.point.z << ","
                                         << msgDesiredAngleDeg.point.y << ","
                                         << msgDesiredAngleDeg.point.x << std::endl
-        << "Target Local Pos(time: x,y,z): " << msgTargetLocalPosition.header.stamp << ","
-											 << msgTargetLocalPosition.point.x << ","
-											 << msgTargetLocalPosition.point.y << ","
-											 << msgTargetLocalPosition.point.z << "," << std::endl;											               
+        << "Target Local Pos(time: x,y,z): " << _msgTargetLocalPosition.header.stamp << ","
+											 << _msgTargetLocalPosition.point.x << ","
+											 << _msgTargetLocalPosition.point.y << ","
+											 << _msgTargetLocalPosition.point.z << "," << std::endl;											               
     ROS_INFO("%s", ss.str().c_str());
 	
 }
@@ -599,10 +603,52 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDete
     FindDesiredGimbalAngle(vecTagDetections);
  }
 
+void RunTargetSearch()
+{
+
+}
+
+void RunTargetTracking()
+{
+    // target tracking has not been initiated. Do nothing
+    if (!_bIsTargetTrackingRunning) { return; }
+
+    // time since we saw the target last time.
+    ros::Duration timeElapsed = ros::Time::now() - _msgTargetLocalPosition.header.stamp;
+    
+    // if the time elapsed is larger than a predefined time, we have lost the target.
+    _bIsTargetLost = (timeElapsed.toSec() - TARGET_LOST_TIME_OUT_SEC > 0);
+
+    if (_bIsTargetLost)
+    {
+        RunTargetSearch();
+        return;
+    }
+
+    // Now target tracking is running and the target is being tracked
+    // We can predict the next target position
+    // TODO: implement target prediction here. (Kalman filter)
+
+
+}
+
+void RunTimeCriticalTasks()
+{
+    if (_bIsTargetTrackingRunning)
+    {
+        RunTargetSearch();
+    }    
+    
+
+}
+
 
 void timerCallback(const ros::TimerEvent&)
 {
     DJIDrone& drone = *_ptrDrone;
+
+    // we need to run this functioin regardless of the navigation menu.
+    RunTimeCriticalTasks();
 
 
     if (_nNavigationTask < 21 || _nNavigationTask > 90)
