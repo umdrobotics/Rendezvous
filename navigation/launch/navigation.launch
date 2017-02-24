@@ -1,6 +1,0 @@
-<launch>
-  <node name="navigation_node" pkg="navigation" type="navigation_node" output="screen">
-  </node>
-</launch>
-
-
