@@ -21,11 +21,13 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsTargetTrackingRunning = false;
 
 sensor_msgs::LaserScan _msgUltraSonic;
+geometry_msgs::Point _toTargetDistance;
+geometry_msgs::Point _TargetLocalPosition;
 
 ros::Publisher _GimbalAnglePub;
-ros::Publisher _TargetLocalPosition;
+ros::Publisher _TargetLocalPositionPub;
 
-geometry_msgs::Point _toTargetDistance;
+
 
 
 void ShutDown(void)
@@ -55,7 +57,7 @@ void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
 
 }
 
-
+/*
 void targetDistanceCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetDistance)
 {
 	if (0 < sizeof(msgTargetDistance)) 
@@ -69,6 +71,7 @@ void targetDistanceCallback(const geometry_msgs::PointStamped::ConstPtr& msgTarg
 	}
 		
 }
+*/
 
 
 void SearchForTarget(void)
@@ -210,27 +213,30 @@ void ApproachLandingTest(void)
     }
 
 	ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
-    ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y);
-    ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
+	ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
                     drone.global_position.longitude,
                     drone.global_position.latitude,
                     drone.global_position.altitude,
                     drone.global_position.height
-                 ); 
-	ROS_INFO("To Target Distance:  North  = %f m, East   = %f m, Height = %f m.\n", 
-					_toTargetDistance.x, 
-					_toTargetDistance.y, 
-					_toTargetDistance.z);
+                 );
+    ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y); 
+	ROS_INFO("Target Local Pos: Northing = %f m, Easting = %f m, Height = %f m.",
+					_TargetLocalPosition.x,
+					_TargetLocalPosition.y,
+					_TargetLocalPosition.z
+				 );
 
-    float x_start = drone.local_position.x ;
-    float y_start = drone.local_position.y ;
+    // float x_start = drone.local_position.x ;
+    // float y_start = drone.local_position.y ;
     float z_start = drone.local_position.z ;
-    float delta_x = _toTargetDistance.x; 
-    float delta_y = _toTargetDistance.y;
-    float x_target =  x_start + delta_x;
-    float y_target =  y_start + delta_y;
+    // float delta_x = _toTargetDistance.x; 
+    // float delta_y = _toTargetDistance.y;
+    // float x_target =  x_start + delta_x;
+    // float y_target =  y_start + delta_y;
+    float x_target =  _TargetLocalPosition.x;
+    float y_target =  _TargetLocalPosition.y;
     float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    ROS_INFO("X_taregt = %f m, Y_target = %f m, distance_square = %f m ", x_target, y_target, distance_square);
+    ROS_INFO("Distance_square = %f m ", distance_square);
 
     float limitRadius = 1;
     float limitRadius_square = limitRadius*limitRadius;
@@ -267,27 +273,30 @@ void VelocityControlTest(void)
     }
 
 	ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
-    ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y);
-    ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
+	ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
                     drone.global_position.longitude,
                     drone.global_position.latitude,
                     drone.global_position.altitude,
                     drone.global_position.height
-                 ); 
-	ROS_INFO("To Target Distance:  North  = %f m, East   = %f m, Height = %f m.\n", 
-					_toTargetDistance.x, 
-					_toTargetDistance.y, 
-					_toTargetDistance.z);
+                 );
+    ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y); 
+	ROS_INFO("Target Local Pos: Northing = %f m, Easting = %f m, Height = %f m.",
+					_TargetLocalPosition.x,
+					_TargetLocalPosition.y,
+					_TargetLocalPosition.z
+				 );
 
-    float x_start = drone.local_position.x ;
-    float y_start = drone.local_position.y ;
+    // float x_start = drone.local_position.x ;
+    // float y_start = drone.local_position.y ;
     float z_start = drone.local_position.z ;
-    float delta_x = _toTargetDistance.x; 
-    float delta_y = _toTargetDistance.y;
-    float x_target =  x_start + delta_x;
-    float y_target =  y_start + delta_y;
+    // float delta_x = _toTargetDistance.x; 
+    // float delta_y = _toTargetDistance.y;
+    // float x_target =  x_start + delta_x;
+    // float y_target =  y_start + delta_y;
+    float x_target =  _TargetLocalPosition.x;
+    float y_target =  _TargetLocalPosition.y;
     float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    ROS_INFO("X_taregt = %f m, Y_target = %f m, distance_square = %f m ", x_target, y_target, distance_square);
+    ROS_INFO("Distance_square = %f m ", distance_square);
 
     float limitRadius = 1;
     float limitRadius_square = limitRadius*limitRadius;
@@ -296,12 +305,14 @@ void VelocityControlTest(void)
     {
     	ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
     	drone.local_position_control(x_target, y_target, z_start, 0);
+    	drone.velocity_control(1, 1, 1, 1, 0);
 	    ros::Duration(0.02).sleep();
     }
     else
     {
     	ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		drone.local_position_control(x_target, y_target, 0.0, 0);
+		drone.velocity_control(1, 1, 1, 1, 0);
 		ros::Duration(0.02).sleep();
     }
 }
@@ -381,48 +392,6 @@ void Waypoint_mission_upload(void)
 void TemporaryTest(void)
 {
 
-    /*draw square sample
-                for(int i = 0;i < 60;i++)
-                {
-        			drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-    						Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            3, 3, 0, 0 );
-                    usleep(20000);
-                }
-                for(int i = 0;i < 60;i++)
-                {
-                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-                            Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            -3, 3, 0, 0);
-                    usleep(20000);
-                }
-                for(int i = 0;i < 60;i++)
-                {
-                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-                            Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            -3, -3, 0, 0);
-                    usleep(20000);
-                }
-                for(int i = 0;i < 60;i++)
-                {
-                    drone->attitude_control( Flight::HorizontalLogic::HORIZONTAL_POSITION |
-                            Flight::VerticalLogic::VERTICAL_VELOCITY |
-                            Flight::YawLogic::YAW_ANGLE |
-                            Flight::HorizontalCoordinate::HORIZONTAL_BODY |
-                            Flight::SmoothMode::SMOOTH_ENABLE,
-                            3, -3, 0, 0);
-                    usleep(20000);
-                }
-                */
 
 }
 
@@ -505,8 +474,8 @@ geometry_msgs::PointStamped GetTargetOffsetFromUAV( geometry_msgs::Point& tagPos
     // Because drone.local_position.x means northing
     // and drone.local_position.y means easting, 
     // we want to be consistent on x-y coordinates.
-    output.point.y = targetOffsetFromUAV[0][0];
-    output.point.x = targetOffsetFromUAV[1][0];
+    output.point.x = targetOffsetFromUAV[0][0];
+    output.point.y = targetOffsetFromUAV[1][0];
     output.point.z = targetOffsetFromUAV[2][0];
     
     return output;
@@ -567,6 +536,10 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     // double targetOffsetFromUAV[3][1];
     geometry_msgs::PointStamped targetoffset = GetTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal);
 
+    _toTargetDistance.x = targetoffset.point.x;
+	_toTargetDistance.y = targetoffset.point.y;
+	_toTargetDistance.z = targetoffset.point.z;
+
     geometry_msgs::PointStamped msgTargetLocalPosition;
     msgTargetLocalPosition.header.stamp = ros::Time::now();
     
@@ -576,16 +549,20 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     msgTargetLocalPosition.point.y = drone.local_position.y + targetoffset.point.y;	
     msgTargetLocalPosition.point.z = 0;
 	
-    _TargetLocalPosition.publish(msgTargetLocalPosition);
+	_TargetLocalPosition.x = msgTargetLocalPosition.point.x;
+	_TargetLocalPosition.y = msgTargetLocalPosition.point.y;
+	_TargetLocalPosition.z = 0;
 
-	
+    _TargetLocalPositionPub.publish(msgTargetLocalPosition);
+    _targetLocked = 1;
+
 
     //Create message
-    geometry_msgs::PointStamped msgToTargetDistance;
-    msgToTargetDistance.header.stamp = ros::Time::now();
-    msgToTargetDistance.point.x = targetoffset.point.x;
-    msgToTargetDistance.point.y = targetoffset.point.y;	
-    msgToTargetDistance.point.z = drone.global_position.height;
+    // geometry_msgs::PointStamped msgToTargetDistance;
+    // msgToTargetDistance.header.stamp = ros::Time::now();
+    // msgToTargetDistance.point.x = targetoffset.point.x;
+    // msgToTargetDistance.point.y = targetoffset.point.y;	
+    // msgToTargetDistance.point.z = drone.global_position.height;
 
     //_ToTargetDistancePub.publish(msgToTargetDistance);   
       
@@ -596,9 +573,9 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         << "Tag Distance(x,y,z): "  << x << ","
                                     << y << ","
                                     << z << "," << std::endl
-        << "Real Distance(x,y,z): " << targetoffset.point.x << ","
-                                    << targetoffset.point.y << ","
-                                    << targetoffset.point.z << "," << std::endl                                
+        << "To Target Distance(Northing,Easting,Height): " 	<< targetoffset.point.x << ","
+                                    						<< targetoffset.point.y << ","
+                                    						<< targetoffset.point.z << "," << std::endl                                
         << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
 										<< drone.gimbal.pitch << ","
 										<< drone.gimbal.roll << "," << std::endl
@@ -819,12 +796,12 @@ int main(int argc, char **argv)
     ros::Subscriber sub1 = nh.subscribe("/navigation_menu/navigation_task", numMessagesToBuffer, navigationTaskCallback);
     ros::Subscriber sub2 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
-    ros::Subscriber sub4 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
+    // ros::Subscriber sub4 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
     
     
     // Publishers
     _GimbalAnglePub = nh.advertise<geometry_msgs::PointStamped>("/gimbal_control/desired_gimbal_pose", 10); 
-    _TargetLocalPosition = nh.advertise<geometry_msgs::PointStamped>("/navigation/target_local_position", 10); 
+    _TargetLocalPositionPub = nh.advertise<geometry_msgs::PointStamped>("/navigation/target_local_position", 10); 
     
     //_ToTargetDistancePub = nh.advertise<geometry_msgs::PointStamped>("/target_tracking/to_target_distance", 10);
 

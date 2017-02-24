@@ -471,8 +471,8 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 
     geometry_msgs::PointStamped msgTargetLocalPosition;
     msgTargetLocalPosition.header.stamp = ros::Time::now();
-    msgTargetLocalPosition.point.x = drone.local_position.x + targetOffsetFromUAV[1][0];
-    msgTargetLocalPosition.point.y = drone.local_position.y + targetOffsetFromUAV[0][0];	
+    msgTargetLocalPosition.point.x = drone.local_position.x + targetOffsetFromUAV[0][0];
+    msgTargetLocalPosition.point.y = drone.local_position.y + targetOffsetFromUAV[1][0];	
 
     msgTargetLocalPosition.point.z = 0;
 	
@@ -483,8 +483,8 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     //Create message
     geometry_msgs::PointStamped msgToTargetDistance;
     msgToTargetDistance.header.stamp = ros::Time::now();
-    msgToTargetDistance.point.x = targetOffsetFromUAV[1][0];
-    msgToTargetDistance.point.y = targetOffsetFromUAV[0][0];
+    msgToTargetDistance.point.x = targetOffsetFromUAV[0][0];
+    msgToTargetDistance.point.y = targetOffsetFromUAV[1][0];
     msgToTargetDistance.point.z = drone.global_position.height;
 
     _ToTargetDistancePub.publish(msgToTargetDistance);   
@@ -500,8 +500,8 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         << "Tag Distance(x,y,z): "  << x << ","
                                     << y << ","
                                     << z << "," << std::endl
-        << "Real Distance(Easting,Northing,Height): "   << targetOffsetFromUAV[1][0] << ","
-                                                        << targetOffsetFromUAV[0][0] << ","
+        << "Real Distance(Northing,Easting,Height): "   << targetOffsetFromUAV[0][0] << ","
+                                                        << targetOffsetFromUAV[1][0] << ","
                                                         << drone.global_position.height << "," << std::endl                                
         << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
 										<< drone.gimbal.pitch << ","
