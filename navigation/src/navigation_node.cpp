@@ -18,7 +18,6 @@
 
 DJIDrone* _ptrDrone;
 
-int _targetLocked = 0;
 int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
 
@@ -27,9 +26,22 @@ bool _bIsTargetTrackingRunning = false;
 bool _bIsTargetBeingTracked = false;
 bool _bIsTargetLost = false;
 
-geometry_msgs::PointStamped _msgTargetLocalPosition;
+// Landing and searching flags/variables
+bool _bIsReadyToLand = false;
+bool _bIsSearchCenterSetUp = false;
+float _SearchCenter_x = -1;
+float _SearchCenter_y = -1;
+float _FlyingRadius = 1;
+geometry_msgs::PointStamped _msgDesiredGimbalPoseDeg;
+bool _bIsInitialDesiredGimablAngleSetUp = false;
+bool _bIsDroneOutOfRange = false; 
+int _SearchCounter = 0;
+float _Phi = 0;
+
+
 sensor_msgs::LaserScan _msgUltraSonic;
 geometry_msgs::Point _toTargetDistance;
+geometry_msgs::PointStamped _msgTargetLocalPosition;
 
 
 ros::Publisher _GimbalAnglePub;
@@ -85,85 +97,100 @@ void targetDistanceCallback(const geometry_msgs::PointStamped::ConstPtr& msgTarg
 void SearchForTarget(void)
 {
     DJIDrone& drone = *_ptrDrone;
-
-
     ROS_INFO("------------Initializing searching for target-----------");
-    float flyingRadius = 1;
-    float limitRadius = 10; 
+    
+    if(_bIsTargetBeingTracked){
+        _SearchCenter_x = -1;
+        _SearchCenter_y = -1;
+        _SearchCounter = 0;
+        return;
+    }
+    
+    
+    float initialRadius = 1;
+    float limitRadius = 5; 
     float circleRadiusIncrements = 2.0;
-    float droneAltitude = 3;
-    float Phi = 0;
-    ROS_INFO("Initial Radius = %f m, Increment = %f m, Max Radius = %f m", 
-                flyingRadius, circleRadiusIncrements, limitRadius);
-    ROS_INFO("Initial Height = %f m", droneAltitude);
+    float searchAltitude = 3;
+    
+    ROS_INFO("Initial Radius = %f m, Increment = %f m, Max Radius = %f m, Now Radius = %f m. ", initialRadius, circleRadiusIncrements, limitRadius, _FlyingRadius);
+    ROS_INFO("Initial Height = %f m", searchAltitude);
 
     ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
-    float x_center = drone.local_position.x;
-    float y_center = drone.local_position.y;
+    
+    _bIsSearchCenterSetUp = (-1 < _SearchCenter_x) && (-1 < _SearchCenter_y);
+    if(!_bIsSearchCenterSetUp)
+    {
+        _SearchCenter_x = drone.local_position.x;
+        _SearchCenter_y = drone.local_position.y;
+        ROS_INFO("Set up search center: x = %f m, y = %f m.", _SearchCenter_x, _SearchCenter_y);
+    }
 
 
     float gimbalYawIncrements = 1;
-    geometry_msgs::PointStamped desiredGimbalPoseDeg;
-
-    desiredGimbalPoseDeg.point.x = 0.0;  // roll
-    desiredGimbalPoseDeg.point.y = -45.0;  // pitch
-    desiredGimbalPoseDeg.point.z = 0.0;   // yaw 
-    ROS_INFO("Initial Gimbal Angle: roll = %f deg, pitch = %f deg, yaw = %f deg.", 
-                desiredGimbalPoseDeg.point.x, 
-                desiredGimbalPoseDeg.point.y, 
-                desiredGimbalPoseDeg.point.z);
     
+    if(!_bIsInitialDesiredGimablAngleSetUp)
+    {
+        _msgDesiredGimbalPoseDeg.point.x = 0.0;  // roll
+        _msgDesiredGimbalPoseDeg.point.y = -45.0;  // pitch
+        _msgDesiredGimbalPoseDeg.point.z = 0.0;   // yaw 
+        ROS_INFO("Initial Gimbal Angle Set Up: roll = %f deg, pitch = %f deg, yaw = %f deg.", 
+                _msgDesiredGimbalPoseDeg.point.x, 
+                _msgDesiredGimbalPoseDeg.point.y, 
+                _msgDesiredGimbalPoseDeg.point.z);
+        
+        _bIsInitialDesiredGimablAngleSetUp = false; 
+    }
 
 
     ROS_INFO("---------------------Start searching---------------------");
-    ros::spinOnce();
-    while(flyingRadius < limitRadius)
+    _bIsDroneOutOfRange = _FlyingRadius > limitRadius; 
+    
+    if(!_bIsDroneOutOfRange)
     {
-        if(1 == _targetLocked){
-                break;
-            }
-
-        for(int i = 0; i < 1890; i ++)
+        if(_SearchCounter < 1890)
         {   
-            if(1 == _targetLocked){
-                break;
-            }
-
             //set up drone task
-            float x =  x_center + flyingRadius*cos((Phi/300));
-            float y =  y_center + flyingRadius*sin((Phi/300));
-            Phi = Phi+1;
-            drone.local_position_control(x, y, droneAltitude, 0);
+            float x =  _SearchCenter_x + _FlyingRadius*cos((_Phi/300));
+            float y =  _SearchCenter_y + _FlyingRadius*sin((_Phi/300));
+            _Phi = _Phi+1;
+            drone.local_position_control(x, y, searchAltitude, _Phi);
             
             //set up gimbal task
             //if yaw is greater than or equal to 30deg or less than or equal to 30deg. 
-            if(desiredGimbalPoseDeg.point.z > 30.0 || desiredGimbalPoseDeg.point.z < -30.0) 
+            if(_msgDesiredGimbalPoseDeg.point.z > 30.0 || _msgDesiredGimbalPoseDeg.point.z < -30.0) 
             { 
                 gimbalYawIncrements = -gimbalYawIncrements;         //gimbal swing back
             }
             
-            desiredGimbalPoseDeg.point.z += gimbalYawIncrements;
-            _GimbalAnglePub.publish(desiredGimbalPoseDeg);
+            _msgDesiredGimbalPoseDeg.point.z += gimbalYawIncrements;
+            _GimbalAnglePub.publish(_msgDesiredGimbalPoseDeg);
             
+            _SearchCounter++;
             
             usleep(20000);
-            ros::spinOnce();
+
 
         } 
+        else
+        {
+            _SearchCounter = 0;  
+            _Phi = 0; 
+            _FlyingRadius += circleRadiusIncrements;
+         
+        }
         
-        flyingRadius += circleRadiusIncrements; 
+         
         
     }
     
-    if(flyingRadius < 20 && 1 == _targetLocked)
+    if(_FlyingRadius < limitRadius && _bIsTargetBeingTracked)
         ROS_INFO("Target FOUND!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-    else if(flyingRadius > 20)
+    else if(_FlyingRadius > (limitRadius - 1))
         ROS_INFO("Didn't find anything! Try to change searching range or search again. ");
 
 
 }
 
-// Use this function to test anything you want
 void UltrasonicTest(void)
 {
     ROS_INFO("frame_id: %s, stamp: %d, distance: %f, reliability: %d", 
@@ -208,7 +235,6 @@ void ApproachLandingTest(void)
 {
 	DJIDrone& drone = *_ptrDrone;
 
-	ros::spinOnce();
     bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
     {
@@ -233,32 +259,26 @@ void ApproachLandingTest(void)
 					_msgTargetLocalPosition.point.y,
 					_msgTargetLocalPosition.point.z
 				 );
-
-    // float x_start = drone.local_position.x ;
-    // float y_start = drone.local_position.y ;
-    float z_start = drone.local_position.z ;
-    // float delta_x = _toTargetDistance.x; 
-    // float delta_y = _toTargetDistance.y;
-    // float x_target =  x_start + delta_x;
-    // float y_target =  y_start + delta_y;
-    float x_target =  _msgTargetLocalPosition.point.x;
-    float y_target =  _msgTargetLocalPosition.point.y;
-    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    ROS_INFO("Distance_square = %f m ", distance_square);
+    
 
     float limitRadius = 1;
     float limitRadius_square = limitRadius*limitRadius;
+    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    ROS_INFO("Distance_square = %f m, LimitRadius_square = %f m", distance_square, limitRadius_square);
 
-    if(distance_square > limitRadius_square)
+        
+    bool bIsReadyToLand = distance_square < limitRadius_square;
+    if(!bIsReadyToLand)
     {
-    	ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
-    	drone.local_position_control(x_target, y_target, z_start, 0);
+        ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
+    	drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, drone.local_position.z, 0);
 	    ros::Duration(0.02).sleep();
+
     }
     else
     {
-    	ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		drone.local_position_control(x_target, y_target, 0.0, 0);
+        ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, 0.0, 0);
 		ros::Duration(0.02).sleep();
     }
 
@@ -268,7 +288,6 @@ void VelocityControlTest(void)
 {
 	DJIDrone& drone = *_ptrDrone;
 
-	ros::spinOnce();
     bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
     {
@@ -293,34 +312,28 @@ void VelocityControlTest(void)
 					_msgTargetLocalPosition.point.y,
 					_msgTargetLocalPosition.point.z
 				 );
-
-    // float x_start = drone.local_position.x ;
-    // float y_start = drone.local_position.y ;
-    float z_start = drone.local_position.z ;
-    // float delta_x = _toTargetDistance.x; 
-    // float delta_y = _toTargetDistance.y;
-    // float x_target =  x_start + delta_x;
-    // float y_target =  y_start + delta_y;
-    float x_target =  _msgTargetLocalPosition.point.x;
-    float y_target =  _msgTargetLocalPosition.point.y;
-    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    ROS_INFO("Distance_square = %f m ", distance_square);
+    
 
     float limitRadius = 1;
     float limitRadius_square = limitRadius*limitRadius;
+    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
+    ROS_INFO("Distance_square = %f m, LimitRadius_square = %f m", distance_square, limitRadius_square);
 
-    if(distance_square > limitRadius_square)
+        
+    bool bIsReadyToLand = distance_square < limitRadius_square;
+    if(!bIsReadyToLand)
     {
-    	ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
-    	drone.local_position_control(x_target, y_target, z_start, 0);
-    	drone.velocity_control(1, 1, 1, 1, 0);
+        ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
+    	drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, drone.local_position.z, 0);
+        drone.velocity_control(1, 1, 1, 1, 0);
 	    ros::Duration(0.02).sleep();
+
     }
     else
     {
-    	ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		drone.local_position_control(x_target, y_target, 0.0, 0);
-		drone.velocity_control(1, 1, 1, 1, 0);
+        ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, 0.0, 0);
+        drone.velocity_control(1, 1, 1, 1, 0);
 		ros::Duration(0.02).sleep();
     }
 }
@@ -558,7 +571,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 	_toTargetDistance.y = targetoffset.point.y;
 	_toTargetDistance.z = targetoffset.point.z;
 
-    _targetLocked = 1;
+    _bIsTargetBeingTracked = true;
 
 
     //Create message
@@ -667,6 +680,7 @@ void timerCallback(const ros::TimerEvent&)
             break;
 
         case 23: 
+            SearchForTarget();
             break;
 
         case 25: 
@@ -787,7 +801,7 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
             break;
 
         case 23: 
-            ROS_INFO_STREAM("Search for Targetted - Not implemented.");
+            ROS_INFO_STREAM("Search for Target. ");
             break;
 
         case 25: 
@@ -804,7 +818,7 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
             break;
 
         case 28: 
-            ROS_INFO_STREAM("Waypoint Control Test.");
+            ROS_INFO_STREAM("Waypoint Control Test - Not implemented.");
             break;
 
         case 31: 
