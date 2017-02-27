@@ -1,0 +1,7 @@
+<launch>
+    <node name="rosbag_record_target" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/tracking /target_tracking/target_local_position" >
+    </node>
+    <node name="target_tracking" pkg="target_tracking" type="target_tracking" output="screen"/>
+</launch>
+
+

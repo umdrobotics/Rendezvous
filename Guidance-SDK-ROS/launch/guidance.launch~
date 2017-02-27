@@ -1,0 +1,9 @@
+<launch>
+    <node name="guidanceDown" pkg="guidance" type="guidanceDown" output="screen" cwd="node">
+    </node>
+    <node name="rosbag_record_guidance_data" pkg="rosbag" type="record" args="-o /home/ubuntu/bags/guidance_data /guidance/imu /guidance/velocity /guidance/obstacle_distance /guidance/ultrasonic" >
+    </node>
+</launch>
+
+
+

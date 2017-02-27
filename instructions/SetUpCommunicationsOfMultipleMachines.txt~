@@ -26,13 +26,8 @@ On NUC6i7:
 export ROS_HOSTNAME=`hostname`
 export ROS_MASTER_URI=http://`hostname`:11311 
 
-7)	"sudo su" & " gedit .bashrc " and add these in the bottom on root: 
-
-export ROS_HOSTNAME=`hostname`
-export ROS_MASTER_URI=http://`hostname`:11311
-
-8)	" source ~/.bashrc ".
-9)  Set IP address: 192.168.1.17; 
+7)	" source ~/.bashrc ".
+8)  Set IP address: 192.168.1.17; 
 
 
 
@@ -58,11 +53,6 @@ export ROS_HOSTNAME=`hostname`
 export ROS_MASTER_URI=http://NUC6i7:11311 
 
 //Note: At this point, NUC6i7 is the master. Should be changed if master is changed. 
-
-7)	"sudo su" & " gedit .bashrc " and add these in the bottom on root:
-
-export ROS_HOSTNAME=`hostname`
-export ROS_MASTER_URI=http://NUC6i7:11311 
 
 7)	" source ~/.bashrc ".
 8)  Set IP address: 192.168.1.52; 
