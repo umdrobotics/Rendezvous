@@ -1,5 +1,6 @@
 #include "gimbal_control/PidController.h"
 #include "std_msgs/String.h"
+#include <time.h>
 #include <sstream>
 #include <unistd.h>
 #include <limits>
@@ -80,9 +81,9 @@ void PidController::ConstructorHelper()
 
     char* rosHome = getenv ("ROS_HOME");
     ROS_ASSERT_MSG(rosHome, "Can't find the environment variable, ROS_HOME");
-    
+        
     stringstream ss;
-    ss << rosHome << DEFAULT_LOG_FILE_NAME << m_sID << ".log";
+    ss << rosHome << DEFAULT_LOG_FILE_NAME << m_sID << "_" << ros::WallTime::now() << ".log";
     m_ofslog.open(ss.str());
     ROS_ASSERT_MSG(m_ofslog, "Failed to open file %s", ss.str().c_str());
 
