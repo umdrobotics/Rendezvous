@@ -81,6 +81,35 @@ void ultrasonic_callback(const sensor_msgs::LaserScan& msgUltraSonic)
 
 }
 
+
+float LocalPositionControlHelper(float desired, float current_position)
+{
+    
+    float error = desired - current_position;
+    
+    return (error < 0.4) ? desired  
+                         : (error < 5) ? current_position + error * 0.35 
+                                       : current_position + error * 0.5;
+                                       
+}
+
+
+void RunLocalPositionControl(geometry_msgs::Point desired_position, float yaw)
+{
+    DJIDrone& drone = *_ptrDrone;
+        
+    float setpoint_x = LocalPositionControlHelper(desired_position.x, drone.local_position.x);
+    float setpoint_y = LocalPositionControlHelper(desired_position.y, drone.local_position.y);
+    float setpoint_z = LocalPositionControlHelper(desired_position.z, drone.local_position.z);
+         
+    
+    drone.local_position_control(setpoint_x, setpoint_y, setpoint_z, yaw);
+    
+    ROS_INFO("%f, %f, %f", drone.local_position.x, drone.local_position.y, drone.local_position.z); 
+    
+}
+
+
 /*
 void targetDistanceCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetDistance)
 {
@@ -458,6 +487,13 @@ void Waypoint_mission_upload(void)
 void TemporaryTest(void)
 {
 
+    geometry_msgs::Point desired_position;
+    
+    desired_position.x = 5;
+    desired_position.y = 3;
+    desired_position.z = -0.1;
+    
+    RunLocalPositionControl(desired_position, 0);
 
 }
 
@@ -665,6 +701,7 @@ void RunTargetSearch()
 {
 
 }
+
 
 void RunTargetTracking()
 {
@@ -893,9 +930,10 @@ int main(int argc, char **argv)
 
     // Initialize global variables
     _ptrDrone = new DJIDrone(nh);
+ 
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
-    
+   
         
     // Subscribers    
 	int numMessagesToBuffer = 10;
