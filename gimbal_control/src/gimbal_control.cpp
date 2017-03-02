@@ -61,47 +61,63 @@ void RunShortAngleTests(DJIDrone& drone)
 void RunInitialAngleTests(DJIDrone& drone)
 {
     // set yaw to 90 degrees (counterclockwise) with  the time to take 1 sec.
-    drone.gimbal_angle_control(0.0, 0.0, 900.00, 10.0);    
-    ros::Duration(1.0).sleep();
+    ROS_INFO("Gimbal Angle Yaw 90 incremental");
+    drone.gimbal_angle_control(0.0, 0.0, 900.00, 10.0, 0);    
+    ros::Duration(2.0).sleep();
 
     // set yaw to -90 degrees (clockwise) with  the time to take 1 sec.  
-    drone.gimbal_angle_control(0.0, 0.0, -900.0, 10.0);     
-    ros::Duration(1.0).sleep();
+    ROS_INFO("Gimbal Angle Yaw -90 incremental");
+    drone.gimbal_angle_control(0.0, 0.0, -900.0, 10.0, 0);     
+    ros::Duration(2.0).sleep();
 
+    // set yaw to -90 degrees (clockwise) with  the time to take 1 sec.  
+    ROS_INFO("Gimbal Angle Yaw -10 incremental");
+    drone.gimbal_angle_control(0.0, 0.0, -100.0, 9.0, 0);     
+    ros::Duration(2.0).sleep();
+    
     // set all angles to zero.
-    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
-    ros::Duration(1.0).sleep();
+    ROS_INFO("Gimbal Angle Yaw 10 incremental");
+    drone.gimbal_angle_control(0.0, 0.0, 100.0, 5.0, 0);    
+    ros::Duration(2.0).sleep();
 
     // set yaw to 20 degrees with  the time to take 1 sec.  
-    drone.gimbal_angle_control(0.0, 0.0, 200.0, 10.0);    
-    ros::Duration(1.0).sleep();
+    ROS_INFO("Gimbal Angle Yaw 20 incremental");
+    drone.gimbal_angle_control(0.0, 0.0, 200.0, 10.0, 0);    
+    ros::Duration(2.0).sleep();
 
     // set yaw to -20 degrees with  the time to take 1 sec.  
-    drone.gimbal_angle_control(0.0, 0.0, -200.0, 10.0);    
-    ros::Duration(1.0).sleep();
+    ROS_INFO("Gimbal Angle Yaw 20 incremental");
+    drone.gimbal_angle_control(0.0, 0.0, 200.0, 10.0, 0);    
+    ros::Duration(2.0).sleep();
 
     // set all angles to zero.
-    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
+    ROS_INFO("Gimbal Angle Yaw 0 incremental");
+    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0, 0);    
     ros::Duration(1.0).sleep();
 
     // set roll to -15 degrees with the time to take 1 sec.
-    drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0);    
-    ros::Duration(1.0).sleep();
+    ROS_INFO("Gimbal Angle Roll -15 incremental");
+    drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0, 0);    
+    ros::Duration(2.0).sleep();
 
     // set roll to 15 degrees with the time to take 1 sec.
-    drone.gimbal_angle_control(150, 0.0, 0.0, 10.0);    
-    ros::Duration(1.0).sleep();
+    ROS_INFO("Gimbal Angle Roll 30 incremental");    
+    drone.gimbal_angle_control(300, 0.0, 0.0, 10.0, 0);    
+    ros::Duration(2.0).sleep();
 
-    // set all angles to zero.
-    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
-    ros::Duration(1.0).sleep();
-
+    // set roll to -15 degrees with the time to take 1 sec.
+    ROS_INFO("Gimbal Angle Roll -15 incremental");
+    drone.gimbal_angle_control(-150, 0.0, 0.0, 10.0, 0);    
+    ros::Duration(2.0).sleep();
+    
     // set pitch to -45 degrees (pitch down) with the time to take 1 sec.
-    drone.gimbal_angle_control(0.0, -450.0, 0.0, 10.0);    
+	ROS_INFO("Gimbal Angle Pitch -15 incremental");
+    drone.gimbal_angle_control(0.0, -150.0, 0.0, 10.0, 0);    
     ros::Duration(2.0).sleep();
 
     // set pitch to 0 degree (pitch down) with the time to take 1 sec.
-    drone.gimbal_angle_control(0.0, 0.0, 0.0, 10.0);    
+	ROS_INFO("Gimbal Angle Pitch -30 incremental");
+    drone.gimbal_angle_control(0.0, -300.0, 0.0, 10.0, 0);    
     ros::Duration(2.0).sleep();
 
 }
@@ -118,6 +134,7 @@ void QuaternionToRPY(dji_sdk::AttitudeQuaternion q, float& roll, float& pitch,  
 void timerCallback(const ros::TimerEvent&)
 {
     DJIDrone& drone = *_ptrDrone;
+    
                
     double yawRateInputDU = 
         _yaw_rate_controller->GetPlantInput(_msgDesiredGimbalPoseDeg.point.z, drone.gimbal.yaw);
@@ -128,6 +145,16 @@ void timerCallback(const ros::TimerEvent&)
     double rollRateInputDU = 0.0; // We don't use roll control
 
     drone.gimbal_speed_control(rollRateInputDU, pitchRateInputDU, yawRateInputDU);
+   
+    /*
+	drone.gimbal_angle_control(0.0, 
+							 10*(_msgDesiredGimbalPoseDeg.point.y - drone.gimbal.pitch), 
+							 10*(_msgDesiredGimbalPoseDeg.point.z - drone.gimbal.yaw), 
+							 10.0, 0);     
+    
+    */
+    
+    
 }
 
 void listernerCallback(const geometry_msgs::PointStamped::ConstPtr& msgDesiredPoseDeg)

@@ -934,6 +934,7 @@ int main(int argc, char **argv)
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
    
+   
         
     // Subscribers    
 	int numMessagesToBuffer = 10;
