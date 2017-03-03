@@ -450,70 +450,7 @@ void KnownStationaryApproachLandingTest(void)
 }
 
 
-void Waypoint_mission_upload(void)
-{
-    DJIDrone& drone = *_ptrDrone;
 
-	ros::spinOnce();
-	ROS_INFO("To Target Distance:  North  = %f m\n", _toTargetDistance.x);
-    ROS_INFO("                     East   = %f m\n", _toTargetDistance.y);
-    ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);
-
-    float x_start = drone.local_position.x ;
-    float y_start = drone.local_position.y ;
-    float delta_x = _toTargetDistance.x; 
-    float delta_y = _toTargetDistance.y;
-    
-    float x_target =  x_start + delta_x;
-    float y_target =  y_start + delta_y; 
-    float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    ROS_INFO("X_taregt = %f m, Y_target = %f m, distance_square = %f m ", x_target, y_target, distance_square);
-     
-
-    float limitRadius = 1;
-    float limitRadius_square = limitRadius*limitRadius;
-    while(distance_square > limitRadius_square)
-    {
-    	ros::spinOnce();
-    	float distance_square = _toTargetDistance.x*_toTargetDistance.x + _toTargetDistance.y*_toTargetDistance.y;
-    	ROS_INFO("Distance_square = %f m, Height = %f m ", distance_square, drone.global_position.height);
-
-    	drone.local_position_control(x_target, x_target, drone.local_position.z, 0);
-	    ros::Duration(0.02).sleep();
-
-    }
-
-    ROS_INFO("The drone is ready to descending!!!!!!!!!!!!!!!!!!!!!!");
-
-
-    while(1) 
-    { 
-        ros::spinOnce();
-
-        ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
-        ROS_INFO("Local Position: %f, %f\n", drone.local_position.x, drone.local_position.y);
-        ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f\n", 
-                    drone.global_position.longitude,
-                    drone.global_position.latitude,
-                    drone.global_position.altitude,
-                    drone.global_position.height
-                 ); 
-		ROS_INFO("To Target Distance:  North  = %f m", _toTargetDistance.x);
-    	ROS_INFO("                     East   = %f m", _toTargetDistance.y);
-    	ROS_INFO("                     Height = %f m\n", _toTargetDistance.z);   
-
-
-        if (_msgUltraSonic.ranges[0] < 0.1 && (int)_msgUltraSonic.intensities[0] == 1)
-        {
-            break;
-        }    
-
-        drone.local_position_control(x_target, x_target, 0.0, 0);
-	    ros::Duration(0.02).sleep();
-    }
-
-    ROS_INFO("The drone is ready to land!!!!!!!!!!!!!!!!!!!!!!!!!!");
-}
 
 
 void TemporaryTest(void)
@@ -840,6 +777,66 @@ void RunAutonomousLanding()
 }
 
 
+void RunAutonomousLanding2()
+{
+
+	DJIDrone& drone = *_ptrDrone;
+
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    if (bIsDroneLanded)
+    {
+        if (!_bIsDroneLandingPrinted)
+        { 
+            ROS_INFO("The drone has landed!");     
+            _bIsDroneLandingPrinted = true;
+            _bIsTestInitiated = false;
+        }
+        return;
+    }
+    
+    float delta_x = _msgTargetDistance.point.x/sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x  
+                          + _msgTargetDistance.point.y*_msgTargetDistance.point.y);
+    float delta_y = _msgTargetDistance.point.y/sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x  
+                          + _msgTargetDistance.point.y*_msgTargetDistance.point.y);                      
+    float target_x = _msgTargetLocalPosition.point.x - delta_x;
+    float target_y = _msgTargetLocalPosition.point.y - delta_y;
+    float drone_x = drone.local_position.x;
+    float drone_y = drone.local_position.y; 
+    float drone_z = drone.local_position.z; 
+        
+    float limitRadius = 1;
+    float limitRadius_square = limitRadius*limitRadius;
+    float distance_square = (target_x - drone_x)*(target_x - drone_x) + (target_y - drone_y)*(target_y - drone_y);
+    bool bIsReadyToLand = distance_square < limitRadius_square;
+
+
+    geometry_msgs::Point desired_position;
+    desired_position.x = target_x;
+    desired_position.y = target_y;
+    desired_position.z = bIsReadyToLand ? -0.1 : drone_z;
+    float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(desired_position.x, desired_position.y));
+    RunLocalPositionControl(desired_position, desired_yaw);
+    
+    
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+            
+    _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
+                            << ros::Time::now().toSec() << "," 
+                            <<  _msgUltraSonic.ranges[0] << ","
+                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                            << distance_square << ","                   // distance squared
+                            << _msgTargetLocalPosition.point.x << "," 
+                            << _msgTargetLocalPosition.point.y << ","
+                            << _msgTargetLocalPosition.point.z << ","   // target local position
+                            << drone.local_position.x << ","
+                            << drone.local_position.y << ","
+                            << drone.local_position.z << ","
+                            << yaw << std::endl;                             // drone local position
+            
+}
+
+
 
 void timerCallback(const ros::TimerEvent&)
 {
@@ -863,6 +860,7 @@ void timerCallback(const ros::TimerEvent&)
             break;
          
         case 22: 
+            RunAutonomousLanding2();
             break;
 
         case 23: 
@@ -983,7 +981,7 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
             break;
          
         case 22: 
-            ROS_INFO_STREAM("Waypoint Mission Upload - Not implemented.");
+            ROS_INFO_STREAM("Autonomous Tracking and Landing Two.");
             break;
 
         case 23: 
