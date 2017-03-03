@@ -23,8 +23,8 @@ void DisplayMainMenu(void)
 {
     printf("\r\n");
     printf("+-------------------------- < Main menu > ---------------------------+\n");
-    printf("| [1]  Request Control            | [21]                             |\n");   
-    printf("| [2]  Release Control            | [22] Waypoint Mission Upload     |\n");   
+    printf("| [1]  Request Control            | [21] Autonomous Landing          |\n");   
+    printf("| [2]  Release Control            | [22] Autonomous Landing Two      |\n");   
     printf("| [3]  Arm the Drone              | [23] Search for Target           |\n");   
     printf("| [4]  Disarm the Drone           | [24]                             |\n");   
     printf("| [5]  Takeoff                    | [25] Landing Test                |\n");   
