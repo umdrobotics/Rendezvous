@@ -562,7 +562,7 @@ geometry_msgs::PointStamped GetTargetOffsetFromUAV( geometry_msgs::Point& tagPos
 } ///end GetTargetOffsetFromUAV()
 
 
-dji_sdk::Gimbal FindGimbalAngleForApriltag(apriltags_ros::AprilTagDetection tag)
+dji_sdk::Gimbal FindGimbalAngleForApriltag(apriltags_ros::AprilTagDetection& tag)
 {
     
     dji_sdk::Gimbal gimbal;
@@ -623,11 +623,12 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
   
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
 
-
-	//Test
 	tag.pose.pose.position.y *= -1;
 
-    // double targetOffsetFromUAV[3][1];
+
+    //dji_sdk::Gimbal gimbal = FindGimbalAngleForApriltag(tag);
+    //_msgTargetDistance = GetTargetOffsetFromUAV(tag.pose.pose.position, gimbal);
+
     _msgTargetDistance = GetTargetOffsetFromUAV(tag.pose.pose.position, drone.gimbal);
 
     _msgTargetLocalPosition.header.stamp = ros::Time::now();
@@ -668,11 +669,12 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDete
  }
 
 
+/*
 void gimbalCallback(const dji_sdk::Gimbal gimbal)
 {
     _queMsgGimbal.push(gimbal);
 }
-
+*/
 
 void RunTargetSearch()
 {
@@ -1056,7 +1058,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub1 = nh.subscribe("/navigation_menu/navigation_task", numMessagesToBuffer, navigationTaskCallback);
     ros::Subscriber sub2 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
-    ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
+    // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
     
     
     // Publishers
