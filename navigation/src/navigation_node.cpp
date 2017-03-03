@@ -11,6 +11,7 @@
 #include <apriltags_ros/AprilTagDetectionArray.h>
 #include <sstream>
 #include <fstream>
+#include <queue>
 
 using namespace std;
 
@@ -52,6 +53,7 @@ bool _bIsTestInitiated = false;
 std::ofstream _ofsTragetTrackingLog;
 std::ofstream _ofsAutonomousLandingLog;
 
+std::queue <dji_sdk::Gimbal> _queMsgGimbal;
 
 sensor_msgs::LaserScan _msgUltraSonic;
 geometry_msgs::Point _toTargetDistance;
@@ -560,6 +562,25 @@ geometry_msgs::PointStamped GetTargetOffsetFromUAV( geometry_msgs::Point& tagPos
 } ///end GetTargetOffsetFromUAV()
 
 
+dji_sdk::Gimbal FindGimbalAngleForApriltag(apriltags_ros::AprilTagDetection tag)
+{
+    
+    dji_sdk::Gimbal gimbal;
+
+    while(!_queMsgGimbal.empty())
+    {
+        gimbal = _queMsgGimbal.front();  
+        if (gimbal.header.stamp > tag.pose.header.stamp)
+        {
+            return gimbal;
+        }
+        _queMsgGimbal.pop();
+    }
+
+    return _ptrDrone->gimbal;
+
+}
+
 
 void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
 {
@@ -624,32 +645,6 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 	_toTargetDistance.z = _msgTargetDistance.point.z;
 
     _bIsTargetBeingTracked = true;
-
-    /*
-
-    std::stringstream ss ;
-    
-    ss  << std::fixed << std::setprecision(7) << std::endl
-        << "Time: " << ros::Time::now().toSec() << std::endl
-        << "Tag Distance(x,y,z): "  << x << ","
-                                    << y << ","
-                                    << z << "," << std::endl
-        << "To Target Distance(Northing,Easting,Height): " 	<< _msgTargetDistance.point.x << ","
-                                    						<< _msgTargetDistance.point.y << ","
-                                    						<< _msgTargetDistance.point.z << "," << std::endl                                
-        << "Gimbal Angle Deg(y,p,r): "  << drone.gimbal.yaw << ","
-										<< drone.gimbal.pitch << ","
-										<< drone.gimbal.roll << "," << std::endl
-        << "Desired Angle Deg(y,p,r): " << msgDesiredAngleDeg.point.z << ","
-                                        << msgDesiredAngleDeg.point.y << ","
-                                        << msgDesiredAngleDeg.point.x << std::endl
-        << "Target Local Pos(time: x,y,z): " << _msgTargetLocalPosition.header.stamp << ","
-											 << _msgTargetLocalPosition.point.x << ","
-											 << _msgTargetLocalPosition.point.y << ","
-											 << _msgTargetLocalPosition.point.z << "," << std::endl;											               
-    ROS_INFO("%s", ss.str().c_str());
-	*/
-    
     
     _ofsTragetTrackingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
                         << ros::Time::now().toSec() << "," 
@@ -671,6 +666,13 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDete
     
     FindDesiredGimbalAngle(vecTagDetections);
  }
+
+
+void gimbalCallback(const dji_sdk::Gimbal gimbal)
+{
+    _queMsgGimbal.push(gimbal);
+}
+
 
 void RunTargetSearch()
 {
@@ -1068,6 +1070,9 @@ int main(int argc, char **argv)
     double dTimeStepSec = 0.02;
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
     
+
+    ROS_INFO_STREAM("Navigation has started.");
+
     ros::spin();
              
     return 0;    
