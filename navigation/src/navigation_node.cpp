@@ -747,14 +747,13 @@ void RunAutonomousLanding()
        
     bool bIsReadyToLand = distance_square < limitRadius_square;
 
-
     geometry_msgs::Point desired_position;
     
     desired_position.x = _msgTargetLocalPosition.point.x;
     desired_position.y = _msgTargetLocalPosition.point.y;
     desired_position.z = bIsReadyToLand ? -0.1 : drone_z;
             
-    float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(desired_position.x, desired_position.y));
+    float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
         
     RunLocalPositionControl(desired_position, desired_yaw);
     
@@ -763,7 +762,7 @@ void RunAutonomousLanding()
             
     _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
                             << ros::Time::now().toSec() << "," 
-                            <<  _msgUltraSonic.ranges[0] << ","
+                            << _msgUltraSonic.ranges[0] << ","
                             << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
                             << distance_square << ","                   // distance squared
                             << _msgTargetLocalPosition.point.x << "," 
@@ -1059,7 +1058,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub1 = nh.subscribe("/navigation_menu/navigation_task", numMessagesToBuffer, navigationTaskCallback);
     ros::Subscriber sub2 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
-    // ros::Subscriber sub4 = nh.subscribe("/target_tracking/to_target_distance", numMessagesToBuffer, targetDistanceCallback);
+    ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
     
     
     // Publishers
