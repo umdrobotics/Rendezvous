@@ -31,14 +31,16 @@ bool _bIsTargetBeingTracked = false;
 bool _bIsTargetLost = false;
 
 // Landing and searching flags/variables
-float _SearchCenter_x = -1;
-float _SearchCenter_y = -1;
+float _SearchCenter_x = 0;
+float _SearchCenter_y = 0;
 float _FlyingRadius = 1;
 float _gimbalYawIncrements = 1;
 int _SearchCounter = 0;
+int _GimbalCounter = 0;
 float _Phi = 0;
 int _LoopCounter = 1;
 float _SearchAngle_Yaw = 0;
+float _SearchGimbal_Yaw = 0;
 bool _bIsSearchInitiated = false; 
 
 // Stationary Approach and Land test
@@ -168,8 +170,8 @@ void SearchForTarget(void)
     if(_bIsTargetBeingTracked){
         
         ROS_INFO("Target FOUND!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-        _SearchCenter_x = -1;
-        _SearchCenter_y = -1;
+        _SearchCenter_x = 0;
+        _SearchCenter_y = 0;
 
         return;
     }
@@ -177,7 +179,7 @@ void SearchForTarget(void)
     
     float initialRadius = 1;
     float limitRadius = 5; 
-    float circleRadiusIncrements = 2.0;
+    float circleRadiusIncrements = 300.0;
     float searchAltitude = 3;
     
     ROS_INFO("Initial Radius = %f m, Increment = %f m, Max Radius = %f m, Initial Height = %f m. ", initialRadius, circleRadiusIncrements, limitRadius, searchAltitude);
@@ -192,15 +194,6 @@ void SearchForTarget(void)
         // _bIsSearchInitiated = true;
         
         ROS_INFO("Set up search center: x = %f m, y = %f m.", _SearchCenter_x, _SearchCenter_y);
-        
-        _msgDesiredGimbalPoseDeg.point.x = 0.0;  // roll
-        _msgDesiredGimbalPoseDeg.point.y = -45.0;  // pitch
-        _msgDesiredGimbalPoseDeg.point.z = 0.0;   // yaw 
-        _gimbalYawIncrements = 0.5;
-        ROS_INFO("Set Up Initial Gimbal Angle: roll = %f deg, pitch = %f deg, yaw = %f deg.", 
-                _msgDesiredGimbalPoseDeg.point.x, 
-                _msgDesiredGimbalPoseDeg.point.y, 
-                _msgDesiredGimbalPoseDeg.point.z);
                 
         _SearchCounter = 0;
         _Phi = 0;
@@ -223,26 +216,29 @@ void SearchForTarget(void)
             
             //set up drone task
             _Phi = _Phi+1;
-            _SearchAngle_Yaw = 90 + _Phi/(1.75*_LoopCounter);
-            if (360 < _SearchAngle_Yaw)
-            {
-                _SearchAngle_Yaw = _SearchAngle_Yaw - 360;
-            }
+            //_SearchAngle_Yaw = 90 + _Phi/(1.75*_LoopCounter);
+            //if (360 < _SearchAngle_Yaw)
+            //{
+            //    _SearchAngle_Yaw = _SearchAngle_Yaw - 360;
+            //}
             float x =  _SearchCenter_x + _FlyingRadius*cos((_Phi/(100*_LoopCounter)));
             float y =  _SearchCenter_y + _FlyingRadius*sin((_Phi/(100*_LoopCounter)));
-            drone.local_position_control(x, y, searchAltitude, _SearchAngle_Yaw);
+            drone.local_position_control(x, y, searchAltitude, 0);
             
             
             //set up gimbal task
             //if yaw is greater than or equal to 30deg or less than or equal to 30deg. 
-            if(_msgDesiredGimbalPoseDeg.point.z > 30.0 || _msgDesiredGimbalPoseDeg.point.z < -30.0) 
-            { 
-                _gimbalYawIncrements = -_gimbalYawIncrements;         //gimbal swing back
+            if(_GimbalCounter = 50){
+                
+                if(_msgDesiredGimbalPoseDeg.point.z > 59.0 || _msgDesiredGimbalPoseDeg.point.z < -59.0) 
+                { 
+                    _gimbalYawIncrements = -_gimbalYawIncrements;         //gimbal swing back
+                }
+                _SearchGimbal_Yaw += _gimbalYawIncrements;
+                drone.gimbal_angle_control(0.0, -450, _SearchGimbal_Yaw, 10.0);
+                _GimbalCounter = 0;
             }
-            _msgDesiredGimbalPoseDeg.point.z += _gimbalYawIncrements;
-            _GimbalAnglePub.publish(_msgDesiredGimbalPoseDeg);
-            
-            
+            _GimbalCounter++;
             _SearchCounter++;
 
         } 
