@@ -8,7 +8,7 @@ void ShutDown(void)
     // For example, publish a stop message to some other nodes.
     ROS_INFO("It is requested to terminate navigation ...");
 
-    ROS_INFO("Shutting down navigation ...");
+    ROS_INFO("Shutting down navigation ...") ;
     // All the default sigint handler does is call shutdown()
     ros::shutdown();
 

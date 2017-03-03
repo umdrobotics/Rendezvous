@@ -808,8 +808,8 @@ void RunAutonomousLanding2()
 
 
     geometry_msgs::Point desired_position;
-    desired_position.x = target_x;
-    desired_position.y = target_y;
+    desired_position.x = bIsReadyToLand ? _msgTargetLocalPosition.point.x : target_x;
+    desired_position.y = bIsReadyToLand ? _msgTargetLocalPosition.point.y : target_y;
     desired_position.z = bIsReadyToLand ? -0.1 : drone_z;
     float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
     RunLocalPositionControl(desired_position, desired_yaw);
