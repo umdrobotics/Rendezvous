@@ -280,7 +280,7 @@ void LandingTest(void)
 {
     DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
 
     if (bIsDroneLanded)
     {
@@ -310,7 +310,7 @@ void ApproachLandingTest(void)
 {
 	DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -360,7 +360,7 @@ void LandingTestPlus(void)
 {
     DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
 
     if (bIsDroneLanded)
     {
@@ -390,7 +390,7 @@ void KnownStationaryApproachLandingTest(void)
 {
 	DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -721,7 +721,7 @@ void RunAutonomousLanding()
 
 	DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -730,6 +730,7 @@ void RunAutonomousLanding()
             _bIsDroneLandingPrinted = true;
             _bIsTestInitiated = false;
         }
+        drone.landing();
         return;
     }
     
@@ -781,7 +782,7 @@ void RunAutonomousLanding2()
 
 	DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.1) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -790,6 +791,7 @@ void RunAutonomousLanding2()
             _bIsDroneLandingPrinted = true;
             _bIsTestInitiated = false;
         }
+        drone.landing();
         return;
     }
     
@@ -833,6 +835,57 @@ void RunAutonomousLanding2()
                             << drone.local_position.z << ","
                             << yaw << std::endl;                             // drone local position
             
+}
+
+void FollowTarget(void)
+{
+	DJIDrone& drone = *_ptrDrone;
+    
+    float delta_x = _msgTargetDistance.point.x/sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x  
+                          + _msgTargetDistance.point.y*_msgTargetDistance.point.y);
+    float delta_y = _msgTargetDistance.point.y/sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x  
+                          + _msgTargetDistance.point.y*_msgTargetDistance.point.y);                      
+    float target_x = _msgTargetLocalPosition.point.x - delta_x;
+    float target_y = _msgTargetLocalPosition.point.y - delta_y;
+    float drone_x = drone.local_position.x;
+    float drone_y = drone.local_position.y; 
+    float drone_z = drone.local_position.z; 
+        
+    float limitRadius = 1;
+    float limitRadius_square = limitRadius*limitRadius;
+    float distance_square = (target_x - drone_x)*(target_x - drone_x) + (target_y - drone_y)*(target_y - drone_y);
+    bool bIsReadyToLand = distance_square < limitRadius_square;
+        
+    if (bIsReadyToLand)
+    { 
+        ROS_INFO("The drone is in position!");     
+        return;
+    }
+        
+
+    geometry_msgs::Point desired_position;
+    desired_position.x = bIsReadyToLand ? _msgTargetLocalPosition.point.x : target_x;
+    desired_position.y = bIsReadyToLand ? _msgTargetLocalPosition.point.y : target_y;
+    desired_position.z = bIsReadyToLand ? -0.1 : drone_z;
+    float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
+    RunLocalPositionControl(desired_position, desired_yaw);
+    
+    
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+            
+    _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
+                            << ros::Time::now().toSec() << "," 
+                            <<  _msgUltraSonic.ranges[0] << ","
+                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                            << distance_square << ","                   // distance squared
+                            << _msgTargetLocalPosition.point.x << "," 
+                            << _msgTargetLocalPosition.point.y << ","
+                            << _msgTargetLocalPosition.point.z << ","   // target local position
+                            << drone.local_position.x << ","
+                            << drone.local_position.y << ","
+                            << drone.local_position.z << ","
+                            << yaw << std::endl;                             // drone local position
 }
 
 
@@ -881,7 +934,11 @@ void timerCallback(const ros::TimerEvent&)
         case 28: 
             KnownStationaryApproachLandingTest();
             break;
-
+            
+        case 30: 
+            FollowTarget();
+            break;
+            
         case 31: 
             UltrasonicTest();
             break;
@@ -1002,6 +1059,10 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
 
         case 28: 
             ROS_INFO_STREAM("Known Stationary Approach & Landing Test");
+            break;
+            
+        case 30: 
+            ROS_INFO_STREAM("Following the target.");
             break;
 
         case 31: 

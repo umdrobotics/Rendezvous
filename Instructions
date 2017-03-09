@@ -1,16 +1,16 @@
 Here is the instructions of latest progress: 
 1) On NUC6i7:		ssh manifold52 	//so, when we need run instructions on manifold52, just use this terminal
 2) On NUC6i7:		roscore &
-3) On manifold52:	sudo su 
-                    date --set="$(ssh ubuntu@192.168.1.17 date)"
+3) On manifold52:	sudo /home/ubuntu/max_performance 
+                    sudo date --set="$(ssh ubuntu@192.168.1.17 date)"
                     roslaunch dji_sdk dji_sdk.launch & 
 4) On manifold52:	sudo su ; roslaunch dji_sdk_read_cam manifold_cam.launch &
 5) On NUC6i7:		roslaunch apriltags_ros apriltags_ros-all.launch
 6) On manifold52:	export ROS_HOME=/home/ubuntu
 7) On manifold52:	roslaunch gimbal_control gimbal_control.launch
-8) On manifold52:	roslaunch guidance guidance.launch
+8) On manifold52:	sudo su; roslaunch guidance guidance.launch
 9) On manifold52:	rosrun navigation navigation_menu
-10) On manifold52:	roslaunch navigation navigation.launch
+10) On manifold52:	rosrun navigation navigation_node
 
 
 On manifold52:	roslaunch target_tracking target_tracking.launch

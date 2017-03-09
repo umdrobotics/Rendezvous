@@ -32,7 +32,7 @@ void DisplayMainMenu(void)
     printf("| [7]  Go Home                    | [27] Landing Test Plus           |\n");   
     printf("| [8]  Target Tracking Start      | [28] Known Stationary Test       |\n");   
     printf("| [9]  Target Tracking Cancel     | [29]                             |\n");   
-    printf("| [10] Mission Pause              | [30]                             |\n");   
+    printf("| [10] Mission Pause              | [30] Target Following            |\n");   
     printf("| [11] Mission Resume             | [31] Ultrasonic Test             |\n");   
     printf("| [12] Mission Waypoint Download  | [32]                             |\n");   
     printf("| [13] Mission Waypoint Set Speed | [33]                             |\n");   
