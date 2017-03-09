@@ -138,8 +138,8 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
     float yaw_error_deg = desired_yaw_deg - current_yaw_deg;
     
     float setpoint_yaw = (yaw_error_deg < 3) ? desired_yaw_deg  
-                                             : (yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.35 
-                                             : current_yaw_deg + yaw_error_deg * 0.5;
+                                             : (yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3 
+                                             : current_yaw_deg + yaw_error_deg * 0.2;
     
     drone.local_position_control(setpoint_x, setpoint_y, setpoint_z, setpoint_yaw);
     
