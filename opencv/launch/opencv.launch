@@ -1,0 +1,6 @@
+<launch>
+	<node pkg="opencv" type="opencv_node.py" name="opencv_node" output="screen">
+	</node>
+	<node pkg="rosbag" type="record" name="rosbag_record_opencv" args="-o /home/ubuntu/.ros/opencvBag /opencv/camera_pose /opencv/distance_NED /opencv/gimbal_pitch /opencv/target_pose /solo/vehicleAttitude /solo/vehicleGPS /solo/vehicleVelocity /solo/vehicleLocalLocation /solo/vehicleGroundSpeed /solo/vehicleAirSpeed /solo/PIDcontrol /solo/ultrasonic" >
+    </node> 
+</launch>

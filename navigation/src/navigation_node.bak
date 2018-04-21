@@ -50,10 +50,6 @@ float _StationaryTargetPos_y = 0;
 bool _bIsTestInitiated = false;
 
 
-// LQR controller
-float _lqrGain = 0;
-
-
 std::ofstream _ofsTragetTrackingLog;
 std::ofstream _ofsAutonomousLandingLog;
 
@@ -64,8 +60,6 @@ geometry_msgs::Point _toTargetDistance;
 geometry_msgs::PointStamped _msgTargetLocalPosition;
 geometry_msgs::PointStamped _msgDesiredGimbalPoseDeg;
 geometry_msgs::PointStamped _msgTargetDistance;
-geometry_msgs::PointStamped _msgTruckDistance;
-geometry_msgs::PointStamped _msgTruckGPSPosition;
 
 ros::Publisher _GimbalAnglePub;
 ros::Publisher _TargetLocalPositionPub;
@@ -151,34 +145,20 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
     
 }
 
-void LQRController()
-{
-
-
-
-}
-
-void AttitudeControlHelper()
-{
-
-
-
-}
-
 
 /*
 void targetDistanceCallback(const geometry_msgs::PointStamped::ConstPtr& msgTargetDistance)
 {
-	if (0 < sizeof(msgTargetDistance)) 
+    if (0 < sizeof(msgTargetDistance)) 
     {
-		_toTargetDistance.x = msgTargetDistance->point.x;
-		_toTargetDistance.y = msgTargetDistance->point.y;
-		_toTargetDistance.z = msgTargetDistance->point.z;
-		
-		_targetLocked = 1;
-		
-	}
-		
+        _toTargetDistance.x = msgTargetDistance->point.x;
+        _toTargetDistance.y = msgTargetDistance->point.y;
+        _toTargetDistance.z = msgTargetDistance->point.z;
+        
+        _targetLocked = 1;
+        
+    }
+        
 }
 */
 
@@ -328,7 +308,7 @@ void LandingTest(void)
 
 void ApproachLandingTest(void)
 {
-	DJIDrone& drone = *_ptrDrone;
+    DJIDrone& drone = *_ptrDrone;
 
     bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
@@ -341,19 +321,19 @@ void ApproachLandingTest(void)
         return;
     }
 
-	ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
-	ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
+    ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
+    ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
                     drone.global_position.longitude,
                     drone.global_position.latitude,
                     drone.global_position.altitude,
                     drone.global_position.height
                  );
     ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y); 
-	ROS_INFO("Target Local Pos: Northing = %f m, Easting = %f m, Height = %f m.",
-					_msgTargetLocalPosition.point.x,
-					_msgTargetLocalPosition.point.y,
-					_msgTargetLocalPosition.point.z
-				 );
+    ROS_INFO("Target Local Pos: Northing = %f m, Easting = %f m, Height = %f m.",
+                    _msgTargetLocalPosition.point.x,
+                    _msgTargetLocalPosition.point.y,
+                    _msgTargetLocalPosition.point.z
+                 );
     
 
     float limitRadius = 1;
@@ -366,12 +346,12 @@ void ApproachLandingTest(void)
     if(!bIsReadyToLand)
     {
         ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
-    	drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, drone.local_position.z, 0);
+        drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, drone.local_position.z, 0);
     }
     else
     {
         ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, 0.0, 0);
+        drone.local_position_control(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y, 0.0, 0);
     }
 
 }
@@ -406,7 +386,66 @@ void LandingTestPlus(void)
     }
 }
 
+void KnownStationaryApproachLandingTest(void)
+{
+    DJIDrone& drone = *_ptrDrone;
 
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
+    if (bIsDroneLanded)
+    {
+        if (!_bIsDroneLandingPrinted)
+        { 
+            ROS_INFO("The drone has landed!");     
+            _bIsDroneLandingPrinted = true;
+            _bIsTestInitiated = false;
+        }
+        _nNavigationTask = 98;
+        return;
+    }
+    
+ 
+    if(!_bIsTestInitiated){
+        float x_start = drone.local_position.x ;
+        float y_start = drone.local_position.y ;    
+        _StationaryTargetPos_x =  x_start + 5.0;
+        _StationaryTargetPos_y =  y_start; 
+        _bIsTestInitiated = true; 
+    }
+
+    ROS_INFO("Ultrasonic dist = %f m, reliability = %d", _msgUltraSonic.ranges[0], (int)_msgUltraSonic.intensities[0]);
+    ROS_INFO("Global Position: lon:%f, lat:%f, alt:%f, height:%f", 
+                    drone.global_position.longitude,
+                    drone.global_position.latitude,
+                    drone.global_position.altitude,
+                    drone.global_position.height
+                 );
+    ROS_INFO("Local Position: %f, %f", drone.local_position.x, drone.local_position.y); 
+    ROS_INFO("Target Local Pos: Northing = %f m, Easting = %f m, Height = %f m.",
+                    _msgTargetLocalPosition.point.x,
+                    _msgTargetLocalPosition.point.y,
+                    _msgTargetLocalPosition.point.z
+                 );
+    
+
+    float limitRadius = 1;
+    float limitRadius_square = limitRadius*limitRadius;
+    float distance_square = (_StationaryTargetPos_x - drone.local_position.x)*(_StationaryTargetPos_x - drone.local_position.x) 
+        + (_StationaryTargetPos_y - drone.local_position.y)*(_StationaryTargetPos_y - drone.local_position.y);
+    ROS_INFO("Distance_square = %f m, LimitRadius_square = %f m", distance_square, limitRadius_square);
+
+        
+    bool bIsReadyToLand = distance_square < limitRadius_square;
+    if(!bIsReadyToLand)
+    {
+        ROS_INFO("The drone is approaching!!!!!!!!!!!!!!!!!!!!!!");
+        drone.local_position_control(_StationaryTargetPos_x, _StationaryTargetPos_y, drone.local_position.z, 0);
+    }
+    else
+    {
+        ROS_INFO("The drone is landing!!!!!!!!!!!!!!!!!!!!!!!!!!");
+        drone.local_position_control(_StationaryTargetPos_x, _StationaryTargetPos_y, 0.0, 0);
+    }
+}
 
 
 
@@ -547,7 +586,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 {
 
     DJIDrone& drone = *_ptrDrone;
-	char zone;
+    char zone;
     double dLastRecordedHeightAboveTargetM = 0.0;
 
     if (vecTagDetections.detections.empty())
@@ -577,14 +616,14 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     //remember north is the x axis, east is the y axis
    
         
-    geometry_msgs::PointStamped msgDesiredAngleDeg;	
+    geometry_msgs::PointStamped msgDesiredAngleDeg; 
     msgDesiredAngleDeg.point.x = 0;
     msgDesiredAngleDeg.point.y = drone.gimbal.pitch + pitchDeg;
     msgDesiredAngleDeg.point.z = drone.gimbal.yaw + yawDeg;
   
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
 
-	tag.pose.pose.position.y *= -1;
+    tag.pose.pose.position.y *= -1;
 
 
     //dji_sdk::Gimbal gimbal = FindGimbalAngleForApriltag(tag);
@@ -603,8 +642,8 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 
 
     _toTargetDistance.x = _msgTargetDistance.point.x;
-	_toTargetDistance.y = _msgTargetDistance.point.y;
-	_toTargetDistance.z = _msgTargetDistance.point.z;
+    _toTargetDistance.y = _msgTargetDistance.point.y;
+    _toTargetDistance.z = _msgTargetDistance.point.z;
 
     _bIsTargetBeingTracked = true;
     
@@ -615,8 +654,8 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
                         << _msgTargetDistance.point.y << ","
                         << _msgTargetDistance.point.z << "," // target distance
                         << _msgTargetLocalPosition.point.x << ","
-						<< _msgTargetLocalPosition.point.y << ","
-						<< _msgTargetLocalPosition.point.z << std::endl; // target local position
+                        << _msgTargetLocalPosition.point.y << ","
+                        << _msgTargetLocalPosition.point.z << std::endl; // target local position
   
 }
 
@@ -628,30 +667,6 @@ void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDete
     
     FindDesiredGimbalAngle(vecTagDetections);
  }
-
-void lqrGainCallback(const geometry_msgs::PointStamped msgLQRGain)
-{
-    _lqrGain = msgLQRGain.point.x;
-
-}
-
-void truckPositionCallback(const geometry_msgs::PointStamped msgtruckPosition)
-{
-
-    DJIDrone& drone = *_ptrDrone;
-
-    _msgTruckGPSPosition.point.x = msgtruckPosition.point.x;
-    _msgTruckGPSPosition.point.y = msgtruckPosition.point.y;
-    _msgTruckGPSPosition.point.z = msgtruckPosition.point.z;
-
-    // _msgTruckDistance.point.x = (msgtruckPosition.point.x - drone.global_position.latitude)/0.0000090;
-    // _msgTruckDistance.point.y = (msgtruckPosition.point.y - drone.global_position.longitude)/0.0000122;
-    _msgTruckDistance.point.x = (msgtruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
-    _msgTruckDistance.point.y = (msgtruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
-    _msgTruckDistance.point.z = (drone.global_position.height - 0);
-
-}
-
 
 
 /*
@@ -704,7 +719,7 @@ void RunTimeCriticalTasks()
 void RunAutonomousLanding()
 {
 
-	DJIDrone& drone = *_ptrDrone;
+    DJIDrone& drone = *_ptrDrone;
 
     bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
@@ -765,7 +780,7 @@ void RunAutonomousLanding()
 void RunAutonomousLanding2()
 {
 
-	DJIDrone& drone = *_ptrDrone;
+    DJIDrone& drone = *_ptrDrone;
 
     bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
@@ -822,85 +837,9 @@ void RunAutonomousLanding2()
             
 }
 
-void GoToKnownStationaryTargetTest()
-{
-    DJIDrone& drone = *_ptrDrone;
-
-    geometry_msgs::PointStamped targetPosition;
-
-    // Check if close enough to the ground, if so, land
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
-    if (bIsDroneLanded)
-    {
-        if (!_bIsDroneLandingPrinted)
-        { 
-            ROS_INFO("The drone has landed!");     
-            _bIsDroneLandingPrinted = true;
-            _bIsTestInitiated = false;
-        }
-        _nNavigationTask = 98;
-        return;
-    }
-    
-    if (_msgTargetDistance.point.x != 0 ){
-        targetPosition.point.x = _msgTargetDistance.point.x;
-        targetPosition.point.y = _msgTargetDistance.point.y;
-        targetPosition.point.z = _msgTargetDistance.point.z;
-        _msgTargetLocalPosition.point.x = _msgTargetDistance.point.x + drone.local_position.x;
-        _msgTargetLocalPosition.point.y = _msgTargetDistance.point.y + drone.local_position.y;
-    }
-    else{
-        targetPosition.point.x = _msgTruckDistance.point.x;
-        targetPosition.point.y = _msgTruckDistance.point.y;
-        targetPosition.point.z = _msgTruckDistance.point.z;
-    }
-
-
-    float delta_x = targetPosition.point.x/sqrt(targetPosition.point.x*targetPosition.point.x  
-                          + targetPosition.point.y*targetPosition.point.y);
-    float delta_y = targetPosition.point.y/sqrt(targetPosition.point.x*targetPosition.point.x  
-                          + targetPosition.point.y*targetPosition.point.y);                      
-    float target_x = _msgTargetLocalPosition.point.x - delta_x;
-    float target_y = _msgTargetLocalPosition.point.y - delta_y;
-    float drone_x = drone.local_position.x;
-    float drone_y = drone.local_position.y; 
-    float drone_z = drone.local_position.z; 
-        
-    float limitRadius = 1;
-    float limitRadius_square = limitRadius*limitRadius;
-    float distance_square = (target_x - drone_x)*(target_x - drone_x) + (target_y - drone_y)*(target_y - drone_y);
-    bool bIsReadyToLand = distance_square < limitRadius_square;
-
-
-    geometry_msgs::Point desired_position;
-    desired_position.x = bIsReadyToLand ? _msgTargetLocalPosition.point.x : target_x;
-    desired_position.y = bIsReadyToLand ? _msgTargetLocalPosition.point.y : target_y;
-    desired_position.z = bIsReadyToLand ? -0.1 : drone_z;
-    float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(targetPosition.point.y, targetPosition.point.x));
-    RunLocalPositionControl(desired_position, desired_yaw);
-    
-    
-    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
-    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
-            
-    _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
-                            << ros::Time::now().toSec() << "," 
-                            <<  _msgUltraSonic.ranges[0] << ","
-                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
-                            << distance_square << ","                   // distance squared
-                            << _msgTargetLocalPosition.point.x << "," 
-                            << _msgTargetLocalPosition.point.y << ","
-                            << _msgTargetLocalPosition.point.z << ","   // target local position
-                            << drone.local_position.x << ","
-                            << drone.local_position.y << ","
-                            << drone.local_position.z << ","
-                            << yaw << std::endl;                             // drone local position
-}
-
-
 void FollowTarget(void)
 {
-	DJIDrone& drone = *_ptrDrone;
+    DJIDrone& drone = *_ptrDrone;
     
     float delta_x = _msgTargetDistance.point.x/sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x  
                           + _msgTargetDistance.point.y*_msgTargetDistance.point.y);
@@ -993,7 +932,7 @@ void timerCallback(const ros::TimerEvent&)
             break;
 
         case 28: 
-            GoToKnownStationaryTargetTest();
+            KnownStationaryApproachLandingTest();
             break;
             
         case 30: 
@@ -1146,7 +1085,7 @@ int main(int argc, char **argv)
 {
 
     ros::init(argc, argv, "navigation_node");
-	
+    
     ros::NodeHandle nh;
     signal(SIGINT, SigintHandler);
 
@@ -1172,16 +1111,14 @@ int main(int argc, char **argv)
 
 
     // Ultrasonic 
-	_msgUltraSonic.ranges.resize(1);
-	_msgUltraSonic.intensities.resize(1);
+    _msgUltraSonic.ranges.resize(1);
+    _msgUltraSonic.intensities.resize(1);
         
     // Subscribers    
-	int numMessagesToBuffer = 10;
+    int numMessagesToBuffer = 10;
     ros::Subscriber sub1 = nh.subscribe("/navigation_menu/navigation_task", numMessagesToBuffer, navigationTaskCallback);
     ros::Subscriber sub2 = nh.subscribe("/guidance/ultrasonic", numMessagesToBuffer, ultrasonic_callback);
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
-    ros::Subscriber sub4 = nh.subscribe("/LQR/K", numMessagesToBuffer, lqrGainCallback);
-    ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
     
     
@@ -1204,11 +1141,5 @@ int main(int argc, char **argv)
     return 0;    
 
 }
-
-
-
-
-
-
 
 

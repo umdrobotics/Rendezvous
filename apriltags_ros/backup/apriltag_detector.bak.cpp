@@ -1,31 +1,26 @@
-// Main change is: 
-// 1) subcribe video source from usb capture, not /usb_cam/image_rect
-// 2) Use timer driven at 25hz
-// 3) Delete detection image publishing
-// New added header
-#include <ros/ros.h>
-#include "opencv2/opencv.hpp"
-
-// Original header
 #include <apriltags_ros/apriltag_detector.h>
+
 #include <cv_bridge/cv_bridge.h>
+
 #include <sensor_msgs/image_encodings.h>
 #include <boost/foreach.hpp>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <apriltags_ros/AprilTagDetection.h>
 #include <apriltags_ros/AprilTagDetectionArray.h>
+
 #include <AprilTags/Tag16h5.h>
 #include <AprilTags/Tag25h7.h>
 #include <AprilTags/Tag25h9.h>
 #include <AprilTags/Tag36h9.h>
 #include <AprilTags/Tag36h11.h>
+
 #include <XmlRpcException.h>
 
 namespace apriltags_ros{
 
 AprilTagDetector::AprilTagDetector(ros::NodeHandle& nh, ros::NodeHandle& pnh): it_(nh){
-  
+
   // Parse the description in launch file and save into descriptions_
   XmlRpc::XmlRpcValue april_tag_descriptions;
   if(!pnh.getParam("tag_descriptions", april_tag_descriptions)){
@@ -75,57 +70,31 @@ AprilTagDetector::AprilTagDetector(ros::NodeHandle& nh, ros::NodeHandle& pnh): i
   // Initialize tag_detector and publisher & subscriber 
   // input: image_rect. image_rect_color: Rectified image, de-Bayered and undistorted 
   // output: tag_detection_image, tag_detections, tag_detections_pose
-  tag_detector_= boost::shared_ptr<AprilTags::TagDetector>(new AprilTags::TagDetector(*tag_codes));
-  // image_sub_ = it_.subscribeCamera("image_rect", 1, &AprilTagDetector::imageCb, this);
-  
-  // image_pub_ = it_.advertise("tag_detections_image", 1);
+  tag_detector_= boost::shared_ptr<AprilTags::TagDetector>(new AprilTags::TagDetector(*tag_codes)); // where tag_codes used for
+  image_sub_ = it_.subscribeCamera("image_rect", 1, &AprilTagDetector::imageCb, this);
+  image_pub_ = it_.advertise("tag_detections_image", 1);
   detections_pub_ = nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
   pose_pub_ = nh.advertise<geometry_msgs::PoseArray>("tag_detections_pose", 1);
-
-
 }
 AprilTagDetector::~AprilTagDetector(){
-  // image_sub_.shutdown();
+  image_sub_.shutdown();
 }
 
-void AprilTagDetector::setupVideo(){
+void AprilTagDetector::imageCb(const sensor_msgs::ImageConstPtr& msg, const sensor_msgs::CameraInfoConstPtr& cam_info){
 
-    // find and open a USB camera (built in laptop camera, web cam etc)
-    m_cap = cv::VideoCapture(0);
-    if(!m_cap.isOpened()) {
-      cerr << "ERROR: Can't find video device " << 0 << "\n";
-      exit(1);
-    }
-
-    cv::namedWindow("Apriltag with detections", 1);
-
-    m_cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
-    m_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
-    cout << "Camera successfully opened (ignore error messages above...)" << endl;
-    cout << "Actual resolution: "
-         << m_cap.get(CV_CAP_PROP_FRAME_WIDTH) << "x"
-         << m_cap.get(CV_CAP_PROP_FRAME_HEIGHT) << endl;
-}
-
-void AprilTagDetector::imageCb(){
-  
-  // argv: const sensor_msgs::ImageConstPtr& msg, const sensor_msgs::CameraInfoConstPtr& cam_info
   // pass the image from image msg to opencv pointer
-  // cv_bridge::CvImagePtr cv_ptr;
-  // try{
-  //   cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-  // }
-  // catch (cv_bridge::Exception& e){
-  //   ROS_ERROR("cv_bridge exception: %s", e.what());
-  //   return;
-  // }
+  cv_bridge::CvImagePtr cv_ptr;
+  try{
+    cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+  }
+  catch (cv_bridge::Exception& e){
+    ROS_ERROR("cv_bridge exception: %s", e.what());
+    return;
+  }
 
   // Convert color image to gray image
-  cv::Mat image;
   cv::Mat gray;
-  // capture frame
-  m_cap >> image;
-  cv::cvtColor(image, gray, CV_BGR2GRAY);
+  cv::cvtColor(cv_ptr->image, gray, CV_BGR2GRAY);
 
   // ExtractTags
   // input: gray
@@ -134,35 +103,33 @@ void AprilTagDetector::imageCb(){
   ROS_DEBUG("%d tag detected", (int)detections.size());
 
   // Initialize focal length and principal point
-  // From head_camera.yaml
-  // use projected focal length and principal point
-  double fx = 665.6666259765625;
-  double fy = 664.1488647460938;
-  double px = 334.6867364108111;
-  double py = 252.8130248174875;
-  // if (projected_optics_) {
-  //   // use projected focal length and principal point
-  //   // these are the correct values
-  //   fx = cam_info->P[0];
-  //   fy = cam_info->P[5];
-  //   px = cam_info->P[2];
-  //   py = cam_info->P[6];
-  // } else {
-  //   // use camera intrinsic focal length and principal point
-  //   // for backwards compatability
-  //   fx = cam_info->K[0];
-  //   fy = cam_info->K[4];
-  //   px = cam_info->K[2];
-  //   py = cam_info->K[5];
-  // }
+  double fx;
+  double fy;
+  double px;
+  double py;
+  if (projected_optics_) {
+    // use projected focal length and principal point
+    // these are the correct values
+    fx = cam_info->P[0];
+    fy = cam_info->P[5];
+    px = cam_info->P[2];
+    py = cam_info->P[6];
+  } else {
+    // use camera intrinsic focal length and principal point
+    // for backwards compatability
+    fx = cam_info->K[0];
+    fy = cam_info->K[4];
+    px = cam_info->K[2];
+    py = cam_info->K[5];
+  }
 
-  // if(!sensor_frame_id_.empty())
-  //   cv_ptr->header.frame_id = sensor_frame_id_;
+  if(!sensor_frame_id_.empty())
+    cv_ptr->header.frame_id = sensor_frame_id_;
 
   // Initialize msg and data holder
   AprilTagDetectionArray tag_detection_array;
   geometry_msgs::PoseArray tag_pose_array;
-  tag_pose_array.header.stamp = ros::Time::now();
+  tag_pose_array.header = cv_ptr->header;
 
   // for each detections, calculate translation and quaternion
   BOOST_FOREACH(AprilTags::TagDetection detection, detections){
@@ -177,7 +144,7 @@ void AprilTagDetector::imageCb(){
     double tag_size = description.size();
 
     // Draw detection frame on image
-    detection.draw(image);
+    detection.draw(cv_ptr->image);
 
     // Prepare image/object points, solvePnP, get transform matrix
     Eigen::Matrix4d transform = detection.getRelativeTransform(tag_size, fx, fy, px, py);
@@ -195,13 +162,12 @@ void AprilTagDetector::imageCb(){
     tag_pose.pose.orientation.y = rot_quaternion.y();
     tag_pose.pose.orientation.z = rot_quaternion.z();
     tag_pose.pose.orientation.w = rot_quaternion.w();
-    tag_pose.header = tag_pose_array.header;
+    tag_pose.header = cv_ptr->header;
 
     AprilTagDetection tag_detection;
     tag_detection.pose = tag_pose;
     tag_detection.id = detection.id;
     tag_detection.size = tag_size;
-
     tag_detection_array.detections.push_back(tag_detection);
     tag_pose_array.poses.push_back(tag_pose.pose);
 
@@ -214,10 +180,7 @@ void AprilTagDetector::imageCb(){
   }
   detections_pub_.publish(tag_detection_array);
   pose_pub_.publish(tag_pose_array);
-
-  imshow("Apriltag with detections", image);
-  // Not publishing image w/ detections
-  // image_pub_.publish(cv_ptr->toImageMsg());
+  image_pub_.publish(cv_ptr->toImageMsg());
 }
 
 
