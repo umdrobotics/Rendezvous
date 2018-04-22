@@ -12,7 +12,7 @@ int main(int argc, char **argv){
 
     // main control loop = 25 Hz
     double dTimeStepSec = 0.04;
-    ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), detector.imageCb);
+    ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), &apriltags_ros::AprilTagDetector::imageCb, &detector);
 
     ros::spin();
 }

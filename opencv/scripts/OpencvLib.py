@@ -83,8 +83,8 @@ class OpencvLib(object):
         """
         Estimated position & attitude data
         """
-        self.distanceInCameraFrame = []
-        self.eulerAngle_rads = []
+        self.distanceInCameraFrame = [0,0,0]
+        self.eulerAngle_rads = [0,0,0]
 
 
 
@@ -105,13 +105,13 @@ class OpencvLib(object):
     def decide_obj_points(self, decider='big'):
 
         if decider == 'big':
-            objPoints = np.float32([    [-0.121,-0.121,0.0], 
+            objPoints = np.float64([    [-0.121,-0.121,0.0], 
                                         [+0.121,-0.121,0.0], 
                                         [+0.121,+0.121,0.0], 
                                         [-0.121,+0.121,0.0]     ])
             return objPoints
         elif decider == 'small':
-            objPoints = np.float32([    [-0.030,-0.030,0.0], 
+            objPoints = np.float64([    [-0.030,-0.030,0.0], 
                                         [+0.030,-0.030,0.0], 
                                         [+0.030,+0.030,0.0], 
                                         [-0.030,+0.030,0.0]     ])
@@ -125,14 +125,14 @@ class OpencvLib(object):
     def decide_img_points(self, decider='big'):
 
         if decider == 'big':
-            imgPoints = np.float32([    self.marker213.markerPoints[0][0], 
+            imgPoints = np.float64([    self.marker213.markerPoints[0][0], 
                                         self.marker213.markerPoints[1][0], 
                                         self.marker213.markerPoints[2][0], 
                                         self.marker213.markerPoints[3][0]   ])
             return imgPoints
 
         elif decider == 'small':
-            imgPoints = np.float32([    self.marker456.markerPoints[0][0], 
+            imgPoints = np.float64([    self.marker456.markerPoints[0][0], 
                                         self.marker456.markerPoints[1][0], 
                                         self.marker456.markerPoints[2][0], 
                                         self.marker456.markerPoints[3][0]   ])
@@ -174,8 +174,7 @@ class OpencvLib(object):
     def detect_markers(self):
 
         # Find all the contours
-        _, allContours, _ = cv2.findContours(self.binImage,cv2.RETR_LIST, 
-                                                cv2.CHAIN_APPROX_NONE)
+        allContours, _ = cv2.findContours(self.binImage, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
 
         # Skip the small impossible contours
         indexOfPassedTestMarker = []
@@ -326,12 +325,12 @@ class OpencvLib(object):
 
 
         # Switch marker decision part
-        if self.distance_camera_z == 0:
+        if self.distanceInCameraFrame[2] == 0:
             if self.isMarker456Detected:
                 self.currentMarkerID = 456
             else:
                 self.currentMarkerID = 213
-        elif self.distance_camera_z > self.distanceToSwitchMarker:
+        elif self.distanceInCameraFrame[2] > self.distanceToSwitchMarker:
             if self.isMarker213Detected:
                 self.currentMarkerID = 213
             else:
@@ -360,12 +359,13 @@ class OpencvLib(object):
             imgPoints = self.decide_img_points(self.markerSizeDecider)
 
             # prepare some more about imgPoints
-            criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.01)
-            imgPoints = cv2.cornerSubPix(
-                self.grayImage, imgPoints,(5,5), (-1,-1), criteria)
+            # criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.01)
+            # imgPoints = cv2.cornerSubPix(
+                # self.grayImage, imgPoints,(5,5), (-1,-1), criteria)
 
 
             # solvePnP function
+
             retval, temprvecs, temptvecs = cv2.solvePnP(
                 objPoints, imgPoints, self.camMat, self.distortionVec)
 
@@ -388,7 +388,8 @@ class OpencvLib(object):
             self.distanceInCameraFrame = [temptvecs[0][0], temptvecs[1][0], temptvecs[2][0]]
 
             rotMat = cv2.Rodrigues(temprvecs)
-            self.quaternion = Quaternion(matrix=rotMat)
+            # print(rotMat)
+            # self.quaternion = Quaternion(matrix=rotMat)
 
 
             # # get rotation values for calculation

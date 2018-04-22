@@ -31,9 +31,10 @@ class AprilTagDetector{
   AprilTagDetector(ros::NodeHandle& nh, ros::NodeHandle& pnh);
   ~AprilTagDetector();
 
- private:
   void setupVideo();
-  void imageCb();
+  void imageCb(const ros::TimerEvent& event);
+
+ private:
   std::map<int, AprilTagDescription> parse_tag_descriptions(XmlRpc::XmlRpcValue& april_tag_descriptions);
 
  private:

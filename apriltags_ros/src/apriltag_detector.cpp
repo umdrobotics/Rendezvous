@@ -6,6 +6,7 @@
 #include <ros/ros.h>
 #include "opencv2/opencv.hpp"
 
+
 // Original header
 #include <apriltags_ros/apriltag_detector.h>
 #include <cv_bridge/cv_bridge.h>
@@ -24,7 +25,19 @@
 
 namespace apriltags_ros{
 
+
+const char* windowName = "Apriltag with detections";
+
+// utility function to provide current system time (used below in
+// determining frame rate at which images are being processed)
+double tic() {
+  struct timeval t;
+  gettimeofday(&t, NULL);
+  return ((double)t.tv_sec + ((double)t.tv_usec)/1000000.);
+}
+
 AprilTagDetector::AprilTagDetector(ros::NodeHandle& nh, ros::NodeHandle& pnh): it_(nh){
+  
   
   // Parse the description in launch file and save into descriptions_
   XmlRpc::XmlRpcValue april_tag_descriptions;
@@ -97,7 +110,7 @@ void AprilTagDetector::setupVideo(){
       exit(1);
     }
 
-    cv::namedWindow("Apriltag with detections", 1);
+    cv::namedWindow(windowName, 1);
 
     m_cap.set(CV_CAP_PROP_FRAME_WIDTH, 640);
     m_cap.set(CV_CAP_PROP_FRAME_HEIGHT, 480);
@@ -107,7 +120,7 @@ void AprilTagDetector::setupVideo(){
          << m_cap.get(CV_CAP_PROP_FRAME_HEIGHT) << endl;
 }
 
-void AprilTagDetector::imageCb(){
+void AprilTagDetector::imageCb(const ros::TimerEvent& event){
   
   // argv: const sensor_msgs::ImageConstPtr& msg, const sensor_msgs::CameraInfoConstPtr& cam_info
   // pass the image from image msg to opencv pointer
@@ -127,11 +140,20 @@ void AprilTagDetector::imageCb(){
   m_cap >> image;
   cv::cvtColor(image, gray, CV_BGR2GRAY);
 
+  double t0;
+  t0 = tic();
+
   // ExtractTags
   // input: gray
   // output: detections
   std::vector<AprilTags::TagDetection>	detections = tag_detector_->extractTags(gray);
   ROS_DEBUG("%d tag detected", (int)detections.size());
+
+  cout << detections.size() << " tags detected:" << endl;
+
+  double dt = tic()-t0;
+  cout << "Extracting tags took " << dt << " seconds." << endl;
+
 
   // Initialize focal length and principal point
   // From head_camera.yaml
@@ -163,6 +185,7 @@ void AprilTagDetector::imageCb(){
   AprilTagDetectionArray tag_detection_array;
   geometry_msgs::PoseArray tag_pose_array;
   tag_pose_array.header.stamp = ros::Time::now();
+
 
   // for each detections, calculate translation and quaternion
   BOOST_FOREACH(AprilTags::TagDetection detection, detections){
@@ -212,10 +235,12 @@ void AprilTagDetector::imageCb(){
     tf::poseStampedMsgToTF(tag_pose, tag_transform);
     tf_pub_.sendTransform(tf::StampedTransform(tag_transform, tag_transform.stamp_, tag_transform.frame_id_, description.frame_name()));
   }
+
+
   detections_pub_.publish(tag_detection_array);
   pose_pub_.publish(tag_pose_array);
 
-  imshow("Apriltag with detections", image);
+  cv::imshow("Apriltag with detections", image);
   // Not publishing image w/ detections
   // image_pub_.publish(cv_ptr->toImageMsg());
 }

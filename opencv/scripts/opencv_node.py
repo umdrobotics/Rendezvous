@@ -16,7 +16,7 @@ from opencv.msg import AprilTagDetectionArray, AprilTagDetection
 
 
 # Enable to record raw video without detection 
-ENABLE_VIDEO_RECORD = True
+ENABLE_VIDEO_RECORD = False
 
 """
 Function: sigint_handler
@@ -45,7 +45,7 @@ def try_connect_camera():
     finally:
         print
 
-    for i in range(1,5):
+    for i in range(1,20):
         if imageObj.capture.isOpened():
             break
         try: 
@@ -113,10 +113,14 @@ def publish_data():
     msgTagPose.pose.position.x = imageObj.distanceInCameraFrame[0]
     msgTagPose.pose.position.y = imageObj.distanceInCameraFrame[1]
     msgTagPose.pose.position.z = imageObj.distanceInCameraFrame[2]
-    msgTagPose.pose.orientation.x = imageObj.quaternion[1]
-    msgTagPose.pose.orientation.y = imageObj.quaternion[2]
-    msgTagPose.pose.orientation.z = imageObj.quaternion[3]
-    msgTagPose.pose.orientation.w = imageObj.quaternion[0]
+    msgTagPose.pose.orientation.x = 0
+    msgTagPose.pose.orientation.y = 0
+    msgTagPose.pose.orientation.z = 0
+    msgTagPose.pose.orientation.w = 0
+    # msgTagPose.pose.orientation.x = imageObj.quaternion[1]
+    # msgTagPose.pose.orientation.y = imageObj.quaternion[2]
+    # msgTagPose.pose.orientation.z = imageObj.quaternion[3]
+    # msgTagPose.pose.orientation.w = imageObj.quaternion[0]
     # Print debug data
     # rospy.loginfo(msgTagPose)
     # print(time.time(), imageObj.distance_north, imageObj.distance_east, imageObj.currentMarkerFlag)
@@ -135,13 +139,13 @@ def publish_data():
 
     # draw and publish image message
     # Make sure image pub at 4 Hz
-    current_time = time.time()
-    if current_time - imageObj.lastImageMsgTime < 0.23:   return
-    imageObj.draw_contours()
-    bridge = CvBridge()
-    msgGrayImageWithMarker = bridge.cv2_to_imgmsg(
-        imageObj.grayImageWithMarker, encoding="mono8")   
-    imagePub.publish(msgGrayImageWithMarker)
+    # current_time = time.time()
+    # if current_time - imageObj.lastImageMsgTime < 0.23:   return
+    # imageObj.draw_contours()
+    # bridge = CvBridge()
+    # msgGrayImageWithMarker = bridge.cv2_to_imgmsg(
+    #     imageObj.grayImageWithMarker, encoding="passthrough")   # mono8
+    # imagePub.publish(msgGrayImageWithMarker)
     # imageObj.lastImageMsgTime = time.time()
 
 
