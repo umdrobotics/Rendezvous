@@ -648,7 +648,7 @@ void truckPositionCallback(const geometry_msgs::PointStamped msgtruckPosition)
     // _msgTruckDistance.point.y = (msgtruckPosition.point.y - drone.global_position.longitude)/0.0000122;
     _msgTruckDistance.point.x = (msgtruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
     _msgTruckDistance.point.y = (msgtruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
-    _msgTruckDistance.point.z = (drone.global_position.height - 0);
+    _msgTruckDistance.point.z = 0;
 
 }
 
@@ -846,13 +846,13 @@ void GoToKnownStationaryTargetTest()
         targetPosition.point.x = _msgTargetDistance.point.x;
         targetPosition.point.y = _msgTargetDistance.point.y;
         targetPosition.point.z = _msgTargetDistance.point.z;
-        _msgTargetLocalPosition.point.x = _msgTargetDistance.point.x + drone.local_position.x;
-        _msgTargetLocalPosition.point.y = _msgTargetDistance.point.y + drone.local_position.y;
     }
     else{
         targetPosition.point.x = _msgTruckDistance.point.x;
         targetPosition.point.y = _msgTruckDistance.point.y;
         targetPosition.point.z = _msgTruckDistance.point.z;
+        _msgTargetLocalPosition.point.x = _msgTargetDistance.point.x + drone.local_position.x;
+        _msgTargetLocalPosition.point.y = _msgTargetDistance.point.y + drone.local_position.y;
     }
 
 
