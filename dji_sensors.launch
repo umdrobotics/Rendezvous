@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <include file="$(find dji_sdk)/launch/dji_sdk.launch" />
+  <include file = "$(find dji_sdk_read_cam)/launch/manifold_cam.launch" />
+  <include file = "$(find gimbal_control)/launch/gimbal_control.launch" >
+    <env name = "ROS_HOME" value = "/home/ubuntu"/>
+  </include>
+  <include file = "$(find guidance)/launch/guidance.launch" />
+
+</launch>

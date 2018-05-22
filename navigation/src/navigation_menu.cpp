@@ -26,16 +26,16 @@ void DisplayMainMenu(void)
     printf("| [1]  Request Control            | [21] Autonomous Landing          |\n");   
     printf("| [2]  Release Control            | [22] Autonomous Landing Two      |\n");   
     printf("| [3]  Arm the Drone              | [23] Search for Target           |\n");   
-    printf("| [4]  Disarm the Drone           | [24]                             |\n");   
-    printf("| [5]  Takeoff                    | [25] Landing Test                |\n");   
-    printf("| [6]  Landing                    | [26] Approach & Landing Test     |\n");   
-    printf("| [7]  Go Home                    | [27] Landing Test Plus           |\n");   
-    printf("| [8]  Target Tracking Start      | [28] Known Stationary Test       |\n");   
+    printf("| [4]  Disarm the Drone           | [24] Go to Truck GPS location    |\n");   
+    printf("| [5]  Takeoff                    | [25] Autonomous Landing Three    |\n");   
+    printf("| [6]  Landing                    | [26] Run Attitude Control Test   |\n");   
+    printf("| [7]  Go Home                    | [27]                             |\n");   
+    printf("| [8]  Target Tracking Start      | [28]                             |\n");   
     printf("| [9]  Target Tracking Cancel     | [29]                             |\n");   
-    printf("| [10] Mission Pause              | [30] Target Following            |\n");   
+    printf("| [10] Mission Pause              | [30]                             |\n");   
     printf("| [11] Mission Resume             | [31] Ultrasonic Test             |\n");   
-    printf("| [12] Mission Waypoint Download  | [32]                             |\n");   
-    printf("| [13] Mission Waypoint Set Speed | [33]                             |\n");   
+    printf("| [12] Mission Waypoint Download  | [32] Landing Test                |\n");   
+    printf("| [13] Mission Waypoint Set Speed | [33] Landing Test Plus           |\n");   
     printf("| [14] Followme Mission Upload    | [34] Temporary Test              |\n");
     printf("|                                 |                                  |\n");
     printf("| [98] Stop Current Task          |                                  |\n");
@@ -45,7 +45,7 @@ void DisplayMainMenu(void)
     printf("use `rostopic echo` to query drone status\r\n");
     printf("----------------------------------------\r\n");
 }
-
+  
 
 int main(int argc, char **argv)
 {
