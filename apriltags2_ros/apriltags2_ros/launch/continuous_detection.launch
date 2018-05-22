@@ -1,0 +1,38 @@
+<launch>
+  <arg name="launch_prefix" default="" /> <!-- set to value="gdbserver localhost:10000" for remote debugging -->
+  <arg name="node_namespace" default="apriltags2_ros_continuous_node" />
+
+
+  <!-- Set parameters -->
+  <rosparam command="load" file="$(find apriltags2_ros)/config/settings.yaml" ns="$(arg node_namespace)" />
+  <rosparam command="load" file="$(find apriltags2_ros)/config/tags.yaml" ns="$(arg node_namespace)" />
+  
+  <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+    <param name="video_device" value="/dev/video0" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="480" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="camera_frame_id" value="usb_cam" />
+    <param name="io_method" value="mmap"/>
+    <param name="autofocus" value="false" />
+    <param name="framerate" value="30" />
+    <param name="camera_name" value="head_camera"/> 
+  </node>
+
+  <node ns="usb_cam" name="image_proc" pkg="image_proc" type="image_proc" output="screen">
+  </node>
+
+  <node pkg = "apriltags2_ros" type="apriltags2_ros_continuous_node" name="$(arg node_namespace)" clear_params="true" output="screen" launch-prefix="$(arg launch_prefix)">
+    <remap from="image_rect" to="/usb_cam/image_rect"/> 
+    <remap from="camera_info" to="/usb_cam/camera_info" />
+    <param name="camera_frame" type="str" value="usb_cam" />
+    <param name="publish_tag_detections_image" type="bool" value="true" /> 
+  </node>
+
+  <node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+    <remap from="image" to="/usb_cam/tag_detections_image"/>
+    <param name="autosize" value="true" />
+  </node>
+	 
+
+</launch>
