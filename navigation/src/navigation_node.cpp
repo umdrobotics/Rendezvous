@@ -985,6 +985,8 @@ void RunAutonomousLanding()
                             << drone.local_position.x << ","
                             << drone.local_position.y << ","
                             << drone.local_position.z << ","
+                            << drone.velocity.vx << ","
+                            << drone.velocity.vy << ","
                             << drone.velocity.vz << ","
                             << yaw << std::endl;                             // drone local position
             
@@ -996,8 +998,8 @@ void RunAutonomousLanding2()
 
 	DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.25) && (int)_msgUltraSonic.intensities[0];
-    // bool bIsDroneLanded = drone.local_position.z < 0.3;	
+    // bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.25) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = drone.local_position.z < 0.3;	
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -1026,12 +1028,12 @@ void RunAutonomousLanding2()
     // bool bIsClose = distance_square < limitRadius_square;
     bool bIsClose = true;
 
-    float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
+    // float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
     
     geometry_msgs::Point desired_position;
     desired_position.x = bIsClose ? _msgTargetLocalPosition.point.x : target_x;
     desired_position.y = bIsClose ? _msgTargetLocalPosition.point.y : target_y;
-    desired_position.z = bIsClose ? set_landing_point_z : drone_z;
+    desired_position.z = bIsClose ? -0.1 : drone_z;
 
     float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
     RunLocalPositionControl(desired_position, desired_yaw);
@@ -1051,6 +1053,8 @@ void RunAutonomousLanding2()
                             << drone.local_position.x << ","
                             << drone.local_position.y << ","
                             << drone.local_position.z << ","
+                            << drone.velocity.vx << ","
+                            << drone.velocity.vy << ","
                             << drone.velocity.vz << ","
                             << yaw << std::endl;                             // drone local position
             
@@ -1147,6 +1151,7 @@ void RunAutonomousLanding3(){
     ROS_INFO("IsOnTruckTop?:%d, IsTargetFound?:%d", _IsOnTruckTop, _bIsTargetFound);
 
     if(_bIsTargetFound){
+		_bIsSearchInitiated = false;
         RunAutonomousLanding2();
         return;
     } 
@@ -1161,7 +1166,7 @@ void RunAutonomousLanding3(){
     }
 
 
-}
+} 
 
 
 void timerCallback(const ros::TimerEvent&)
@@ -1192,18 +1197,18 @@ void timerCallback(const ros::TimerEvent&)
             break;
 
         case 23: 
-            RunTargetSearch();
-            break;
-
-        case 24: 
-            GoToTruckGPSLocation();
-            break;
-
-        case 25: 
             RunAutonomousLanding3();
             break;
 
-        case 26:
+        case 24: 
+            RunTargetSearch();
+            break;
+
+        case 25: 
+            GoToTruckGPSLocation();
+            break;
+
+        case 30:
             RunAttitudeControlTest();
             break;
         
@@ -1315,22 +1320,17 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
         case 22: 
             ROS_INFO_STREAM("Autonomous Tracking and Landing Two.");
             break;
-
+            
         case 23: 
+            ROS_INFO_STREAM("Autonomous Tracking and Landing Three. ");
+            break;
+
+        case 24: 
             ROS_INFO_STREAM("Search for Target. ");
             break;
 
-
-        case 24: 
-            ROS_INFO_STREAM("Go to Truck GPS location. ");
-            break;
-
         case 25: 
-            ROS_INFO_STREAM("Autonomous Tracking and Landing Three. ");
-            break;
-            
-        case 30: 
-            ROS_INFO_STREAM("Following the target.");
+            ROS_INFO_STREAM("Go to Truck GPS location. ");
             break;
 
         case 31: 
