@@ -17,7 +17,11 @@
 #include <iostream>
 #include <queue>
 
+#include <Eigen/Dense>
+#include <navigation/MPCController.h>
+
 using namespace std;
+using namespace Eigen;
 
 #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
 #define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/AutonomousLanding_"
@@ -73,6 +77,9 @@ bool _IsOnTruckTop = false;
 
 // LQR controller
 float _lqrGain[8];
+
+// MPC controller
+float _mpcGain[8];
 
 // PD controller
 float _kp = 0.70;
@@ -236,10 +243,6 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
 }
 
 
-void LQRController()
-{
-}
-
 float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {   
 	
@@ -276,6 +279,15 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
     //~ return desired_angle;
 
 }
+
+float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
+{   
+    // MPC controller
+    // predict
+
+
+}
+
 
 
 void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw_deg){
@@ -708,6 +720,14 @@ void lqrGainCallback(const geometry_msgs::PoseWithCovariance msgLQRGain)
 		_lqrGain[i] = msgLQRGain.covariance[i];
 	}
 	//~ ROS_INFO("%f", _lqrGain[0]);
+}
+
+void mpcGainCallback(const geometry_msgs::PoseWithCovariance msgMPCGain)
+{
+    for(int i=0; i<8; i++){
+        _mpcGain[i] = msgMPCGain.covariance[i];
+    }
+    //~ ROS_INFO("%f", _mpcGain[0]);
 }
 
 void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
@@ -1407,6 +1427,17 @@ int main(int argc, char **argv)
     // Ultrasonic 
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
+
+    // Initilize MPC controller
+    // State: testing
+    MPCController mpc;
+    mpc.Initialize();
+    MatrixXd xk = MatrixXd::Zero(4,1) + 1;
+    MatrixXd Xp = mpc.Predict(xk);
+    std::cout << "prediction: " << Xp;
+
+
+
         
     // Subscribers    
 	int numMessagesToBuffer = 10;
@@ -1415,6 +1446,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     ros::Subscriber sub4 = nh.subscribe("/LQR_K", numMessagesToBuffer, lqrGainCallback);
     ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
+    ros::Subscriber sub6 = nh.subscribe("/MPC_K", numMessagesToBuffer, mpcGainCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
     
     
