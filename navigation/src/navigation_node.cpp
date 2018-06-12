@@ -18,7 +18,7 @@
 #include <queue>
 
 #include <Eigen/Dense>
-#include <navigation/MPCController.h>
+#include "navigation/MPCController.h"
 
 using namespace std;
 using namespace Eigen;
@@ -79,7 +79,7 @@ bool _IsOnTruckTop = false;
 float _lqrGain[8];
 
 // MPC controller
-float _mpcGain[8];
+MPCController _mpc;
 
 // PD controller
 float _kp = 0.70;
@@ -283,9 +283,68 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
 float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {   
     // MPC controller
+    DJIDrone& drone = *_ptrDrone;
+    
+    int P = _mpc.P_;
+    int nx = _mpc.nx_;
+    
     // predict
-
-
+    MatrixXd xk = MatrixXd::Zero(4,1);
+    xk(0,0) = drone.local_position.x;
+    xk(1,0) = drone.local_position.y;
+    xk(2,0) = drone.velocity.vx;
+	xk(3,0) = drone.velocity.vy;
+	MatrixXd Xp = _mpc.Predict(xk);
+	
+	//~ std::cout << xk.transpose() << ", " << Xp.block(0,0,12,1).transpose() << endl;
+	
+	// Compute Optimal Input
+	MatrixXd desiredState(4,1);
+	desiredState << desired_position.x, desired_position.y, 0, 0;
+	for(int i = 1; i<P; i++)
+	{
+		desiredState.conservativeResize(desiredState.rows() + nx,desiredState.cols());
+		desiredState.block(desiredState.rows()-nx,0,nx,1) = desiredState.block(0,0,nx,1);
+	}
+	MatrixXd stateError = Xp - desiredState; //.replicate<20,1>();
+	MatrixXd uk = _mpc.ComputeOptimalInput(stateError);
+	
+	//~ std::cout << desiredState.transpose() << ", " << uk.transpose() << endl;
+	
+	dpitch = -uk(0,0);
+	droll = -uk(1,0);
+	
+	// Saturate desired pitch and roll angle to -30deg or 30deg
+    float maxAngle = 30.0;
+    dpitch = dpitch > maxAngle ? maxAngle
+							   : dpitch < -maxAngle ? -maxAngle 
+													: dpitch;
+						 
+    droll = droll > maxAngle ? maxAngle
+							 : droll < -maxAngle ? -maxAngle 
+												 : droll;
+												 
+	//~ ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f ", stateError(0,0), stateError(1,0), dpitch, droll);
+	dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+            
+    _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
+                            << ros::Time::now().toSec() << "," 
+                            <<  _msgUltraSonic.ranges[0] << ","
+                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                            << _msgTargetLocalPosition.point.x << "," 
+                            << _msgTargetLocalPosition.point.y << ","
+                            << _msgTargetLocalPosition.point.z << ","   // target local position
+                            << drone.local_position.x << ","
+                            << drone.local_position.y << ","
+                            << drone.local_position.z << ","
+                            << drone.velocity.vx << ","
+                            << drone.velocity.vy << ","
+                            << drone.velocity.vz << ","
+                            << dpitch << ","
+                            << droll << ","
+                            << yaw << std::endl;                             // drone local position
+	
 }
 
 
@@ -296,7 +355,7 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
     
     float setAnglePitch = 0;
     float setAngleRoll  = 0;
-    AttitudeControlHelper(desired_position, setAnglePitch, setAngleRoll);
+    AttitudeControlHelper2(desired_position, setAnglePitch, setAngleRoll);
     
     //~ float setangle_pitch = AttitudeControlHelper(0, desired_position.x, drone.local_position.x, drone.velocity.vx);
     //~ float setangle_roll = AttitudeControlHelper(1, desired_position.y, drone.local_position.y, drone.velocity.vy);
@@ -722,13 +781,6 @@ void lqrGainCallback(const geometry_msgs::PoseWithCovariance msgLQRGain)
 	//~ ROS_INFO("%f", _lqrGain[0]);
 }
 
-void mpcGainCallback(const geometry_msgs::PoseWithCovariance msgMPCGain)
-{
-    for(int i=0; i<8; i++){
-        _mpcGain[i] = msgMPCGain.covariance[i];
-    }
-    //~ ROS_INFO("%f", _mpcGain[0]);
-}
 
 void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
 {
@@ -1398,6 +1450,12 @@ int main(int argc, char **argv)
 
     // Initialize global variables
     _ptrDrone = new DJIDrone(nh);
+    
+    // Initilize MPC controller
+    // State: testing
+    _mpc.Initialize();
+    //~ MatrixXd xk = MatrixXd::Ones(4,1);
+    //~ MatrixXd Xp = _mpc.Predict(xk);
  
  
     // Log files
@@ -1428,16 +1486,6 @@ int main(int argc, char **argv)
 	_msgUltraSonic.ranges.resize(1);
 	_msgUltraSonic.intensities.resize(1);
 
-    // Initilize MPC controller
-    // State: testing
-    MPCController mpc;
-    mpc.Initialize();
-    MatrixXd xk = MatrixXd::Zero(4,1) + 1;
-    MatrixXd Xp = mpc.Predict(xk);
-    std::cout << "prediction: " << Xp;
-
-
-
         
     // Subscribers    
 	int numMessagesToBuffer = 10;
@@ -1446,7 +1494,6 @@ int main(int argc, char **argv)
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     ros::Subscriber sub4 = nh.subscribe("/LQR_K", numMessagesToBuffer, lqrGainCallback);
     ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
-    ros::Subscriber sub6 = nh.subscribe("/MPC_K", numMessagesToBuffer, mpcGainCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
     
     

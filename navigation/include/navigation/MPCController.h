@@ -1,46 +1,51 @@
-#include <Eigen/Dense>
+#ifndef MPC_CONTROLLER_CLASS_H_
+#define MPC_CONTROLLER_CLASS_H_
 
+#include <Eigen/Dense>
+#include <unsupported/Eigen/MatrixFunctions>
+
+using namespace std;
 using namespace Eigen;
 
 class MPCController {
 
     public: // methods
+    
+        int P_, M_;
+        int nx_, nu_;
 
-        // dconstructor
+        // constructor
         MPCController();
         
         // destructor   
         virtual ~MPCController();
         
-        // 
-        float Initialize();
-        float Predict();
-        float ComputeOptimalInput();
-        float CorrectPrediction();
+        // Setters and getters
+        
+        // Core functions
+        void Initialize();
+        MatrixXd Predict(MatrixXd xk);
+        MatrixXd ComputeOptimalInput(MatrixXd StateError);
+        MatrixXd CorrectPrediction();
 
 
 
     private: // members
 
-        MatrixXd A(4,4);
-        MatrixXd B(4,2);
+        Matrix4d A_;
+        MatrixXd B_;
 
-        int P;
-        int M;
+        MatrixXd Q_;
+        MatrixXd R_;
 
-        MatrixXd Q;
-        MatrixXd R;
-
-        MatrixXd Ap; 
-        MatrixXd Bp;
+        MatrixXd Ap_; 
+        MatrixXd Bp_;
             
-        MatrixXd K;
-        MatrixXd Um(2,1);
+        MatrixXd K_;
+        MatrixXd Um_;
+        
+        MatrixXd Xp_;
 
-        int nx, nu;
-        
-        
-        
         
     private: // methods
         
@@ -52,3 +57,4 @@ class MPCController {
 };
 
 
+#endif

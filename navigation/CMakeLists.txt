@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   dji_sdk
 #  cv_bridge 
 )
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+find_package(Eigen REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -105,7 +107,7 @@ catkin_package(
   LIBRARIES navigation
 #  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
-  DEPENDS dji_sdk # cv_bridge
+  DEPENDS dji_sdk Eigen # cv_bridge
 )
 
 ###########
@@ -115,10 +117,13 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(include)
-include_directories(${catkin_INCLUDE_DIRS})
+include_directories(${catkin_INCLUDE_DIRS}
+                    ${Eigen_INCLUDE_DIRS}
+)
 
 ## Declare a C++ library
 #add_library(navigation src/navigation.cpp )
+add_library(MPCController src/MPCController.cpp )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -126,7 +131,8 @@ include_directories(${catkin_INCLUDE_DIRS})
 # add_dependencies(navigation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-add_executable(navigation_node src/navigation_node.cpp)
+add_executable(navigation_node src/navigation_node.cpp)# src/MPCController.cpp)
+add_executable(navigation_node_simulation src/navigation_node_simulation.cpp)
 add_executable(navigation_menu src/navigation_menu.cpp)
 
 
@@ -134,11 +140,15 @@ add_executable(navigation_menu src/navigation_menu.cpp)
 ## same as for the library above
 # add_dependencies(navigation_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 add_dependencies(navigation_node navigation_generate_messages_cpp)
+add_dependencies(navigation_node_simulation navigation_generate_messages_cpp)
 add_dependencies(navigation_menu navigation_generate_messages_cpp)
+# add_dependencies(MPCController navigation_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(navigation_node ${catkin_LIBRARIES} )
+target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} MPCController)
+target_link_libraries(navigation_node_simulation ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
 target_link_libraries(navigation_menu ${catkin_LIBRARIES} )
+# target_link_libraries(MPCController ${catkin_LIBRARIES}  ${Eigen_LIBRARIES} )
 
 #############
 ## Install ##

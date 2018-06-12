@@ -1,5 +1,8 @@
-#include "Navigation/MPCController.h"
+#include "navigation/MPCController.h"
+#include <iostream>
+
 #include <Eigen/Dense>
+#include <unsupported/Eigen/MatrixFunctions>
 
 using namespace std;
 using namespace Eigen;
@@ -8,12 +11,12 @@ using namespace Eigen;
 // constructor
 // MPCController::MPCController(MatrixXd Ain, MatrixXd Bin, MatrixXd Qin, MatrixXd Rin, int Pin, int Min)
 // {
-//     A = Ain;
-//     B = Bin;
-//     Q = Qin;
-//     R = Rin;
-//     M = Min;
-//     P = Pin;
+//     A_ = Ain;
+//     B_ = Bin;
+//     Q_ = Qin;
+//     R_ = Rin;
+//     M_ = Min;
+//     P_ = Pin;
 
 // }
 
@@ -23,22 +26,28 @@ MPCController::MPCController()
     double m = 3.1;
     double g = 9.80665;
     double kd = 0.0705;
+    double q = 0.7;
 
-    A <<    0, 0, 1, 0,
-            0, 0, 0, 1,
-            0, 0, -kd/m, 0,
-            0, 0, 0, -kd/m;
+    A_ <<   1, 0, 0.02, 0,
+            0, 1, 0, 0.02,
+            0, 0, 0.9995, 0,
+            0, 0, 0, 0.9995;
+	
+	B_ = MatrixXd::Zero(4, 2);
+    B_(0,0) = -0.002;
+    B_(1,1) = -0.002;	
+    B_(2,0) = -0.1961;
+    B_(3,1) = -0.1961;
 
-    B <<    0, 0,
-            0, 0, 
-            -g, 0,
-            0, -g;
+	P_ = 20;
+    M_ = 6;
+    
+    //~ 
+    nx_ = B_.rows();
+    nu_ = B_.cols();
 
-    M = 3;
-    P = 20;
-
-    Q = MatrixXd::Identity(nx*P, nx*P);
-    R = MatrixXd::Identity(nu*M, nu*M);
+    Q_ = q*MatrixXd::Identity(nx_*P_, nx_*P_);
+    R_ = (1-q)*MatrixXd::Identity(nu_*M_, nu_*M_);
 
 
 }
@@ -49,59 +58,85 @@ MPCController::~MPCController()
 
 }
 
+
+
+
 // 
 void MPCController::Initialize()
 {
-    nx = B.rows();
-    nu = B.cols();
-
     // Build Ap
-    Ap = MatrixXd::Zero(nx*P, nx);
-    MatrixXd Ap0 = MatrixXd::Identity(nx, nx);
-    for(int i = 0; i < P; i++)
+    Ap_ = MatrixXd::Zero(nx_*P_, nx_);
+    MatrixXd Ap0 = MatrixXd::Identity(nx_, nx_);
+    for(int i = 0; i < P_; i++)
     {
-        Ap0 = Ap0 * A;
-        Ap.block<nx,nx>(i*nx,0) = Ap0;
+        Ap0 = Ap0 * A_;
+        Ap_.block(i*nx_,0,nx_,nx_) = Ap0;
     }
+    //~ std::cout << Ap_ << std::endl;
 
     // Build Bp
-    Bp = MatrixXd::Zero(nx*P, nu*M);
-    for(int i = 0; i < P; i++)
+    Bp_ = MatrixXd::Zero(nx_*P_, nu_*M_);
+    for(int i = 0; i < P_; i++)
     {
-        MatrixXd Bpj = MatrixXd::Zero(nx, nu*M);
-        if(i < M){
-            MatrixXd Bpi = B;
+        MatrixXd Bpj = MatrixXd::Zero(nx_, nu_*M_);
+        MatrixXd Bpi = MatrixXd::Zero(nx_, nu_);
+        if(i < M_-1){
+            Bpi = B_;
         }
         else{
-            Bpi = A.pow(i-M)*B;
+            Bpi = A_.pow(i-M_+1)*B_;
         }
         
         
-        for(int j = min(M,i); j < 1; j--){
-            Bpj.block<nx,nu>(0,(j-1)*nu) = Bpi;
-            Bpi = A*Bpi;
+        for(int j = min(M_-1,i); j > -1; j--){
+            Bpj.block(0,j*nu_,nx_,nu_) = Bpi;
+            Bpi = A_*Bpi;
+            
         }
-        Bp.block<nx,nu*M>(i*nx,0) = Bpj;
+        Bp_.block(i*nx_,0,nx_,nu_*M_) = Bpj;
+        
     }
+    
+    //~ std::cout << Bp_ << std::endl;
 
     // cout <<
-    Um = MatrixXd::Zero(nu*M,1);
+    Um_ = MatrixXd::Zero(nu_*M_,1);
+    Xp_ = MatrixXd::Zero(nx_*P_,1);
+    
+    K_ = (Bp_.transpose()*Q_*Bp_ + R_).inverse()*Bp_.transpose()*Q_;
+    //~ std::cout << K_ << std::endl;
 
 }
 
 
 MatrixXd MPCController::Predict(MatrixXd xk)
 {
-    MatrixXd Xp = Ap*xk + Bp*Um;
-    return Xp;
+	//~ Xp_.block(0,0,nx_*(P_-1),1) = Xp_.block(nx_,0,nx_*(P_-1),1);
+    //~ Xp_.block(nx_*(P_-1),0,nx_,1) = MatrixXd::Zero(nx_, 1);
+    
+    MatrixXd Xpd = Ap_*xk + Bp_*Um_;
+    //~ MatrixXd Xpd = Ap_*xk;
+    //~ std::cout << xk.transpose() << ", "<< Xpd.block(76,0,4,1).transpose()  << std::endl;
+
+    std::cout << xk.transpose() << ", " ;
+    //~ Xp_ = Xp_ + Xpd;
+    return Xpd;
 }
 
 
-MatrixXd MPCController::ComputeOptimalInput(MatrixXd StateError);
+MatrixXd MPCController::ComputeOptimalInput(MatrixXd StateError)
 {
-    MatrixXd Umd = -K*StateError;
-    MatrixXd Um += Umd;
-    MatrixXd uk = Um.block<1,2>(0,0).transpose();
+	
+    MatrixXd Umd = -K_*StateError;
+    Um_ += Umd;
+    
+    std::cout << Um_.transpose() << std::endl;
+    
+    MatrixXd uk = Um_.block(0,0,nu_,1);
+    Um_.block(0,0,nu_*(M_-1),1) = Um_.block(nu_,0,nu_*(M_-1),1);
+    Um_.block(nu_*(M_-1),0,nu_,1) = MatrixXd::Zero(nu_, 1);
+    
+    
     return uk;
 }
 
