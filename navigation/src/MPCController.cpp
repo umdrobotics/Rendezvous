@@ -40,7 +40,7 @@ MPCController::MPCController()
     B_(3,1) = -0.1961;
 
 	P_ = 20;
-    M_ = 6;
+    M_ = 4;
     
     //~ 
     nx_ = B_.rows();
@@ -118,7 +118,7 @@ MatrixXd MPCController::Predict(MatrixXd xk)
     //~ MatrixXd Xpd = Ap_*xk;
     //~ std::cout << xk.transpose() << ", "<< Xpd.block(76,0,4,1).transpose()  << std::endl;
 
-    std::cout << xk.transpose() << ", " ;
+    //~ std::cout << xk.transpose() << ", " ;
     //~ Xp_ = Xp_ + Xpd;
     return Xpd;
 }
@@ -130,7 +130,7 @@ MatrixXd MPCController::ComputeOptimalInput(MatrixXd StateError)
     MatrixXd Umd = -K_*StateError;
     Um_ += Umd;
     
-    std::cout << Um_.transpose() << std::endl;
+    //~ std::cout << Um_.transpose() << std::endl;
     
     MatrixXd uk = Um_.block(0,0,nu_,1);
     Um_.block(0,0,nu_*(M_-1),1) = Um_.block(nu_,0,nu_*(M_-1),1);
