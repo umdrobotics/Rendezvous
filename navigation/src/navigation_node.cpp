@@ -26,6 +26,7 @@ using namespace Eigen;
 #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
 #define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/AutonomousLanding_"
 #define DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME "/home/ubuntu/SearchRange_"
+#define DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME "/home/ubuntu/MPCController_"
 #define TARGET_LOST_TIME_OUT_SEC (2.0)
 
 
@@ -91,6 +92,7 @@ float _error_last = 0;
 std::ofstream _ofsTragetTrackingLog;
 std::ofstream _ofsAutonomousLandingLog;
 std::ofstream _ofsSearchingRangeLog;
+std::ofstream _ofsMPCControllerLog;
 geometry_msgs::PointStamped _msgDesiredAttitudeDeg;
 
 // GPS & Camera data funsion
@@ -128,6 +130,7 @@ void ShutDown(void)
     _ofsTragetTrackingLog.close();
     _ofsAutonomousLandingLog.close();
     _ofsSearchingRangeLog.close();
+    _ofsMPCControllerLog.close();
     ROS_INFO("Shutting down navigation ...");
     // All the default sigint handler does is call shutdown()
     ros::shutdown();
@@ -328,7 +331,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 	dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
             
-    _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
+    _ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
                             << ros::Time::now().toSec() << "," 
                             <<  _msgUltraSonic.ranges[0] << ","
                             << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
@@ -661,6 +664,12 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
 
 
+    // Calculate target heading
+    dji_sdk::AttitudeQuaternion q = tag.pose.pose.orientation;
+    float tagHeadingRelativeToDrone = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    std::cout << "tagHeadingRelativeToDrone" << tagHeadingRelativeToDrone << std::endl;
+
+
     _bIsTargetBeingTracked = true;
     
     _ofsTragetTrackingLog << std::setprecision(std::numeric_limits<double>::max_digits10) 
@@ -770,7 +779,7 @@ void tagDetectionCallback(const apriltags2_ros::AprilTagDetectionArray vecTagDet
     if( _bIsTargetFound ){ 
 		RunSensorFusing();
 	}
- }
+}
 
 
 void lqrGainCallback(const geometry_msgs::PoseWithCovariance msgLQRGain)
@@ -1459,7 +1468,6 @@ int main(int argc, char **argv)
  
  
     // Log files
- 
     std::stringstream ss;
     ss << DEFAULT_TARGET_TRACKING_LOG_FILE_NAME << ros::WallTime::now() << ".log";
     _ofsTragetTrackingLog.open(ss.str());
@@ -1480,6 +1488,12 @@ int main(int argc, char **argv)
     ROS_ASSERT_MSG(_ofsSearchingRangeLog, "Failed to open file %s", ss.str().c_str());
 
     _ofsSearchingRangeLog << "#Time,DroneLocation(x,y,z,yaw), GimbalAngle(yaw, pitch), DroneVelocity(vx, vy, vz)" << std::endl;
+
+    // Log about MPC controller
+    ss.str("");
+    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << ros::WallTime::now() << ".log";
+    _ofsMPCControllerLog.open(ss.str());
+    ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
 
 
     // Ultrasonic 
