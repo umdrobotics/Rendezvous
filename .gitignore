@@ -58,3 +58,5 @@ beginner_tutorials/
 
 # Catkin custom files
 CATKIN_IGNORE
+
+truck_gps/
