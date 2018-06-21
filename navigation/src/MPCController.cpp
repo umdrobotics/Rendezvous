@@ -26,7 +26,9 @@ MPCController::MPCController()
     double m = 3.1;
     double g = 9.80665;
     double kd = 0.0705;
+
     double q = 0.9;
+
 
     A_ <<   1, 0, 0.02, 0,
             0, 1, 0, 0.02,
@@ -40,7 +42,9 @@ MPCController::MPCController()
     B_(3,1) = -0.1961;
 
 	P_ = 20;
+
     M_ = 5;
+
     
     //~ 
     nx_ = B_.rows();
@@ -48,6 +52,7 @@ MPCController::MPCController()
 
     Q_ = q*MatrixXd::Identity(nx_*P_, nx_*P_);
     R_ = (1-q)*MatrixXd::Identity(nu_*M_, nu_*M_);
+
     
     // Add more penalty on velocity
     //~ for(int i = 0; i<P_/2+2; i++){
@@ -58,6 +63,7 @@ MPCController::MPCController()
 		//~ Q_(4*i, 4*i) = 3;
 		//~ Q_(4*i+1, 4*i+1) = 3;
 	//~ }
+
 
 
 }

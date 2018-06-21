@@ -35,9 +35,11 @@ DJIDrone* _ptrDrone;
 
 int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
+
 bool _bIsYawControlEnable = true;
 bool _bIsMPCEnable = true;
 bool _bIsSimulation = true;
+
 // Target tracking boolean flags
 bool _bIsTargetTrackingRunning = false;
 bool _bIsTargetBeingTracked = false;
@@ -382,7 +384,9 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
 
     float setAnglePitch = 0;
     float setAngleRoll  = 0;
+
     if(_bIsMPCEnable)
+
     {
         AttitudeControlHelper2(desired_position, setAnglePitch, setAngleRoll);
     }
@@ -396,7 +400,9 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
 
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float current_yaw_deg = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+
     float yaw_error_deg = abs(desired_yaw_deg - current_yaw_deg);
+
     float setpoint_yaw = (yaw_error_deg < 3) ? desired_yaw_deg
                                              : (yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
                                              : current_yaw_deg + yaw_error_deg * 0.2;
@@ -713,6 +719,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     float roll  = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
     std::cout << "yaw: " << yaw << " pitch: " << pitch << " roll: " << roll << std::endl;
 
+
     _bIsTargetBeingTracked = true;
 
     _ofsTragetTrackingLog << std::setprecision(std::numeric_limits<double>::max_digits10)
@@ -903,6 +910,8 @@ void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPositio
 
 }
 
+
+
 /*
 void gimbalCallback(const dji_sdk::Gimbal gimbal)
 {
@@ -968,6 +977,7 @@ void RunTargetSearch()
             float y =  _SearchCenter_y + _LineVelocity*_Phi*sin(_Phi*_AngleVelocity);
             float x_distance = x - drone.local_position.x;
             float y_distance = y - drone.local_position.y;
+
             float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(y_distance, x_distance));   
                      
             float distance_square =  x_distance*x_distance + y_distance*y_distance;
@@ -990,6 +1000,7 @@ void RunTargetSearch()
             RunLocalPositionControl(desired_position, desired_yaw);
             // RunAttitudeControl(desired_position, desired_yaw);
             // drone.local_position_control(x, y, _searchAltitude, desired_yaw);
+
             _FlyingRadius = sqrt((x - _SearchCenter_x)*(x - _SearchCenter_x) + (y - _SearchCenter_y)*(y - _SearchCenter_y));
             _Phi = _Phi + _PhiSetPoint;
 
@@ -1185,6 +1196,7 @@ void RunAutonomousLanding2()
         drone.landing();
         return;
     }
+
     
 	if (!_bIsSimulation)
 	{	
@@ -1245,11 +1257,14 @@ void RunAutonomousLanding2()
     // RunLocalPositionControl(desired_position, desired_yaw);
     // RunAttitudeControl(desired_position, desired_yaw);
 
+
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
     float roll = 0;
     float pitch = 0;
+
     float distance_square = 0;
+
     _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             << ros::Time::now().toSec() << ","
                             <<  _msgUltraSonic.ranges[0] << ","
@@ -1291,6 +1306,7 @@ void GoToTruckGPSLocation()
                           + _msgTruckDistance.point.y*_msgTruckDistance.point.y ) * _GPSCircleRatio;
     float delta_y = _msgTruckDistance.point.y / sqrt( _msgTruckDistance.point.x*_msgTruckDistance.point.x
                           + _msgTruckDistance.point.y*_msgTruckDistance.point.y ) * _GPSCircleRatio;
+
 
     // Now the destination is 1m away from the target
     float target_x = _msgTruckLocalPosition.point.x - delta_x;
