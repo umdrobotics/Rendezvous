@@ -293,7 +293,7 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
 							   : dpitch < -maxAngle ? -maxAngle
 													: dpitch;
 
-    droll = droll > maxAngle ? maxAngle
+    droll = droll > maxAngle ? maxAngle 
 							 : droll < -maxAngle ? -maxAngle
 												 : droll;
 
@@ -322,8 +322,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     xk(0,0) = drone.local_position.x;
     xk(1,0) = drone.local_position.y;
     xk(2,0) = drone.velocity.vx;
-	  xk(3,0) = drone.velocity.vy;
-	  MatrixXd Xp = _mpc.Predict(xk);
+	xk(3,0) = drone.velocity.vy;
+	MatrixXd Xp = _mpc.Predict(xk);
 
 	//~ std::cout << xk.transpose() << ", " << Xp.block(0,0,12,1).transpose() << endl;
 
@@ -707,17 +707,20 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     }
     _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
 
-	// Calculate tag orientation
-    dji_sdk::AttitudeQuaternion q;
-    q.q0 = tag.pose.pose.orientation.w;
-    q.q1 = tag.pose.pose.orientation.x;
-    q.q2 = tag.pose.pose.orientation.y;
-    q.q3 = tag.pose.pose.orientation.z;
+	//~ // Calculate tag orientation
+    //~ dji_sdk::AttitudeQuaternion q;
+    //~ q.q0 = tag.pose.pose.orientation.w;
+    //~ q.q1 = tag.pose.pose.orientation.x;
+    //~ q.q2 = tag.pose.pose.orientation.y;
+    //~ q.q3 = tag.pose.pose.orientation.z;
     //~ float tagHeadingRelativeToDrone 
-    float yaw   = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
-    float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
-    float roll  = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
-    std::cout << "yaw: " << yaw << " pitch: " << pitch << " roll: " << roll << std::endl;
+    //~ float yaw_cam   = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    //~ float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
+    //~ float roll  = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
+    //~ dji_sdk::Gimbal& gimbal; 
+    //~ float yaw_gimbal = drone.gimbal.yaw;
+    //~ float yaw_correct = yaw_cam - yaw_gimbal;
+    //~ std::cout << "yaw of cam, yaw of gimbal, corrected yaw: " << yaw_cam << ", " << yaw_gimbal << ", " << yaw_correct << std::endl; //" pitch: " << pitch << " roll: " << roll << 
 
 
     _bIsTargetBeingTracked = true;
