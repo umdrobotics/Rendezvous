@@ -330,10 +330,10 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 	// Compute Optimal Input
 	MatrixXd desiredState(4,1);
 	desiredState << desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y;
-	for(int i = 1; i<P; i++)
+    desiredState.conservativeResize(desiredState.rows()*P, desiredState.cols());
+	for(int i = 0; i<P-1; i++)
 	{
-		desiredState.conservativeResize(desiredState.rows() + nx,desiredState.cols());
-		desiredState.block(desiredState.rows()-nx,0,nx,1) = desiredState.block(0,0,nx,1);
+		desiredState.block(desiredState.rows() + nx*i,0,nx,1) = desiredState.block(0,0,nx,1);
 	}
 	MatrixXd stateError = Xp - desiredState; //.replicate<20,1>();
 	MatrixXd uk = _mpc.ComputeOptimalInput(stateError);
@@ -354,8 +354,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 												 : droll;
 
 	ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f ", stateError(0,0), stateError(1,0), dpitch, droll);
-	dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
-    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+	// dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+ //    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
     _ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             << ros::Time::now().toSec() << ","
@@ -372,7 +372,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << drone.velocity.vz << ","
                             << dpitch << ","
                             << droll << ","
-                            << yaw << std::endl;                             // drone local position
+                            // << yaw 
+                            << std::endl;                             // drone local position
 
 }
 
