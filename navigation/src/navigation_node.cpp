@@ -318,30 +318,35 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     int nx = _mpc.nx_;
 
     // predict
-    MatrixXd xk = MatrixXd::Zero(4,1);
-    xk(0,0) = drone.local_position.x;
-    xk(1,0) = drone.local_position.y;
-    xk(2,0) = drone.velocity.vx;
-	xk(3,0) = drone.velocity.vy;
-	MatrixXd Xp = _mpc.Predict(xk);
+ //    MatrixXd xk = MatrixXd::Zero(4,1);
+ //    xk(0,0) = drone.local_position.x;
+ //    xk(1,0) = drone.local_position.y;
+ //    xk(2,0) = drone.velocity.vx;
+	// xk(3,0) = drone.velocity.vy;
+    Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
+	VectorXd Xp = _mpc.Predict(xk);
 
 	//~ std::cout << xk.transpose() << ", " << Xp.block(0,0,12,1).transpose() << endl;
 
 	// Compute Optimal Input
-	MatrixXd desiredState(4,1);
-	desiredState << desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y;
+	// MatrixXd desiredState(4,1);
+    Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
+	// desiredState << desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y;
     desiredState.conservativeResize(desiredState.rows()*P, desiredState.cols());
 	for(int i = 0; i<P-1; i++)
 	{
-		desiredState.block(desiredState.rows() + nx*i,0,nx,1) = desiredState.block(0,0,nx,1);
+		// desiredState.block(desiredState.rows() + nx*i,0,nx,1) = desiredState.block(0,0,nx,1);
+        desiredState.segment(desiredState.rows() + nx*i,nx) = desiredState.segment(0,nx);
 	}
-	MatrixXd stateError = Xp - desiredState; //.replicate<20,1>();
-	MatrixXd uk = _mpc.ComputeOptimalInput(stateError);
+	VectorXd stateError = Xp - desiredState; //.replicate<20,1>();
+	Vector2d uk = _mpc.ComputeOptimalInput(stateError);
 
 	//~ std::cout << desiredState.transpose() << ", " << uk.transpose() << endl;
 
-	dpitch = -uk(0,0);
-	droll = -uk(1,0);
+	// dpitch = -uk(0,0);
+	// droll = -uk(1,0);
+    dpitch = -uk(0);
+    droll = -uk(1);
 
 	// Saturate desired pitch and roll angle to -30deg or 30deg
     float maxAngle = 30.0;
