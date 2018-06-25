@@ -38,7 +38,7 @@ bool _bIsDroneLandingPrinted = false;
 
 bool _bIsYawControlEnable = true;
 bool _bIsMPCEnable = true;
-bool _bIsSimulation = true;
+bool _bIsSimulation = false;
 
 // Target tracking boolean flags
 bool _bIsTargetTrackingRunning = false;
@@ -389,6 +389,7 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
 
     {
         AttitudeControlHelper2(desired_position, setAnglePitch, setAngleRoll);
+        
     }
     else
     {
@@ -408,12 +409,12 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
                                              : current_yaw_deg + yaw_error_deg * 0.2;
     if (_bIsYawControlEnable)
 	{
-		drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, 0);
+		drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
 
 	}
 	else
 	{
-	    drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
+	    drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, 0);
 	}
     // Notice: negative pitch angle means going to North; positive pitch means South.
     //  drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
@@ -811,7 +812,7 @@ void tagDetectionCallback(const apriltags2_ros::AprilTagDetectionArray vecTagDet
     // If found nothing, do noting.
     if (vecTagDetections2.detections.empty())
     {
-        ROS_INFO("Not find tag!!");
+        // ROS_INFO("Not find tag!!");
         // There is nothing we can do
         return;
     }
@@ -1203,10 +1204,8 @@ void RunAutonomousLanding2()
     
 	if (!_bIsSimulation)
 	{	
-		float delta_x = _msgTargetDistance.point.x/sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x
-                          + _msgTargetDistance.point.y*_msgTargetDistance.point.y);
-		float delta_y = _msgTargetDistance.point.y/sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x
-							+ _msgTargetDistance.point.y*_msgTargetDistance.point.y);
+		float delta_x = _msgTargetDistance.point.x / sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x + _msgTargetDistance.point.y*_msgTargetDistance.point.y)* _GPSCircleRatio;
+		float delta_y = _msgTargetDistance.point.y / sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x + _msgTargetDistance.point.y*_msgTargetDistance.point.y)* _GPSCircleRatio;
 		float target_x = _msgTargetLocalPosition.point.x - delta_x;
 		float target_y = _msgTargetLocalPosition.point.y - delta_y;
 		float drone_x = drone.local_position.x;
@@ -1218,23 +1217,22 @@ void RunAutonomousLanding2()
 		float distance_square = (target_x - drone_x)*(target_x - drone_x) + (target_y - drone_y)*(target_y - drone_y);
 		bool bIsClose = distance_square < limitRadius_square;
 		// bool bIsClose = true;
-
+		// ROS_INFO("delta x & y: %f, %f",delta_x ,delta_y);
 		// float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
-
+		// ROS_INFO("target x& y :%f, %f",target_x, target_y);
+		
 		geometry_msgs::Point desired_position;
 		desired_position.x = bIsClose ? _msgTargetLocalPosition.point.x : target_x;
 		desired_position.y = bIsClose ? _msgTargetLocalPosition.point.y : target_y;
 		desired_position.z = bIsClose ? -0.1 : drone_z;
-
+		ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
 		float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
 		RunAttitudeControl(desired_position, desired_yaw);
 	}
 	else
 	{
-		float delta_x = _msgTruckDistance.point.x/sqrt(_msgTruckDistance.point.x*_msgTruckDistance.point.x  
-                          + _msgTruckDistance.point.y*_msgTruckDistance.point.y);
-		float delta_y = _msgTruckDistance.point.y/sqrt(_msgTruckDistance.point.x*_msgTruckDistance.point.x  
-                          + _msgTruckDistance.point.y*_msgTruckDistance.point.y);                      
+		float delta_x = _msgTruckDistance.point.x/sqrt(_msgTruckDistance.point.x*_msgTruckDistance.point.x + _msgTruckDistance.point.y*_msgTruckDistance.point.y)* _GPSCircleRatio;
+		float delta_y = _msgTruckDistance.point.y/sqrt(_msgTruckDistance.point.x*_msgTruckDistance.point.x + _msgTruckDistance.point.y*_msgTruckDistance.point.y)* _GPSCircleRatio;                      
 		float target_x = _msgTruckLocalPosition.point.x - delta_x;
 		float target_y = _msgTruckLocalPosition.point.y - delta_y;
 		float drone_x = drone.local_position.x;
