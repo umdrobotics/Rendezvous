@@ -318,33 +318,18 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     int nx = _mpc.nx_;
 
     // predict
- //    MatrixXd xk = MatrixXd::Zero(4,1);
- //    xk(0,0) = drone.local_position.x;
- //    xk(1,0) = drone.local_position.y;
- //    xk(2,0) = drone.velocity.vx;
-	// xk(3,0) = drone.velocity.vy;
     Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
 	VectorXd Xp = _mpc.Predict(xk);
 
 	//~ std::cout << xk.transpose() << ", " << Xp.block(0,0,12,1).transpose() << endl;
 
 	// Compute Optimal Input
-	// MatrixXd desiredState(4,1);
     Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
-	// desiredState << desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y;
-    desiredState.conservativeResize(desiredState.rows()*P, desiredState.cols());
-	for(int i = 0; i<P-1; i++)
-	{
-		// desiredState.block(desiredState.rows() + nx*i,0,nx,1) = desiredState.block(0,0,nx,1);
-        desiredState.segment(desiredState.rows() + nx*i,nx) = desiredState.segment(0,nx);
-	}
-	VectorXd stateError = Xp - desiredState; //.replicate<20,1>();
+	VectorXd stateError = Xp - desiredState.colwise().replicate(P); 
 	Vector2d uk = _mpc.ComputeOptimalInput(stateError);
 
 	//~ std::cout << desiredState.transpose() << ", " << uk.transpose() << endl;
 
-	// dpitch = -uk(0,0);
-	// droll = -uk(1,0);
     dpitch = -uk(0);
     droll = -uk(1);
 
@@ -1193,8 +1178,8 @@ void RunAutonomousLanding2()
 
 	DJIDrone& drone = *_ptrDrone;
 
-    // bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.25) && (int)_msgUltraSonic.intensities[0];
-    bool bIsDroneLanded = drone.local_position.z < 0.3;
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.3) && (int)_msgUltraSonic.intensities[0];
+    // bool bIsDroneLanded = drone.local_position.z < 0.3;
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -1221,8 +1206,8 @@ void RunAutonomousLanding2()
 		float limitRadius = 1;
 		float limitRadius_square = limitRadius*limitRadius;
 		float distance_square = (target_x - drone_x)*(target_x - drone_x) + (target_y - drone_y)*(target_y - drone_y);
-		bool bIsClose = distance_square < limitRadius_square;
-		// bool bIsClose = true;
+		// bool bIsClose = distance_square < limitRadius_square;
+		bool bIsClose = true;
 		// ROS_INFO("delta x & y: %f, %f",delta_x ,delta_y);
 		// float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
 		// ROS_INFO("target x& y :%f, %f",target_x, target_y);
@@ -1280,9 +1265,9 @@ void RunAutonomousLanding2()
                             << _msgTruckLocalPosition.point.x << ","
                             << _msgTruckLocalPosition.point.y << ","
                             << _msgTruckLocalPosition.point.z << ","                  // distance squared
-                            //~ << _msgTargetLocalPosition.point.x << ","
-                            //~ << _msgTargetLocalPosition.point.y << ","
-                            //~ << _msgTargetLocalPosition.point.z << ","   // target local position
+                            << _msgTargetLocalPosition.point.x << ","
+                            << _msgTargetLocalPosition.point.y << ","
+                            << _msgTargetLocalPosition.point.z << ","   // target local position
                             << drone.local_position.x << ","
                             << drone.local_position.y << ","
                             << drone.local_position.z << ","

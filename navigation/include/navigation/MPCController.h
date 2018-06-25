@@ -25,7 +25,7 @@ class MPCController {
         // Core functions
         void Initialize();
         VectorXd Predict(Vector4d xk);
-        Vector2d ComputeOptimalInput(MatrixXd StateError);
+        Vector2d ComputeOptimalInput(VectorXd StateError);
         MatrixXd CorrectPrediction();
 
 

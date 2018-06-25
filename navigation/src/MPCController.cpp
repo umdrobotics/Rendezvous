@@ -41,14 +41,9 @@ MPCController::MPCController()
             -0.1961, 0,
             0, -0.1961;
 
-    // B_(0,0) = -0.002;
-    // B_(1,1) = -0.002;	
-    // B_(2,0) = -0.1961;
-    // B_(3,1) = -0.1961;
-
 	P_ = 20;
 
-    M_ = 5;
+    M_ = 3;
 
     
     //~ 
@@ -65,8 +60,8 @@ MPCController::MPCController()
 		//~ Q_(4*i+3, 4*i+3) = 3;
 	//~ } 
 	//~ for(int i = 0; i<P_; i++){
-		//~ Q_(4*i, 4*i) = 3;
-		//~ Q_(4*i+1, 4*i+1) = 3;
+		//~ Q_(4*i, 4*i) = 1;
+		//~ Q_(4*i+1, 4*i+1) = 1;
 	//~ }
 
 
@@ -153,10 +148,7 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
     
     //~ std::cout << Um_.transpose() << std::endl;
     
-    // Vector2d uk = Um_.block(0,0,nu_,1);
     Vector2d uk = Um_.segment(0,nu_);
-    // Um_.block(0,0,nu_*(M_-1),1) = Um_.block(nu_,0,nu_*(M_-1),1);
-    // Um_.block(nu_*(M_-1),0,nu_,1) = MatrixXd::Zero(nu_, 1);
     Um_.head(nu_*(M_-1)) = Um_.tail(nu_*(M_-1));
     Um_.tail(nu_) = MatrixXd::Zero(nu_, 1);
     
