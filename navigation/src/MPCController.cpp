@@ -35,11 +35,16 @@ MPCController::MPCController()
             0, 0, 0.9995, 0,
             0, 0, 0, 0.9995;
 	 
-	B_ = MatrixXd::Zero(4, 2);
-    B_(0,0) = -0.002;
-    B_(1,1) = -0.002;	
-    B_(2,0) = -0.1961;
-    B_(3,1) = -0.1961;
+	B_ = Eigen::MatrixXd(4,2);
+    B_ <<   -0.002, 0,
+            0, -0.002,
+            -0.1961, 0,
+            0, -0.1961;
+
+    // B_(0,0) = -0.002;
+    // B_(1,1) = -0.002;	
+    // B_(2,0) = -0.1961;
+    // B_(3,1) = -0.1961;
 
 	P_ = 20;
 
@@ -125,12 +130,12 @@ void MPCController::Initialize()
 }
 
 
-MatrixXd MPCController::Predict(MatrixXd xk)
+VectorXd MPCController::Predict(Vector4d xk)
 {
 	//~ Xp_.block(0,0,nx_*(P_-1),1) = Xp_.block(nx_,0,nx_*(P_-1),1);
     //~ Xp_.block(nx_*(P_-1),0,nx_,1) = MatrixXd::Zero(nx_, 1);
     
-    MatrixXd Xpd = Ap_*xk + Bp_*Um_;
+    VectorXd Xpd = Ap_*xk + Bp_*Um_;
     //~ MatrixXd Xpd = Ap_*xk;
     //~ std::cout << xk.transpose() << ", "<< Xpd.block(76,0,4,1).transpose()  << std::endl;
 
@@ -140,17 +145,20 @@ MatrixXd MPCController::Predict(MatrixXd xk)
 }
 
 
-MatrixXd MPCController::ComputeOptimalInput(MatrixXd StateError)
+Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 {
 	
-    MatrixXd Umd = -K_*StateError;
+    VectorXd Umd = -K_*StateError;
     Um_ += Umd;
     
     //~ std::cout << Um_.transpose() << std::endl;
     
-    MatrixXd uk = Um_.block(0,0,nu_,1);
-    Um_.block(0,0,nu_*(M_-1),1) = Um_.block(nu_,0,nu_*(M_-1),1);
-    Um_.block(nu_*(M_-1),0,nu_,1) = MatrixXd::Zero(nu_, 1);
+    // Vector2d uk = Um_.block(0,0,nu_,1);
+    Vector2d uk = Um_.segment(0,nu_);
+    // Um_.block(0,0,nu_*(M_-1),1) = Um_.block(nu_,0,nu_*(M_-1),1);
+    // Um_.block(nu_*(M_-1),0,nu_,1) = MatrixXd::Zero(nu_, 1);
+    Um_.head(nu_*(M_-1)) = Um_.tail(nu_*(M_-1));
+    Um_.tail(nu_) = MatrixXd::Zero(nu_, 1);
     
     
     return uk;
