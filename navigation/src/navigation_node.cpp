@@ -39,6 +39,7 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsYawControlEnable = true;
 bool _bIsMPCEnable = true;
 bool _bIsSimulation = false;
+bool _bIsYawControlEnableSearch = true;
 
 // Target tracking boolean flags
 bool _bIsTargetTrackingRunning = false;
@@ -254,12 +255,12 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float current_yaw_deg = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
-    float yaw_error_deg = desired_yaw_deg - current_yaw_deg;
+    float yaw_error_deg = abs(desired_yaw_deg - current_yaw_deg);
 
     float setpoint_yaw = (yaw_error_deg < 3) ? desired_yaw_deg
                                              : (yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
                                              : current_yaw_deg + yaw_error_deg * 0.2;
-    if (_bIsYawControlEnable)
+    if (_bIsYawControlEnableSearch)
     {
         drone.local_position_control(setpoint_x, setpoint_y, setpoint_z, setpoint_yaw);
     }
@@ -405,7 +406,8 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
 	}
 	else
 	{
-	    drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, 0);
+		float setpoint_yaw = 0;
+	    drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
 	}
     // Notice: negative pitch angle means going to North; positive pitch means South.
     //  drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
@@ -985,8 +987,8 @@ void RunTargetSearch()
 			float target_y = y - delta_y;
 			
 
-			bool bIsClose = distance_square < 1;
-			
+			//~ bool bIsClose = distance_square < 3;
+			bool bIsClose = true;
 			geometry_msgs::Point desired_position;
 			desired_position.x = bIsClose ? x : target_x;
 			desired_position.y = bIsClose ? y : target_y;
@@ -1179,7 +1181,7 @@ void RunAutonomousLanding2()
 	DJIDrone& drone = *_ptrDrone;
 
     bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.3) && (int)_msgUltraSonic.intensities[0];
-    // bool bIsDroneLanded = drone.local_position.z < 0.3;
+    //~ bool bIsDroneLanded = drone.local_position.z < 0.3;
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -1188,36 +1190,37 @@ void RunAutonomousLanding2()
             _bIsDroneLandingPrinted = true;
             _bIsTestInitiated = false;
         }
-        drone.landing();
+        drone.landing(); 
         return;
     }
 
     
 	if (!_bIsSimulation)
 	{	
-		float delta_x = _msgTargetDistance.point.x / sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x + _msgTargetDistance.point.y*_msgTargetDistance.point.y)* _GPSCircleRatio;
-		float delta_y = _msgTargetDistance.point.y / sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x + _msgTargetDistance.point.y*_msgTargetDistance.point.y)* _GPSCircleRatio;
-		float target_x = _msgTargetLocalPosition.point.x - delta_x;
-		float target_y = _msgTargetLocalPosition.point.y - delta_y;
+		//~ float delta_x = _msgTargetDistance.point.x / sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x + _msgTargetDistance.point.y*_msgTargetDistance.point.y)* _GPSCircleRatio;
+		//~ float delta_y = _msgTargetDistance.point.y / sqrt(_msgTargetDistance.point.x*_msgTargetDistance.point.x + _msgTargetDistance.point.y*_msgTargetDistance.point.y)* _GPSCircleRatio;
+		//~ float target_x = _msgTargetLocalPosition.point.x - delta_x;
+		//~ float target_y = _msgTargetLocalPosition.point.y - delta_y;
 		float drone_x = drone.local_position.x;
 		float drone_y = drone.local_position.y;
 		float drone_z = drone.local_position.z;
 
 		float limitRadius = 1;
 		float limitRadius_square = limitRadius*limitRadius;
-		float distance_square = (target_x - drone_x)*(target_x - drone_x) + (target_y - drone_y)*(target_y - drone_y);
-		// bool bIsClose = distance_square < limitRadius_square;
-		bool bIsClose = true;
+		float distance_square = (_msgTargetLocalPosition.point.x - drone_x)*(_msgTargetLocalPosition.point.x - drone_x) + (_msgTargetLocalPosition.point.y - drone_y)*(_msgTargetLocalPosition.point.y - drone_y);
+	    bool bIsClose = distance_square < limitRadius_square;
+		//~ bool bIsClose = true;
 		// ROS_INFO("delta x & y: %f, %f",delta_x ,delta_y);
 		// float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
 		// ROS_INFO("target x& y :%f, %f",target_x, target_y);
 		
 		geometry_msgs::Point desired_position;
-		desired_position.x = bIsClose ? _msgTargetLocalPosition.point.x : target_x;
-		desired_position.y = bIsClose ? _msgTargetLocalPosition.point.y : target_y;
+		desired_position.x = _msgTargetLocalPosition.point.x;
+		desired_position.y = _msgTargetLocalPosition.point.y;
 		desired_position.z = bIsClose ? -0.1 : drone_z;
 		ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
-		float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
+		//~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
+		float desired_yaw = 0;
 		RunAttitudeControl(desired_position, desired_yaw);
 	}
 	else
@@ -1243,7 +1246,9 @@ void RunAutonomousLanding2()
 		desired_position.y = bIsClose ? _msgTruckLocalPosition.point.y : target_y;
 		desired_position.z = bIsClose ? -0.1 : drone_z;
 
-		float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckLocalPosition.point.y, _msgTruckLocalPosition.point.x));
+		
+		//~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckLocalPosition.point.y, _msgTruckLocalPosition.point.x));
+		float desired_yaw = 0;
 		RunAttitudeControl(desired_position, desired_yaw);
 	}
     // RunLocalPositionControl(desired_position, desired_yaw);
