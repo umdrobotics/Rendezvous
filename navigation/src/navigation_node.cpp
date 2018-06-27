@@ -55,18 +55,27 @@ float _SearchCenter_y = 0;
 float _FlyingRadius = 0;
 // float _ratio = 2;
 
+// Searching path parameters(spiral)
 int _SearchGimbalPhi = 0;
 float _searchAltitude = 3;
 float _gimbalLimitAngle = -asin(_searchAltitude/8.0)*180.0 / M_PI;
 float _HeightError = 0.2;  // tolerable height error
 float _Phi = 0;
 float _PhiSetPoint = 0.005;
-float _SearchTime = 35;
+float _SearchTime = 20;
 float _LineVelocity = 0.3;   // m/s
 float _AngleVelocity = 0.8; //  rad/s
 float _YawRange = 100; //degrees
 float _ratio_gimbal = 16; // period time second
 
+// Searching path parameters(const speed sinusoidal)
+float _StartX = 0;
+float _StartY = 0;
+float _Period = 2;
+float _Omega = 6.28 / _Period;
+float _Theta = 3.1415926 / 4; 
+float _Speed = 0.5;
+float _Hight = 2;
 //float _gimbalYawIncrements = 1;
 //int _GimbalCounter = 0;
 //float _SearchGimbal_Yaw = 0;
@@ -934,7 +943,7 @@ void RunTargetSearch()
         _bIsSearchInitiated = false;
         _SearchCenter_x = 0;
         _SearchCenter_y = 0;
-
+        
         // _nNavigationTask = 98;
 
         return;
@@ -951,6 +960,10 @@ void RunTargetSearch()
         _bIsSearchInitiated = true;
         _SearchCenter_x = _msgFusedTargetLocalPosition.point.x;
         _SearchCenter_y = _msgFusedTargetLocalPosition.point.y;
+        
+        _StartX = drone.local_position.x - 5;
+        _StartY = drone.local_position.y;
+
         _FlyingRadius = initialRadius;
         _Phi = 2;
 
@@ -977,8 +990,15 @@ void RunTargetSearch()
             // float y =  _SearchCenter_y + _LineVelocity*(_Phi/(30*_FlyingRadius*_ratio))*sin((_Phi/(30*_FlyingRadius*_ratio))*_AngleVelocity);
 
 			// calculate waypoints for searching path
-            float x =  _SearchCenter_x + _LineVelocity*_Phi*cos(_Phi*_AngleVelocity);
-            float y =  _SearchCenter_y + _LineVelocity*_Phi*sin(_Phi*_AngleVelocity);
+            // float x =  _SearchCenter_x + _LineVelocity*_Phi*cos(_Phi*_AngleVelocity);
+            // float y =  _SearchCenter_y + _LineVelocity*_Phi*sin(_Phi*_AngleVelocity);
+            // float x_distance = x - drone.local_position.x;
+            // float y_distance = y - drone.local_position.y;
+
+            float xdot = _Speed * cos(_Theta);
+            float x = _StartX + xdot;
+            float y = _Height * sin(_Omega*x); 
+            _Theta = atan(_Height * _Omega * cos(_Omega * x));
             float x_distance = x - drone.local_position.x;
             float y_distance = y - drone.local_position.y;
 
@@ -1005,7 +1025,7 @@ void RunTargetSearch()
             // RunAttitudeControl(desired_position, desired_yaw);
             // drone.local_position_control(x, y, _searchAltitude, desired_yaw);
 
-            _FlyingRadius = sqrt((x - _SearchCenter_x)*(x - _SearchCenter_x) + (y - _SearchCenter_y)*(y - _SearchCenter_y));
+            // _FlyingRadius = sqrt((x - _SearchCenter_x)*(x - _SearchCenter_x) + (y - _SearchCenter_y)*(y - _SearchCenter_y));
             _Phi = _Phi + _PhiSetPoint;
 
             // // set up gimbal task
@@ -1022,7 +1042,13 @@ void RunTargetSearch()
             //     _GimbalCounter = 0;
             // }
             // _GimbalCounter++;
-            float pitch_angle = _gimbalLimitAngle-25-(65+_gimbalLimitAngle)/2 + (65+_gimbalLimitAngle)/2*cos(((float)_SearchGimbalPhi/(_ratio_gimbal*50))*6.28);
+
+            // Sprail gimbal searching
+            // float pitch_angle = _gimbalLimitAngle-25-(65+_gimbalLimitAngle)/2 + (65+_gimbalLimitAngle)/2*cos(((float)_SearchGimbalPhi/(_ratio_gimbal*50))*6.28);
+            // float yaw_angle = _YawRange*sin(((float)_SearchGimbalPhi/(_ratio_gimbal*50))*6.28);
+
+            // const speed sin path searching
+            float pitch_angle = -45;
             float yaw_angle = _YawRange*sin(((float)_SearchGimbalPhi/(_ratio_gimbal*50))*6.28);
             geometry_msgs::PointStamped msgDesiredAngleDeg;
             msgDesiredAngleDeg.point.x = 0;
@@ -1042,6 +1068,7 @@ void RunTargetSearch()
             _Phi = 2;
             // _FlyingRadius += circleRadiusIncrements;
             _bIsSearchInitiated = false;
+
 
         }
     }
