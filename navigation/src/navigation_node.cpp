@@ -36,10 +36,10 @@ DJIDrone* _ptrDrone;
 int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
 
-bool _bIsYawControlEnable = true;
+bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true;
 bool _bIsSimulation = false;
-bool _bIsYawControlEnableSearch = true;
+bool _bIsYawControlEnableSearch = false;
 
 // Target tracking boolean flags
 bool _bIsTargetTrackingRunning = false;
@@ -63,7 +63,7 @@ float _gimbalLimitAngle = -asin(_searchAltitude/8.0)*180.0 / M_PI;
 float _HeightError = 0.2;  // tolerable height error
 float _Phi = 0;
 float _PhiSetPoint = 0.005;
-float _SearchTime = 20;
+float _SearchTime = 12;
 float _LineVelocity = 0.3;   // m/s
 float _AngleVelocity = 0.8; //  rad/s
 float _YawRange = 100; //degrees
@@ -76,7 +76,7 @@ float _Period = 2;
 float _Omega = 6.28 / _Period;
 float _Theta = 3.1415926 / 4; 
 float _Speed = 0.5;
-float _Hight = 2;
+float _Height = 2;
 //float _gimbalYawIncrements = 1;
 //int _GimbalCounter = 0;
 //float _SearchGimbal_Yaw = 0;
@@ -970,7 +970,7 @@ void RunTargetSearch()
         // if(_Phi < (189*_FlyingRadius*_ratio))
         if(_Phi < (_SearchTime))
         {
-            ROS_INFO("Now Radius = %f m, Local Position: %f, %f., GimbalLimaitionAngle: %f degree.", _FlyingRadius, drone.local_position.x, drone.local_position.y, _gimbalLimitAngle);
+            //~ ROS_INFO("Now Radius = %f m, Local Position: %f, %f., GimbalLimaitionAngle: %f degree.", _FlyingRadius, drone.local_position.x, drone.local_position.y, _gimbalLimitAngle);
 
             //set up drone task
             // _Phi = _Phi+1;
@@ -989,52 +989,38 @@ void RunTargetSearch()
             // float y_distance = y - drone.local_position.y;
 
             float xdot = _Speed * cos(_Theta);
-            float x = _StartX + xdot;
-            float y = _Height * sin(_Omega*x); 
-            _Theta = atan(_Height * _Omega * cos(_Omega * x));
-            float x_distance = x - drone.local_position.x;
+            _StartX = _StartX + xdot*0.05;
+            float y = _StartY + _Height * sin(_Omega*_StartX); 
+            _Theta = atan(_Height * _Omega * cos(_Omega * _StartX));
+            float x_distance = _StartX - drone.local_position.x;
             float y_distance = y - drone.local_position.y;
-
+			
             float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(y_distance, x_distance));   
                      
             float distance_square =  x_distance*x_distance + y_distance*y_distance;
             
-            float delta_x = x / sqrt(distance_square) * _GPSCircleRatio;
-			float delta_y = y / sqrt(distance_square) * _GPSCircleRatio;
+            float delta_x = x_distance / sqrt(distance_square) * _GPSCircleRatio;
+			float delta_y = y_distance / sqrt(distance_square) * _GPSCircleRatio;
 
 			// Now the destination is 1m away from the target
-			float target_x = x - delta_x;
+			float target_x = _StartX - delta_x;
 			float target_y = y - delta_y;
 			
 
 			//~ bool bIsClose = distance_square < 3;
 			bool bIsClose = true;
 			geometry_msgs::Point desired_position;
-			desired_position.x = bIsClose ? x : target_x;
+			desired_position.x = bIsClose ? _StartX : target_x;
 			desired_position.y = bIsClose ? y : target_y;
 			desired_position.z = _searchAltitude;
  
             RunLocalPositionControl(desired_position, desired_yaw);
+            ROS_INFO("desired posistion and calcultion: %f, %f, %f",_StartX,_StartY,xdot);
             // RunAttitudeControl(desired_position, desired_yaw);
             // drone.local_position_control(x, y, _searchAltitude, desired_yaw);
 
             // _FlyingRadius = sqrt((x - _SearchCenter_x)*(x - _SearchCenter_x) + (y - _SearchCenter_y)*(y - _SearchCenter_y));
             _Phi = _Phi + _PhiSetPoint;
-
-            // // set up gimbal task
-            // // if yaw is greater than or equal to 30deg or less than or equal to 30deg.
-            // if(_GimbalCounter = 50){
-
-            //     if(_msgDesiredGimbalPoseDeg.point.z > 59.0 || _msgDesiredGimbalPoseDeg.point.z < -59.0)
-            //     {
-            //         _gimbalYawIncrements = -_gimbalYawIncrements;         //gimbal swing back
-            //     }
-
-            //     _SearchGimbal_Yaw += _gimbalYawIncrements;
-            //     drone.gimbal_angle_control(0.0, -450, _SearchGimbal_Yaw, 10.0);
-            //     _GimbalCounter = 0;
-            // }
-            // _GimbalCounter++;
 
             // Sprail gimbal searching
             // float pitch_angle = _gimbalLimitAngle-25-(65+_gimbalLimitAngle)/2 + (65+_gimbalLimitAngle)/2*cos(((float)_SearchGimbalPhi/(_ratio_gimbal*50))*6.28);
@@ -1053,7 +1039,7 @@ void RunTargetSearch()
             if (_SearchGimbalPhi > _ratio_gimbal*50){
                 _SearchGimbalPhi = 0;
                 }
-
+			
 
         }
         else
@@ -1708,8 +1694,8 @@ int main(int argc, char **argv)
     _TruckLocalPositionPub = nh.advertise<geometry_msgs::PointStamped>("/navigation/truck_local_position", 10);
 	_FusedTargetLocalPositionPub = nh.advertise<geometry_msgs::PointStamped>("/navigation/fused_target_local_position", 10);
 
-    // main control loop = 50 Hz
-    double dTimeStepSec = 0.02;
+    // main control loop = 20 Hz
+    double dTimeStepSec = 0.05;
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
 
 
