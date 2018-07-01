@@ -50,21 +50,6 @@ MPCController::MPCController()
     nx_ = B_.rows();
     nu_ = B_.cols();
 
-    Q_ = q*MatrixXd::Identity(nx_*P_, nx_*P_);
-    R_ = (1-q)*MatrixXd::Identity(nu_*M_, nu_*M_);
-
-    
-    // Add more penalty on velocity
-    //~ for(int i = 0; i<P_/2+2; i++){
-		//~ Q_(4*i+2, 4*i+2) = 3;
-		//~ Q_(4*i+3, 4*i+3) = 3;
-	//~ } 
-	//~ for(int i = 0; i<P_; i++){
-		//~ Q_(4*i, 4*i) = 1;
-		//~ Q_(4*i+1, 4*i+1) = 1;
-	//~ }
-
-
 
 }
 
@@ -78,8 +63,26 @@ MPCController::~MPCController()
 
 
 // 
-void MPCController::Initialize()
+void MPCController::Initialize(float q, float ki)
 {
+
+    q_ = q >= 0 ? q : 0.7;
+    ki_ = ki >= 0 ? ki : 0;
+
+
+    Q_ = q_*MatrixXd::Identity(nx_*P_, nx_*P_);
+    R_ = (1-q_)*MatrixXd::Identity(nu_*M_, nu_*M_);
+
+    // Add more penalty on velocity
+    //~ for(int i = 0; i<P_/2+2; i++){
+        //~ Q_(4*i+2, 4*i+2) = 3;
+        //~ Q_(4*i+3, 4*i+3) = 3;
+    //~ } 
+    //~ for(int i = 0; i<P_; i++){
+        //~ Q_(4*i, 4*i) = 1;
+        //~ Q_(4*i+1, 4*i+1) = 1;
+    //~ }
+
     // Build Ap
     Ap_ = MatrixXd::Zero(nx_*P_, nx_);
     MatrixXd Ap0 = MatrixXd::Identity(nx_, nx_);
