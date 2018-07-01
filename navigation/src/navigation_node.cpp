@@ -36,7 +36,7 @@ DJIDrone* _ptrDrone;
 int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
 
-bool _bIsYawControlEnable = false;
+bool _bIsYawControlEnable = true;
 bool _bIsMPCEnable = true;
 bool _bIsSimulation = false;
 bool _bIsYawControlEnableSearch = false;
@@ -45,7 +45,7 @@ bool _bIsYawControlEnableSearch = false;
 bool _bIsTargetTrackingRunning = false;
 bool _bIsTargetBeingTracked = false;
 bool _bIsTargetFound = false;
-
+int _counter = 0;
 
 // Landing and searching flags/variables
 bool _bIsSearchInitiated = false;
@@ -241,16 +241,46 @@ float LocalPositionControlHelper(float desired, float current_position)
 
 float LocalPositionControlAltitudeHelper(float desired, float current_position)
 {
+	DJIDrone& drone = *_ptrDrone;
+	if (_bIsSimulation)
+	{   
+		if ((_msgUltraSonic.ranges[0] > 0) && (int)_msgUltraSonic.intensities[0])
+		{
+			if ( desired > (_msgUltraSonic.ranges[0] - _HeightError) && desired < (_msgUltraSonic.ranges[0] + _HeightError) ){
+			return current_position;
+			}
 
-    if ( desired > (current_position - _HeightError) && desired < (current_position + _HeightError) ){
-        return current_position;
+			else{
+		
+				float error = desired - _msgUltraSonic.ranges[0];
+				current_position = current_position + error;
+				float setpoint_z = PDController(desired, current_position) + current_position;
+				return setpoint_z;
+			}
+		}
+		else
+		{
+			if ( desired > (current_position - _HeightError) && desired < (current_position + _HeightError) ){
+				return current_position;
+			}
+
+			else{
+				float setpoint_z = PDController(desired, current_position) + current_position;
+				return setpoint_z;
+				}
+			}
     }
+    else
+    {
+		if ( desired > (current_position - _HeightError) && desired < (current_position + _HeightError) ){
+			return current_position;
+		}
 
-    else{
-
-        float setpoint_z = PDController(desired, current_position) + current_position;
-        return setpoint_z;
-    }
+		else{
+			float setpoint_z = PDController(desired, current_position) + current_position;
+			return setpoint_z;
+		}
+	}
 }
 
 void RunLocalPositionControl(geometry_msgs::Point desired_position, float desired_yaw_deg)
@@ -264,10 +294,10 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float current_yaw_deg = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
-    float yaw_error_deg = abs(desired_yaw_deg - current_yaw_deg);
-
-    float setpoint_yaw = (yaw_error_deg < 3) ? desired_yaw_deg
-                                             : (yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
+    float yaw_error_deg = desired_yaw_deg - current_yaw_deg;
+	float abs_yaw_error_deg = abs(yaw_error_deg);
+    float setpoint_yaw = (abs_yaw_error_deg < 3) ? desired_yaw_deg
+                                             : (abs_yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
                                              : current_yaw_deg + yaw_error_deg * 0.2;
     if (_bIsYawControlEnableSearch)
     {
@@ -403,11 +433,13 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float current_yaw_deg = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
-    float yaw_error_deg = abs(desired_yaw_deg - current_yaw_deg);
-
-    float setpoint_yaw = (yaw_error_deg < 3) ? desired_yaw_deg
-                                             : (yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
+    float yaw_error_deg = desired_yaw_deg - current_yaw_deg;
+	float abs_yaw_error_deg = abs(yaw_error_deg);
+    float setpoint_yaw = (abs_yaw_error_deg < 3) ? desired_yaw_deg
+                                             : (abs_yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
                                              : current_yaw_deg + yaw_error_deg * 0.2;
+    ROS_INFO("Current yaw angle, yaw error, setpoint_yaw:%f,%f,%f", current_yaw_deg, yaw_error_deg, setpoint_yaw);
+    
     if (_bIsYawControlEnable)
 	{
 		drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
@@ -522,19 +554,25 @@ void TemporaryTest(void)
 
     geometry_msgs::Point desired_position;
 
-    desired_position.x = 5;
-    desired_position.y = 3;
-    desired_position.z = -0.1;
+    desired_position.x = 0;
+    desired_position.y = 0;
+    desired_position.z = 3;
 
-    float yawDeg = (float)UasMath::ConvertRad2Deg(atan2(desired_position.x, desired_position.y));
-
-
-    RunLocalPositionControl(desired_position, yawDeg);
-
-    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+	if (_counter < 300)
+	{
+		RunAttitudeControl(desired_position, -179);
+		ROS_INFO("turning to clockwise!!");
+		}
+	else
+	{
+		RunAttitudeControl(desired_position, 179);
+		ROS_INFO("turning to counterclockwise!!");
+		}	
+		
+	_counter += 1; 
+	dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
-
-    ROS_INFO("%f, %f, %f, %f", drone.local_position.x, drone.local_position.y, drone.local_position.z, yaw);
+    //~ ROS_INFO("Current yaw: %f", yaw);
 
 }
 
@@ -972,13 +1010,7 @@ void RunTargetSearch()
         {
             //~ ROS_INFO("Now Radius = %f m, Local Position: %f, %f., GimbalLimaitionAngle: %f degree.", _FlyingRadius, drone.local_position.x, drone.local_position.y, _gimbalLimitAngle);
 
-            //set up drone task
-            // _Phi = _Phi+1;
-
-            // float x =  _SearchCenter_x + _FlyingRadius*cos((_Phi/(30*_FlyingRadius*_ratio)));
-            // float y =  _SearchCenter_y + _FlyingRadius*sin((_Phi/(30*_FlyingRadius*_ratio)));
-            // drone.local_position_control(x, y, searchAltitude, 0);
-
+            //set up drone task, spiral path
             // float x =  _SearchCenter_x + _LineVelocity*(_Phi/(30*_FlyingRadius*_ratio))*cos((_Phi/(30*_FlyingRadius*_ratio))*_AngleVelocity);
             // float y =  _SearchCenter_y + _LineVelocity*(_Phi/(30*_FlyingRadius*_ratio))*sin((_Phi/(30*_FlyingRadius*_ratio))*_AngleVelocity);
 
