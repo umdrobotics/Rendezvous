@@ -13,6 +13,7 @@ class MPCController {
     
         int P_, M_;
         int nx_, nu_;
+        float q_, ki_;
 
         // constructor
         MPCController();
@@ -23,7 +24,7 @@ class MPCController {
         // Setters and getters
         
         // Core functions
-        void Initialize();
+        void Initialize(float q, float ki);
         VectorXd Predict(Vector4d xk);
         Vector2d ComputeOptimalInput(VectorXd StateError);
         MatrixXd CorrectPrediction();
