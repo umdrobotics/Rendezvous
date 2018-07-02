@@ -7,9 +7,20 @@ from apriltags2_ros.msg import AprilTagDetectionArray, AprilTagDetection
 import socket
 import re
 
+import logging
+from io import FileIO, BufferedWriter
+
 TCP_IP = '192.168.1.17'
 TCP_PORT = 9999
 BUFFER_SIZE = 1024
+
+logger = logging.getLogger('Client_')
+fileHandler_message = logging.StreamHandler(BufferedWriter(FileIO("Client_" + time.strftime("%Y%m%d-%H%M%S") + ".log", "w")))
+logger.addHandler(fileHandler_message)
+formatter_message = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+fileHandler_message.setFormatter(formatter_message)
+logger.setLevel(logging.DEBUG)
+
 
 
 # Setup ROS
@@ -28,7 +39,7 @@ print("Connected to server! Start receiving data.")
 
 
 # Start processing data and publish msg
-while 1:
+def TimerCallback(event):  
 
     data = s.recv(BUFFER_SIZE)
 
@@ -49,7 +60,7 @@ while 1:
     firstMsg = data[indicesMsgHead[0]+3 : indicesMsgEnd[0]]
     indicesComma = [m.start() for m in re.finditer(",", firstMsg)]
 
-    if len(indicesComma) != 6: 	continue
+    if len(indicesComma) != 6:  continue
 
     TagDetection.pose.pose.pose.position.x    = float(firstMsg[0 : indicesComma[0]])
     TagDetection.pose.pose.pose.position.y    = float(firstMsg[indicesComma[0]+1 : indicesComma[1]])
@@ -64,7 +75,11 @@ while 1:
 
 
 
+dTimeStep = 0.033
+rospy.Timer(rospy.Duration(dTimeStep), TimerCallback)
+
 rospy.spin()
 conn.close()
+logging.shutdown()
 
 
