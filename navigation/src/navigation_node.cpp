@@ -992,14 +992,14 @@ void RunTargetSearch()
         //~ _SearchCenter_x = 0;
         //~ _SearchCenter_y = 0;
         
-        _nNavigationTask = 98;
+        //~ _nNavigationTask = 98;
 
         return;
     }
 
     // Search parameters
     float initialRadius = 0;
-    float limitRadius = 8;
+    float limitRadius = 6;
     // float circleRadiusIncrements = 1;
 
     // Initialize the search center
