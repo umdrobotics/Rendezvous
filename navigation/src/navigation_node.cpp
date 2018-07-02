@@ -64,7 +64,7 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = true;
 bool _bIsMPCEnable = true;
-bool _bIsSimulation = true;
+bool _bIsSimulation = false;
 bool _bIsYawControlEnableSearch = false;
 
 // Target tracking boolean flags
@@ -375,8 +375,25 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     VectorXd stateError = Xp - desiredState.colwise().replicate(P); 
     Vector2d uk = _mpc.ComputeOptimalInput(stateError);
 
-    float _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);
-    float _sumPosErrY = abs(stateError(1)) < 0.2 ? 0 : (_sumPosErrY + stateError(1)*DT);
+    //~ _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);
+    //~ _sumPosErrY = abs(stateError(1)) < 0.2 ? 0 : (_sumPosErrY + stateError(1)*DT);
+    
+    if((stateError(0) >= 0 && _last_error_x >= 0) || (stateError(0) < 0 && _last_error_x < 0)){
+		_sumPosErrX += stateError(0)*DT;
+    }
+    else{
+		_sumPosErrX = 0;
+	}
+	
+	if((stateError(1) >= 0 && _last_error_y >= 0) || (stateError(1) < 0 && _last_error_y < 0)){
+		_sumPosErrY += stateError(1)*DT;
+    }
+    else{
+		_sumPosErrY = 0;
+	}
+    
+    _last_error_x = stateError(0);
+    _last_error_y = stateError(1);
 
     std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_ki << endl;
 
