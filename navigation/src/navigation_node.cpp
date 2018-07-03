@@ -103,6 +103,8 @@ float _lqrGain[8] = {-3,0,-3,0,-3,0,-3,0};
 MPCController _mpc;
 float _sumPosErrX = 0;
 float _sumPosErrY = 0;
+float _lastPosErrX = 0;
+float _lastPosErrY = 0;
 
 // PD controller
 float _error = 0;
@@ -111,12 +113,11 @@ float _error_last = 0;
 // LQR integrator
 float _integral_x = 0;
 float _integral_y = 0;
-float _last_error_x = 0;
-float _last_error_y = 0;
+
 
 
 // Data Record
-std::ofstream _ofsTragetTrackingLog;
+// std::ofstream _ofsTragetTrackingLog;
 std::ofstream _ofsGoToTruckLog;
 std::ofstream _ofsAutonomousLandingLog;
 std::ofstream _ofsSearchingRangeLog;
@@ -157,7 +158,7 @@ void ShutDown(void)
     ROS_INFO("It is requested to terminate navigation ...");
 
     delete(_ptrDrone);
-    _ofsTragetTrackingLog.close();
+    // _ofsTragetTrackingLog.close();
     _ofsGoToTruckLog.close();
     _ofsAutonomousLandingLog.close();
     _ofsSearchingRangeLog.close();
@@ -247,7 +248,7 @@ float LocalPositionControlAltitudeHelper(float desired, float current_position)
 		if ((_msgUltraSonic.ranges[0] > 0) && (int)_msgUltraSonic.intensities[0])
 		{
 			if ( desired > (_msgUltraSonic.ranges[0] - HEIGHT_ERROR) && desired < (_msgUltraSonic.ranges[0] + HEIGHT_ERROR) ){
-			return current_position;
+			    return current_position;
 			}
 
 			else{
@@ -267,8 +268,8 @@ float LocalPositionControlAltitudeHelper(float desired, float current_position)
 			else{
 				float setpoint_z = PDController(desired, current_position) + current_position;
 				return setpoint_z;
-				}
 			}
+		}
 	}
 }
 
@@ -308,7 +309,7 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
     float error_position_y = drone.local_position.y - desired_position.y;
     float error_velocity_y = drone.velocity.vy - _msgTruckVelocity.point.y;
 
-    if((error_position_x >= 0 && _last_error_x >= 0) || (error_position_x < 0 && _last_error_x < 0))
+    if((error_position_x >= 0 && _lastPosErrX >= 0) || (error_position_x < 0 && _lastPosErrX < 0))
     {
 		_integral_x += (_lqrGain[0]*error_position_x * DT + _lqrGain[2]*error_velocity_x * DT);
 		
@@ -318,7 +319,7 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
 		_integral_x = 0;
 	}
 	
-	if((error_position_y >= 0 && _last_error_y >= 0) || (error_position_y < 0 && _last_error_y < 0))
+	if((error_position_y >= 0 && _lastPosErrY >= 0) || (error_position_y < 0 && _lastPosErrY < 0))
     {
 		_integral_y += (_lqrGain[5]*error_position_y * DT + _lqrGain[7]*error_velocity_y * DT);
 		
@@ -334,8 +335,8 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
     dpitch = _lqrGain[0] * error_position_x + _lqrGain[2] * error_velocity_x + Iout_pitch;
     droll = _lqrGain[5] * error_position_y + _lqrGain[7] * error_velocity_y + Iout_roll;
 
-    _last_error_x = error_position_x;
-    _last_error_y = error_position_y;
+    _lastPosErrX = error_position_x;
+    _lastPosErrY = error_position_y;
 
 
     //~ dpitch = _lqrGain[0] * error_position_x + _lqrGain[2] * error_velocity_x;
@@ -378,22 +379,22 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);
     //~ _sumPosErrY = abs(stateError(1)) < 0.2 ? 0 : (_sumPosErrY + stateError(1)*DT);
     
-    if((stateError(0) >= 0 && _last_error_x >= 0) || (stateError(0) < 0 && _last_error_x < 0)){
+    if((stateError(0) >= 0 && _lastPosErrX >= 0) || (stateError(0) < 0 && _lastPosErrX < 0)){
 		_sumPosErrX += stateError(0)*DT;
     }
     else{
 		_sumPosErrX = 0;
 	}
 	
-	if((stateError(1) >= 0 && _last_error_y >= 0) || (stateError(1) < 0 && _last_error_y < 0)){
+	if((stateError(1) >= 0 && _lastPosErrY >= 0) || (stateError(1) < 0 && _lastPosErrY < 0)){
 		_sumPosErrY += stateError(1)*DT;
     }
     else{
 		_sumPosErrY = 0;
 	}
     
-    _last_error_x = stateError(0);
-    _last_error_y = stateError(1);
+    _lastPosErrX = stateError(0);
+    _lastPosErrY = stateError(1);
 
     std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_ki << endl;
 
@@ -785,15 +786,15 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     // Logging
     _bIsTargetBeingTracked = true;
 
-    _ofsTragetTrackingLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                        << ros::Time::now().toSec() << ","
-                        << x << "," << y << "," << z << ","  // tag distance
-                        << _msgTargetDistance.point.x << ","
-                        << _msgTargetDistance.point.y << ","
-                        << _msgTargetDistance.point.z << "," // target distance
-                        << _msgTargetLocalPosition.point.x << ","
-                        << _msgTargetLocalPosition.point.y << ","
-                        << _msgTargetLocalPosition.point.z << std::endl; // target local position
+    // _ofsTragetTrackingLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+    //                     << ros::Time::now().toSec() << ","
+    //                     << x << "," << y << "," << z << ","  // tag distance
+    //                     << _msgTargetDistance.point.x << ","
+    //                     << _msgTargetDistance.point.y << ","
+    //                     << _msgTargetDistance.point.z << "," // target distance
+    //                     << _msgTargetLocalPosition.point.x << ","
+    //                     << _msgTargetLocalPosition.point.y << ","
+    //                     << _msgTargetLocalPosition.point.z << std::endl; // target local position
 
 }
 
@@ -831,7 +832,7 @@ void RunSensorFusing(){
     // Fuse data
     // Idea is if no GPS and tag detections, then fused position is 0
     // if only GPS or tag detections available, then his factor is 1;
-    // if both are available, then ratio 3:1
+    // if both are available, then fuse w/ ratio 3:1
     float truckFuseFactor = IsGPSLocationEmpty  ? 0
                                                 : IsTagDetectionEmpty   ? 1
                                                                         : 0.25;
@@ -847,11 +848,7 @@ void RunSensorFusing(){
     //~ ROS_INFO("Target AVG = %f, %f , %d ", targetAvgX , targetAvgY, _queMsgTargetLocalPosition.size());
     //~ ROS_INFO("Fused = %f, %f " , _msgFusedTargetLocalPosition.point.x , _msgFusedTargetLocalPosition.point.y);
 
-
-
 }
-
-
 
 
 
@@ -1094,7 +1091,7 @@ void RunTargetSearch()
             msgDesiredAngleDeg.point.x = 0;
             msgDesiredAngleDeg.point.y = pitch_angle;
             msgDesiredAngleDeg.point.z = _bIsMovingYaw ? yaw_angle : 0;
-            ROS_INFO("Ptich = %f , Yaw: %f.", pitch_angle, yaw_angle);
+            ROS_INFO("Pitch = %f , Yaw: %f.", pitch_angle, yaw_angle);
             _GimbalAnglePub.publish(msgDesiredAngleDeg);
             _SearchGimbalPhi = _SearchGimbalPhi + 1;
             if (_SearchGimbalPhi > RATIO_GIMBAL*40){
@@ -1376,7 +1373,7 @@ void GoToTruckGPSLocation()
     geometry_msgs::Point desired_position;
     desired_position.x = bIsClose ? _msgTruckLocalPosition.point.x : target_x;
     desired_position.y = bIsClose ? _msgTruckLocalPosition.point.y : target_y;
-    desired_position.z = drone_z;
+    desired_position.z = 3.0;
 
     float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckDistance.point.y, _msgTruckDistance.point.x));
     //~ RunLocalPositionControl(desired_position, desired_yaw);
@@ -1467,7 +1464,6 @@ void RunAutonomousLanding3(){
         RunTargetSearch();
         return;
     }
-
 
 }
 
@@ -1689,33 +1685,28 @@ int main(int argc, char **argv)
 
 
     // Log files
-
-    std::stringstream ss;
-    ss << DEFAULT_TARGET_TRACKING_LOG_FILE_NAME << ros::WallTime::now() << ".log";
-    _ofsTragetTrackingLog.open(ss.str());
-    ROS_ASSERT_MSG(_ofsTragetTrackingLog, "Failed to open file %s", ss.str().c_str());
-
-    _ofsTragetTrackingLog << "#Time,TagDistance(x,y,z),TargetDistance(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
+    // std::stringstream ss;
+    // ss << DEFAULT_TARGET_TRACKING_LOG_FILE_NAME << ros::WallTime::now() << ".log";
+    // _ofsTragetTrackingLog.open(ss.str());
+    // ROS_ASSERT_MSG(_ofsTragetTrackingLog, "Failed to open file %s", ss.str().c_str());
+    // _ofsTragetTrackingLog << "#Time,TagDistance(x,y,z),TargetDistance(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
 
     ss.str("");
     ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME << ros::WallTime::now() << ".log";
     _ofsGoToTruckLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsGoToTruckLog, "Failed to open file %s", ss.str().c_str());
-
     _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TargetLocalPosition(x,y,z),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneAttitude" << std::endl;
 
     ss.str("");
     ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME  << ros::WallTime::now() << ".log";
     _ofsAutonomousLandingLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
-
     _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TargetLocalPosition(x,y,z),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneAttitude" << std::endl;
 
     ss.str("");
     ss << DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME << ros::WallTime::now() << ".log";
     _ofsSearchingRangeLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsSearchingRangeLog, "Failed to open file %s", ss.str().c_str());
-
     _ofsSearchingRangeLog << "#Time,DroneLocation(x,y,z,yaw), GimbalAngle(yaw, pitch), DroneVelocity(vx, vy, vz)" << std::endl;
 
     // Log about MPC controller
