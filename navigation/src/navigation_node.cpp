@@ -773,28 +773,16 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
 
     _TargetLocalPositionPub.publish(_msgTargetLocalPosition);
 
+
+    // Sensor fusion.
     // Pushed into queue back
     if (_queMsgTargetLocalPosition.size() > 29){
         _queMsgTargetLocalPosition.pop_front();
     }
     _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
+ 
 
-    //~ // Calculate tag orientation
-    //~ dji_sdk::AttitudeQuaternion q;
-    //~ q.q0 = tag.pose.pose.orientation.w;
-    //~ q.q1 = tag.pose.pose.orientation.x;
-    //~ q.q2 = tag.pose.pose.orientation.y;
-    //~ q.q3 = tag.pose.pose.orientation.z;
-    //~ float tagHeadingRelativeToDrone 
-    //~ float yaw_cam   = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
-    //~ float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
-    //~ float roll  = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
-    //~ dji_sdk::Gimbal& gimbal; 
-    //~ float yaw_gimbal = drone.gimbal.yaw;
-    //~ float yaw_correct = yaw_cam - yaw_gimbal;
-    //~ std::cout << "yaw of cam, yaw of gimbal, corrected yaw: " << yaw_cam << ", " << yaw_gimbal << ", " << yaw_correct << std::endl; //" pitch: " << pitch << " roll: " << roll << 
-
-
+    // Logging
     _bIsTargetBeingTracked = true;
 
     _ofsTragetTrackingLog << std::setprecision(std::numeric_limits<double>::max_digits10)
@@ -886,7 +874,6 @@ void tagDetectionCallback(const apriltags2_ros::AprilTagDetectionArray vecTagDet
     // If found nothing, do noting.
     if (vecTagDetections2.detections.empty())
     {
-        // ROS_INFO("Not find tag!!");
         // There is nothing we can do
         return;
     }
@@ -895,11 +882,10 @@ void tagDetectionCallback(const apriltags2_ros::AprilTagDetectionArray vecTagDet
     // It's just a quick fix. Later need to discard apriltag and use apriltag2
     apriltags_ros::AprilTagDetection TagDetection;
     apriltags_ros::AprilTagDetectionArray vecTagDetections;
-    TagDetection.id            = vecTagDetections2.detections.at(0).id[0];
-    TagDetection.size          = vecTagDetections2.detections.at(0).size[0];
-    TagDetection.pose.header   = vecTagDetections2.detections.at(0).pose.header;
+    // TagDetection.id            = vecTagDetections2.detections.at(0).id[0];
+    // TagDetection.size          = vecTagDetections2.detections.at(0).size[0];
+    // TagDetection.pose.header   = vecTagDetections2.detections.at(0).pose.header;
     TagDetection.pose.pose     = vecTagDetections2.detections.at(0).pose.pose.pose;
-
     vecTagDetections.detections.push_back(TagDetection);
 
     FindDesiredGimbalAngle(vecTagDetections);
@@ -944,15 +930,25 @@ void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
     _msgTruckDistance.point.y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
     _msgTruckDistance.point.z = 0;
 
+    // If the Truck is extremely far away from drone, then there must be something wrong
+    if( abs(_msgTruckDistance.point.x) > 100 && abs(_msgTruckDistance.point.y) > 100 ) {
+        ROS_INFO_STREAM("DANGER: There is something wrong with the Truck GPS. Plz check NOW!!!!!");
+        _bIsTargetTrackingRunning = false;  // mission cancel
+        return;
+    }
+
     // Calculate the truck local location
     // drone.local_position.x means northing
     // drone.local_position.y means easting
     _msgTruckLocalPosition.header.stamp = ros::Time::now();
-    _msgTruckLocalPosition.point.x = drone.local_position.x +_msgTruckDistance.point.x;
-    _msgTruckLocalPosition.point.y = drone.local_position.y +_msgTruckDistance.point.y;
+    _msgTruckLocalPosition.point.x = drone.local_position.x + _msgTruckDistance.point.x;
+    _msgTruckLocalPosition.point.y = drone.local_position.y + _msgTruckDistance.point.y;
     _msgTruckLocalPosition.point.z = 0;
     _TruckLocalPositionPub.publish(_msgTruckLocalPosition);
 
+    
+
+    // Sensor fusion.
     // Pushed into queue back
     if (_queMsgTruckLocalPosition.size() > 9){
         _queMsgTruckLocalPosition.pop_front();
@@ -1709,7 +1705,7 @@ int main(int argc, char **argv)
     _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TargetLocalPosition(x,y,z),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneAttitude" << std::endl;
 
     ss.str("");
-    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME << "q" << mpc_q << "_" << "ki" << mpc_ki << "_" << ros::WallTime::now() << ".log";
+    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME  << ros::WallTime::now() << ".log";
     _ofsAutonomousLandingLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
 
@@ -1724,7 +1720,7 @@ int main(int argc, char **argv)
 
     // Log about MPC controller
     ss.str("");
-    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << ros::WallTime::now() << ".log";
+    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << "q" << mpc_q << "_" << "ki" << mpc_ki << "_" << ros::WallTime::now() << ".log";
     _ofsMPCControllerLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
 
