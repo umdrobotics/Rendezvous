@@ -17,13 +17,17 @@
 #include <iostream>
 #include <queue>
 
+#include <string>
+#include <stdio.h>
+#include <time.h>
+
 #include <Eigen/Dense>
 #include "navigation/MPCController.h"
 
 using namespace std;
 using namespace Eigen;
 
-#define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
+//~ #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
 #define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/GoToTruck_"
 #define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/AutonomousLanding_"
 #define DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME "/home/ubuntu/SearchRange_"
@@ -62,7 +66,7 @@ int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
 
 bool _bIsIntegralEnable = true;
-bool _bIsYawControlEnable = true;
+bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true;
 bool _bIsSimulation = false;
 bool _bIsYawControlEnableSearch = false;
@@ -609,6 +613,7 @@ void TemporaryTest(void)
 }
 
 
+
 geometry_msgs::PointStamped GetTargetOffsetFromUAV( geometry_msgs::Point& tagPosition_M,
                                                     dji_sdk::Gimbal& gimbal)
 {
@@ -756,7 +761,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     msgDesiredAngleDeg.point.z = drone.gimbal.yaw + yawDeg;
 
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
-
+	ROS_INFO("Publish desired gimbal angle!! ");
     tag.pose.pose.position.y *= -1;
 
 
@@ -959,27 +964,27 @@ void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
 
 }
 
-void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
-{
-
-    DJIDrone& drone = *_ptrDrone;
-    // Record GPS position
-
-    // Calculate the distance from truck to drone
-    float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
-    float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
-
-
-    // Calculate the truck local location
-    // drone.local_position.x means northing
-    // drone.local_position.y means easting
-    _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
-    _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
-    _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
-    _msgRealTruckLocalPosition.point.z = 0;
-
-
-}
+//~ void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
+//~ {
+//~ 
+    //~ DJIDrone& drone = *_ptrDrone;
+    //~ // Record GPS position
+//~ 
+    //~ // Calculate the distance from truck to drone
+    //~ float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
+    //~ float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
+//~ 
+//~ 
+    //~ // Calculate the truck local location
+    //~ // drone.local_position.x means northing
+    //~ // drone.local_position.y means easting
+    //~ _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
+    //~ _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
+    //~ _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
+    //~ _msgRealTruckLocalPosition.point.z = 0;
+//~ 
+//~ 
+//~ }
 
 
 
@@ -1019,8 +1024,8 @@ void RunTargetSearch()
         //~ _SearchCenter_x = _msgFusedTargetLocalPosition.point.x;
         //~ _SearchCenter_y = _msgFusedTargetLocalPosition.point.y;
         
-        _StartX = _msgTruckLocalPosition.point.x - 5;
-        _StartY = _msgTruckLocalPosition.point.y;
+        _StartX = _msgFusedTargetLocalPosition.point.x - 5;
+        _StartY = _msgFusedTargetLocalPosition.point.y;
 
         _FlyingRadius = initialRadius;
         _Phi = 2;
@@ -1313,31 +1318,30 @@ void RunAutonomousLanding2()
     float distance_square = 0;
 
     _ofsAutonomousLandingLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            << ros::Time::now().toSec() << ","
-                            <<  _msgUltraSonic.ranges[0] << ","
-                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
-                            << distance_square << ","
-                            << _msgTruckLocalPosition.point.x << ","
-                            << _msgTruckLocalPosition.point.y << ","
-                            << _msgTruckLocalPosition.point.z << ","                  // distance squared
-                            << _msgTargetLocalPosition.point.x << ","
-                            << _msgTargetLocalPosition.point.y << ","
-                            << _msgTargetLocalPosition.point.z << ","   // target local position
-                            << drone.local_position.x << ","
-                            << drone.local_position.y << ","
-                            << drone.local_position.z << ","
-                            << drone.velocity.vx << ","
-                            << drone.velocity.vy << ","
-                            << drone.velocity.vz << ","
-                            << _msgDesiredAttitudeDeg.point.x << ","
-                            << _msgDesiredAttitudeDeg.point.y << ","
-                            << _msgDesiredAttitudeDeg.point.z << ","
-                            << roll << ","
-                            << pitch << ","
-                            << yaw << ","
-                            << _msgRealTruckLocalPosition.point.x << ","
-                            << _msgRealTruckLocalPosition.point.y << ","
-                            << _msgRealTruckLocalPosition.point.z << std::endl;                                // drone local position
+                     << ros::Time::now().toSec() << ","
+                     <<  _msgUltraSonic.ranges[0] << ","
+                     << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                     << distance_square << ","
+                     << _msgTruckLocalPosition.point.x << ","
+                     << _msgTruckLocalPosition.point.y << ","
+                     << _msgTruckLocalPosition.point.z << ","
+                     << _msgTargetLocalPosition.point.x << ","
+                     << _msgTargetLocalPosition.point.y << ","
+                     << _msgTargetLocalPosition.point.z << ","   // target local position
+                     << drone.global_position.latitude << ","
+                     << drone.global_position.longitude << ","
+                     << drone.local_position.x << ","
+                     << drone.local_position.y << ","
+                     << drone.local_position.z << ","
+                     << drone.velocity.vx << ","
+                     << drone.velocity.vy << ","
+                     << drone.velocity.vz << ","
+                     << _msgDesiredAttitudeDeg.point.x << ","
+                     << _msgDesiredAttitudeDeg.point.y << ","
+                     << _msgDesiredAttitudeDeg.point.z << ","
+                     << roll << ","
+                     << pitch << ","
+                     << yaw << std::endl;                                // drone local position
 
 }
 
@@ -1373,7 +1377,7 @@ void GoToTruckGPSLocation()
     geometry_msgs::Point desired_position;
     desired_position.x = bIsClose ? _msgTruckLocalPosition.point.x : target_x;
     desired_position.y = bIsClose ? _msgTruckLocalPosition.point.y : target_y;
-    desired_position.z = 3.0;
+    desired_position.z = SEARCH_ALTITUDE;
 
     float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckDistance.point.y, _msgTruckDistance.point.x));
     //~ RunLocalPositionControl(desired_position, desired_yaw);
@@ -1415,34 +1419,30 @@ void GoToTruckGPSLocation()
 
     // Record data in file
     _ofsGoToTruckLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                      << ros::Time::now().toSec() << ","
-                      <<  _msgUltraSonic.ranges[0] << ","
-                      << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
-                      << distance_square << "," // distance squared
-                      //~ << _msgTruckGPSPosition.point.x << ","
-                      //~ << _msgTruckGPSPosition.point.y << ","
-                      //~ << _msgTruckGPSPosition.point.z << ","   // target GPS position
-                      << _msgTruckLocalPosition.point.x << ","
-                      << _msgTruckLocalPosition.point.y << ","
-                      << _msgTruckLocalPosition.point.z << ","   // target local position
-                      //~ << _msgTargetLocalPosition.point.x << ","
-                      //~ << _msgTargetLocalPosition.point.y << ","
-                      //~ << _msgTargetLocalPosition.point.z << ","   // target local position
-                      << drone.local_position.x << ","
-                      << drone.local_position.y << ","
-                      << drone.local_position.z << ","
-                      << drone.velocity.vx << ","
-                      << drone.velocity.vy << ","
-                      << drone.velocity.vz << ","
-                      << _msgDesiredAttitudeDeg.point.x << ","
-                      << _msgDesiredAttitudeDeg.point.y << ","
-                      << _msgDesiredAttitudeDeg.point.z << ","
-                      << roll << ","
-                      << pitch << ","
-                      << yaw << ","
-                      << _msgRealTruckLocalPosition.point.x << ","
-                      << _msgRealTruckLocalPosition.point.y << ","
-                      << _msgRealTruckLocalPosition.point.z << std::endl;                                 // drone local position
+                     << ros::Time::now().toSec() << ","
+                     <<  _msgUltraSonic.ranges[0] << ","
+                     << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                     << distance_square << ","
+                     << _msgTruckLocalPosition.point.x << ","
+                     << _msgTruckLocalPosition.point.y << ","
+                     << _msgTruckLocalPosition.point.z << ","
+                     << _msgTargetLocalPosition.point.x << ","
+                     << _msgTargetLocalPosition.point.y << ","
+                     << _msgTargetLocalPosition.point.z << ","   // target local position
+                     << drone.global_position.latitude << ","
+                     << drone.global_position.longitude << ","
+                     << drone.local_position.x << ","
+                     << drone.local_position.y << ","
+                     << drone.local_position.z << ","
+                     << drone.velocity.vx << ","
+                     << drone.velocity.vy << ","
+                     << drone.velocity.vz << ","
+                     << _msgDesiredAttitudeDeg.point.x << ","
+                     << _msgDesiredAttitudeDeg.point.y << ","
+                     << _msgDesiredAttitudeDeg.point.z << ","
+                     << roll << ","
+                     << pitch << ","
+                     << yaw << std::endl;                                // drone local position                           // drone local position
 }
 
 
@@ -1665,7 +1665,17 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
 
 }
 
+const std::string currentDateTime() {
+    time_t     now = time(0);
+    struct tm  tstruct;
+    char       buf[80];
+    tstruct = *localtime(&now);
+    // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
+    // for more information about date/time format
+    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
 
+    return buf;
+}
 
 int main(int argc, char **argv)
 {
@@ -1691,27 +1701,28 @@ int main(int argc, char **argv)
     // ROS_ASSERT_MSG(_ofsTragetTrackingLog, "Failed to open file %s", ss.str().c_str());
     // _ofsTragetTrackingLog << "#Time,TagDistance(x,y,z),TargetDistance(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
 
-    ss.str("");
-    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME << ros::WallTime::now() << ".log";
+    //~ ss.str("");
+    std::stringstream ss;
+    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME<< "q" << mpc_q << "_" << "ki" << mpc_ki << "_" << currentDateTime() << ".log";
     _ofsGoToTruckLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsGoToTruckLog, "Failed to open file %s", ss.str().c_str());
-    _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TargetLocalPosition(x,y,z),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneAttitude" << std::endl;
+    _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
 
     ss.str("");
-    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME  << ros::WallTime::now() << ".log";
+    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME << "q" << mpc_q << "_" << "ki" << mpc_ki << "_"  << currentDateTime() << ".log";
     _ofsAutonomousLandingLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
-    _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TargetLocalPosition(x,y,z),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneAttitude" << std::endl;
+    _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
 
     ss.str("");
-    ss << DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME << ros::WallTime::now() << ".log";
+    ss << DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME << currentDateTime() << ".log";
     _ofsSearchingRangeLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsSearchingRangeLog, "Failed to open file %s", ss.str().c_str());
     _ofsSearchingRangeLog << "#Time,DroneLocation(x,y,z,yaw), GimbalAngle(yaw, pitch), DroneVelocity(vx, vy, vz)" << std::endl;
 
     // Log about MPC controller
     ss.str("");
-    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << "q" << mpc_q << "_" << "ki" << mpc_ki << "_" << ros::WallTime::now() << ".log";
+    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << "q" << mpc_q << "_" << "ki" << mpc_ki << "_" << currentDateTime() << ".log";
     _ofsMPCControllerLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
 
@@ -1727,7 +1738,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     // ros::Subscriber sub4 = nh.subscribe("/LQR_K", numMessagesToBuffer, lqrGainCallback);
     ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
-    ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
+    //~ ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
     ros::Subscriber sub7 = nh.subscribe("/truck/velocity", numMessagesToBuffer, truckVelocityCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
 
