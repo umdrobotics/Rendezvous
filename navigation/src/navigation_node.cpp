@@ -109,7 +109,8 @@ float _sumPosErrX = 0;
 float _sumPosErrY = 0;
 float _lastPosErrX = 0;
 float _lastPosErrY = 0;
-
+bool _bIsFirstTimeReachPitch = true;
+bool _bIsFirstTimeReachRoll = true;
 // PD controller
 float _error = 0;
 float _error_last = 0;
@@ -383,18 +384,47 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);
     //~ _sumPosErrY = abs(stateError(1)) < 0.2 ? 0 : (_sumPosErrY + stateError(1)*DT);
     
-    if((stateError(0) >= 0 && _lastPosErrX >= 0) || (stateError(0) < 0 && _lastPosErrX < 0)){
-		_sumPosErrX += stateError(0)*DT;
+    if((stateError(0) >= 0 && _lastPosErrX >= 0) || (stateError(0) <= 0 && _lastPosErrX <= 0)){
+		
+		if ((_sumPosErrX < 60) && (_sumPosErrX > -60)){
+			_sumPosErrX += stateError(0)*DT;}
+		else{
+				if (_sumPosErrX < 0){
+					_sumPosErrX = -60;}
+				else{
+					_sumPosErrX = 60;}
+			}			
     }
     else{
-		_sumPosErrX = 0;
+		//~ ROS_INFO("****************************************************************************************,%d",_bIsFirstTimeReachPitch);
+		if (_bIsFirstTimeReachPitch){
+			_sumPosErrX = 0;
+			_bIsFirstTimeReachPitch = false;
+			//~ ROS_INFO("Reset _sumPosErrX*******************************************************************,%d",_bIsFirstTimeReachPitch);
+			}
+		else{
+			_sumPosErrX += stateError(0)*DT;}
 	}
 	
 	if((stateError(1) >= 0 && _lastPosErrY >= 0) || (stateError(1) < 0 && _lastPosErrY < 0)){
-		_sumPosErrY += stateError(1)*DT;
+		if ((_sumPosErrY < 60) && (_sumPosErrY > -60)){
+			_sumPosErrY += stateError(1)*DT;}	
+		else{
+				if (_sumPosErrY < 0){
+					_sumPosErrY = -60;}
+				else{
+					_sumPosErrY = 60;}
+			}	
     }
     else{
-		_sumPosErrY = 0;
+		//~ ROS_INFO("****************************************************************************************");
+		if (_bIsFirstTimeReachRoll){
+			_sumPosErrY = 0;
+			_bIsFirstTimeReachRoll = false;
+			//~ ROS_INFO("Reset _sumPosErrY*********************************************************************");
+			}
+		else{
+			_sumPosErrY += stateError(1)*DT;}
 	}
     
     _lastPosErrX = stateError(0);
@@ -418,8 +448,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                                                  : droll;
 
     ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f ", stateError(0), stateError(1), dpitch, droll);
-    // dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
-    //    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
     _ofsMPCControllerLog << std::setprecision(std::numeric_limits<float>::digits)
                             << ros::Time::now().toSec() << ","
@@ -439,8 +469,9 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << drone.velocity.vz << ","
                             << dpitch << ","
                             << droll << ","
-                            // << yaw 
-                            << std::endl;                             // drone local position
+                            << _sumPosErrX << ","
+                            << _sumPosErrY << ","
+                            << yaw << std::endl;                             // drone local position
 
 }
 
