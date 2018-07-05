@@ -68,7 +68,7 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true;
-bool _bIsSimulation = false;
+bool _bIsSimulation = true;
 bool _bIsYawControlEnableSearch = false;
 
 // Target tracking boolean flags
@@ -402,8 +402,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 
     std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_ki << endl;
 
-    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_ki*_sumPosErrX) : -uk(0);
-    droll = _bIsIntegralEnable? (-uk(1) - mpc_ki*_sumPosErrY) : -uk(1);
+    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_ki*_sumPosErrX): -uk(0);
+    droll = _bIsIntegralEnable? (-uk(1) - mpc_ki*_sumPosErrY): -uk(1);
     //~ dpitch = -uk(0);
     //~ droll = -uk(1);
 
@@ -1134,18 +1134,20 @@ void RunTargetSearch()
     // Record searching data
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    
     _ofsSearchingRangeLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                   << ros::Time::now().toSec() << ","
+                  <<  _msgUltraSonic.ranges[0] << ","
+                  << _msgUltraSonic.ranges[0] << ","
                   << drone.local_position.x << ","
                   << drone.local_position.y << ","
                   << drone.local_position.z << ","
-                  << yaw << ","
                   << drone.velocity.vx << ","
                   << drone.velocity.vy << ","
                   << drone.velocity.vz << ","
                   << drone.gimbal.yaw << ","
                   << drone.gimbal.pitch << ","
-                  << _msgUltraSonic.ranges[0] << std::endl;
+                  << yaw << std::endl;
 
 }
 
@@ -1290,6 +1292,7 @@ void RunAutonomousLanding2()
         desired_position.z = bIsClose ? -0.1 : drone_z;
 	    float desired_yaw = 0;
         RunAttitudeControl(desired_position, desired_yaw);
+        //~ RunLocalPositionControl(desired_position, desired_yaw);
         //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckLocalPosition.point.y, _msgTruckLocalPosition.point.x));
     }
     else
@@ -1307,6 +1310,7 @@ void RunAutonomousLanding2()
         //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
         float desired_yaw = 0;
         RunAttitudeControl(desired_position, desired_yaw);
+        //~ RunLocalPositionControl(desired_position, desired_yaw);
 
     }
     
