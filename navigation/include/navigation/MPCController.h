@@ -46,6 +46,7 @@ class MPCController {
         VectorXd Um_;
         
         VectorXd Xp_;
+        VectorXd Hp_;
 
         
     private: // methods

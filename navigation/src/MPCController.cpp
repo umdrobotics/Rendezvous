@@ -60,6 +60,8 @@ MPCController::MPCController()
     nx_ = B_.rows();
     nu_ = B_.cols();
 
+    Hp_ = MatrixXd::Zero(nx_,1);
+
 
 }
 
@@ -144,6 +146,7 @@ VectorXd MPCController::Predict(Vector4d xk)
     //~ Xp_.block(nx_*(P_-1),0,nx_,1) = MatrixXd::Zero(nx_, 1);
     
     VectorXd Xpd = Ap_*xk + Bp_*Um_;
+    Xp_ = Xpd;
     //~ MatrixXd Xpd = Ap_*xk;
     //~ std::cout << xk.transpose() << ", "<< Xpd.block(76,0,4,1).transpose()  << std::endl;
 
@@ -170,9 +173,9 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 }
 
 
-MatrixXd MPCController::CorrectPrediction()
+MatrixXd MPCController::CorrectPrediction(VectorXd output)
 {
-
+    Hp_ = output - Xp_.head(nx_);
 }
 
 

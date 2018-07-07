@@ -378,7 +378,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 
     // Compute Optimal Input
     Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
-    VectorXd stateError = Xp - desiredState.colwise().replicate(P); 
+    VectorXd stateError = Xp + _mpc.Hp_.colwise().replicate(P) - desiredState.colwise().replicate(P); 
     Vector2d uk = _mpc.ComputeOptimalInput(stateError);
 
     //~ _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);
