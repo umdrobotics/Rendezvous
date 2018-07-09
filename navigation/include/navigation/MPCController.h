@@ -14,7 +14,9 @@ class MPCController {
         int P_, M_;
         int nx_, nu_;
         float q_, ki_;
-
+        
+		Vector4d Hp_;
+        
         // constructor
         MPCController();
         
@@ -27,7 +29,7 @@ class MPCController {
         void Initialize(float q, float ki);
         VectorXd Predict(Vector4d xk);
         Vector2d ComputeOptimalInput(VectorXd StateError);
-        MatrixXd CorrectPrediction();
+        Vector4d CorrectPrediction(Vector4d output);
 
 
 
@@ -46,7 +48,7 @@ class MPCController {
         VectorXd Um_;
         
         VectorXd Xp_;
-        VectorXd Hp_;
+        //~ VectorXd Hp_;
 
         
     private: // methods

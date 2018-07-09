@@ -30,12 +30,14 @@ def TimerCallback(event):
     # if i > length-1:
     #     print("GPS_data publish end!!!!")
     # else:
+    LAT_PER_NORTH = 0.0000089354
+    LON_PER_EAST = 0.0000121249
     msgTruckLocation.header.frame_id = str("fake gps data")
     msgTruckLocation.header.stamp = rospy.Time.now()
 #    msgTruckLocation.point.x = 42.3179651
 #    msgTruckLocation.point.y = -83.2327746
-    msgTruckLocation.point.x = 42.323396612189850
-    msgTruckLocation.point.y = -83.222952844799720
+    msgTruckLocation.point.x = 42.323396612189850 + 10*LAT_PER_NORTH
+    msgTruckLocation.point.y = -83.222952844799720 
     msgTruckLocation.point.z = 0
     truckGpsPub.publish(msgTruckLocation)
 

@@ -53,7 +53,7 @@ MPCController::MPCController()
 
 	P_ = 15;
 
-    M_ = 3;
+    M_ = 5;
 
     
     //~ 
@@ -173,9 +173,11 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 }
 
 
-MatrixXd MPCController::CorrectPrediction(VectorXd output)
+Vector4d MPCController::CorrectPrediction(Vector4d output)
 {
-    Hp_ = output - Xp_.head(nx_);
+    Hp_ = Hp_ + output.head(nx_) - Xp_.head(nx_);
+    Hp_.segment(2,2) = MatrixXd::Zero(2, 1);
+    return Hp_;
 }
 
 

@@ -43,7 +43,7 @@ using namespace Eigen;
 #define LINE_VELOCITY (0.3)
 #define ANGLE_VELOCITY (0.8)  //  rad/s
 // common parameters
-#define SEARCH_ALTITUDE (2.0)
+#define SEARCH_ALTITUDE (3.0)
 #define HEIGHT_ERROR (0.2)  // tolerable height error
 #define SEARCH_TIME (360.0)
 // Gimbal searching 
@@ -68,8 +68,9 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true;
-bool _bIsSimulation = true;
+bool _bIsSimulation = false;
 bool _bIsYawControlEnableSearch = false;
+bool _bIsLocalLocationControlEnable = true;
 
 // Target tracking boolean flags
 bool _bIsTargetTrackingRunning = false;
@@ -111,6 +112,9 @@ float _lastPosErrX = 0;
 float _lastPosErrY = 0;
 bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
+
+Vector4d _lastPrediction = MatrixXd::Zero(4,1);
+Vector4d _Hp = MatrixXd::Zero(4,1);
 // PD controller
 float _error = 0;
 float _error_last = 0;
@@ -299,6 +303,8 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
     // Decide whether use yaw control 
     setpoint_yaw = _bIsYawControlEnableSearch ? setpoint_yaw : 0;
     drone.local_position_control(setpoint_x, setpoint_y, setpoint_z, setpoint_yaw);
+    
+    ROS_INFO(" error_px, error_py: %f, %f ", desired_position.x-drone.local_position.x, desired_position.y-drone.local_position.y);
 
 }
 
@@ -369,16 +375,24 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     int P = _mpc.P_;
     int nx = _mpc.nx_;
     float mpc_ki = _mpc.ki_;
-
+	float limition = 70;
+	
     // predict
     Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
     VectorXd Xp = _mpc.Predict(xk);
+    
+    
+    //~ Vector4d Hp = MatrixXd::Zero(4,1); 
+    //~ Vector4d Hp = _mpc.CorrectPrediction(xk);
+    //~ _Hp.head(2) = _Hp.head(2) + xk.head(2) - _lastPrediction.head(2);
+    //~ _lastPrediction.head(2) = Xp.head(2);
+    //~ std::cout << "Hp: " << _Hp << endl;
 
     //~ std::cout << xk.transpose() << ", " << Xp.block(0,0,12,1).transpose() << endl;
 
     // Compute Optimal Input
     Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
-    VectorXd stateError = Xp + _mpc.Hp_.colwise().replicate(P) - desiredState.colwise().replicate(P); 
+    VectorXd stateError = Xp + _Hp.colwise().replicate(P) - desiredState.colwise().replicate(P); 
     Vector2d uk = _mpc.ComputeOptimalInput(stateError);
 
     //~ _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);
@@ -386,13 +400,13 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     if((stateError(0) >= 0 && _lastPosErrX >= 0) || (stateError(0) <= 0 && _lastPosErrX <= 0)){
 		
-		if ((_sumPosErrX < 60) && (_sumPosErrX > -60)){
+		if ((_sumPosErrX < limition) && (_sumPosErrX > -limition)){
 			_sumPosErrX += stateError(0)*DT;}
 		else{
 				if (_sumPosErrX < 0){
-					_sumPosErrX = -60;}
+					_sumPosErrX = -limition;}
 				else{
-					_sumPosErrX = 60;}
+					_sumPosErrX = limition;}
 			}			
     }
     else{
@@ -403,17 +417,17 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 			//~ ROS_INFO("Reset _sumPosErrX*******************************************************************,%d",_bIsFirstTimeReachPitch);
 			}
 		else{
-			_sumPosErrX += stateError(0)*DT;}
+		_sumPosErrX += stateError(0)*DT;}
 	}
 	
-	if((stateError(1) >= 0 && _lastPosErrY >= 0) || (stateError(1) < 0 && _lastPosErrY < 0)){
-		if ((_sumPosErrY < 60) && (_sumPosErrY > -60)){
+	if((stateError(1) >= 0 && _lastPosErrY >= 0) || (stateError(1) <= 0 && _lastPosErrY <= 0)){
+		if ((_sumPosErrY < limition) && (_sumPosErrY > -limition)){
 			_sumPosErrY += stateError(1)*DT;}	
 		else{
 				if (_sumPosErrY < 0){
-					_sumPosErrY = -60;}
+					_sumPosErrY = -limition;}
 				else{
-					_sumPosErrY = 60;}
+					_sumPosErrY = limition;}
 			}	
     }
     else{
@@ -421,7 +435,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 		if (_bIsFirstTimeReachRoll){
 			_sumPosErrY = 0;
 			_bIsFirstTimeReachRoll = false;
-			//~ ROS_INFO("Reset _sumPosErrY*********************************************************************");
+			ROS_INFO("Reset _sumPosErrY*********************************************************************");
 			}
 		else{
 			_sumPosErrY += stateError(1)*DT;}
@@ -451,7 +465,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
-    _ofsMPCControllerLog << std::setprecision(std::numeric_limits<float>::digits)
+    _ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             << ros::Time::now().toSec() << ","
                             <<  _msgUltraSonic.ranges[0] << ","
                             << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
@@ -613,34 +627,39 @@ void TemporaryTest(void)
 
     DJIDrone& drone = *_ptrDrone;
 
-    geometry_msgs::Point desired_position;
-
-    desired_position.x = 0;
-    desired_position.y = 0;
-    desired_position.z = 3;
-	float start = 0;
-	if (_counter < 300)
-	{
+    //~ geometry_msgs::Point desired_position;
+//~ 
+    //~ desired_position.x = 0;
+    //~ desired_position.y = 0;
+    //~ desired_position.z = 3;
+	//~ float start = 0;
+	//~ if (_counter < 300)
+	//~ {
 		//~ RunAttitudeControl(desired_position, 0);
-		drone.attitude_control(0x10, 0, 0, 3, 0);
-		ROS_INFO("turning to clockwise!!");
-		}
-	else
-	{
+		//~ drone.attitude_control(0x10, 0, 0, 3, 0);
+		//~ ROS_INFO("turning to clockwise!!");
+		//~ }
+	//~ else
+	//~ {
 		//~ RunAttitudeControl(desired_position, 179);
-		drone.attitude_control(0x10, 0, 0, 3, 179);
-		ROS_INFO("turning to counterclockwise!!");
-		start = 1;
-		}	
-		
-	_counter += 1; 
-	dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
-    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
-    ROS_INFO("Current yaw: %f", yaw);
-	    _ofsGoToTruckLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                      << ros::Time::now().toSec() << ","
-                      << start << ","
-                      << yaw  << std::endl;  
+		//~ drone.attitude_control(0x10, 0, 0, 3, 179);
+		//~ ROS_INFO("turning to counterclockwise!!");
+		//~ start = 1;
+		//~ }	
+		//~ 
+	//~ _counter += 1; 
+	//~ dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    //~ float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    //~ ROS_INFO("Current yaw: %f", yaw);
+	    //~ _ofsGoToTruckLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                      //~ << ros::Time::now().toSec() << ","
+                      //~ << start << ","
+                      //~ << yaw  << std::endl; 
+     
+     drone.velocity_control(0x00,0,0,0,0);
+     std::cout << "velocity: vx, vy: " << drone.velocity.vx << ", " << drone.velocity.vy << std::endl;
+                      
+                      
 }
 
 
@@ -1322,7 +1341,10 @@ void RunAutonomousLanding2()
         desired_position.y = _msgTruckLocalPosition.point.y;;
         desired_position.z = bIsClose ? -0.1 : drone_z;
 	    float desired_yaw = 0;
-        RunAttitudeControl(desired_position, desired_yaw);
+        if (_bIsLocalLocationControlEnable)
+        {	RunLocalPositionControl(desired_position, desired_yaw);}
+        else
+        {	RunAttitudeControl(desired_position, desired_yaw);}
         //~ RunLocalPositionControl(desired_position, desired_yaw);
         //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckLocalPosition.point.y, _msgTruckLocalPosition.point.x));
     }
@@ -1340,8 +1362,11 @@ void RunAutonomousLanding2()
         ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
         //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
         float desired_yaw = 0;
-        RunAttitudeControl(desired_position, desired_yaw);
-        //~ RunLocalPositionControl(desired_position, desired_yaw);
+        if (_bIsLocalLocationControlEnable)
+        {	RunLocalPositionControl(desired_position, desired_yaw);}
+        else
+        {	RunAttitudeControl(desired_position, desired_yaw);}
+        //~ 
 
     }
     
@@ -1405,7 +1430,8 @@ void GoToTruckGPSLocation()
     float distance_square = (   _msgTruckLocalPosition.point.x - drone_x)*(_msgTruckLocalPosition.point.x - drone_x) + (
                                 _msgTruckLocalPosition.point.y - drone_y)*(_msgTruckLocalPosition.point.y - drone_y   );
     // bool bIsClose = distance_square < limitRadius_square;
-    bool bIsClose = true;
+    //~ bool bIsClose = true;
+    bool bIsClose = distance_square < 9;
     _IsOnTruckTop = distance_square < 1; // Hard coded, define if < 0.7 m2, then means on the top
 
     // Calculate desired postion and yaw; then send commands
@@ -1416,7 +1442,14 @@ void GoToTruckGPSLocation()
 
     float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckDistance.point.y, _msgTruckDistance.point.x));
     //~ RunLocalPositionControl(desired_position, desired_yaw);
-    RunAttitudeControl(desired_position, desired_yaw);
+    //~ RunAttitudeControl(desired_position, desired_yaw);
+    
+    if (bIsClose){
+		RunLocalPositionControl(desired_position, desired_yaw);
+	}
+	else{
+		RunAttitudeControl(desired_position, desired_yaw);
+	}
 
     // Calculate yaw angle
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
@@ -1738,13 +1771,13 @@ int main(int argc, char **argv)
 
     //~ ss.str("");
     std::stringstream ss;
-    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME<< "q" << mpc_q << "_" << "ki" << mpc_ki << "_" << currentDateTime() << ".log";
+    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME  << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_ki  << ".log";
     _ofsGoToTruckLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsGoToTruckLog, "Failed to open file %s", ss.str().c_str());
     _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
 
     ss.str("");
-    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME << "q" << mpc_q << "_" << "ki" << mpc_ki << "_"  << currentDateTime() << ".log";
+    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME   << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_ki << ".log";
     _ofsAutonomousLandingLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
     _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
@@ -1757,7 +1790,7 @@ int main(int argc, char **argv)
 
     // Log about MPC controller
     ss.str("");
-    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << "q" << mpc_q << "_" << "ki" << mpc_ki << "_" << currentDateTime() << ".log";
+    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_ki << ".log";
     _ofsMPCControllerLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
 
