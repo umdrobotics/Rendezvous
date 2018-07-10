@@ -65,12 +65,13 @@ DJIDrone* _ptrDrone;
 int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
 
+// Switches
 bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true;
 bool _bIsSimulation = false;
 bool _bIsYawControlEnableSearch = false;
-bool _bIsLocalLocationControlEnable = true;
+bool _bIsLocalLocationControlEnable = false;
 
 // Target tracking boolean flags
 bool _bIsTargetTrackingRunning = false;
@@ -102,7 +103,7 @@ float _limitRadius = 1;
 bool _IsOnTruckTop = false;
 
 // LQR controller
-float _lqrGain[8] = {-3,0,-3,0,-3,0,-3,0};
+float _lqrGain[8] = {-2,0,-5.69,0,-2,0,-5.69,0};
 
 // MPC controller
 MPCController _mpc;
@@ -113,8 +114,7 @@ float _lastPosErrY = 0;
 bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
 
-Vector4d _lastPrediction = MatrixXd::Zero(4,1);
-Vector4d _Hp = MatrixXd::Zero(4,1);
+
 // PD controller
 float _error = 0;
 float _error_last = 0;
@@ -375,21 +375,20 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     int P = _mpc.P_;
     int nx = _mpc.nx_;
     float mpc_ki = _mpc.ki_;
-	float limition = 70;
+	float limition = 700;
 	
     // predict
     Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
     VectorXd Xp = _mpc.Predict(xk);
     Vector4d Hp = _mpc.CorrectPrediction(xk);
+    //~ Vector4d Hp = MatrixXd::Zero(4,1);
 
     // Compute Optimal Input
     Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
-    VectorXd stateError = desiredState.colwise().replicate(P) - ( Xp + _Hp.colwise().replicate(P) ) ; 
+    VectorXd stateError = desiredState.colwise().replicate(P) - ( Xp + Hp.colwise().replicate(P) ) ; 
     Vector2d uk = _mpc.ComputeOptimalInput(stateError);
 
-    //~ _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);
-    //~ _sumPosErrY = abs(stateError(1)) < 0.2 ? 0 : (_sumPosErrY + stateError(1)*DT);
-    
+    // Initialize integrator
     if((stateError(0) >= 0 && _lastPosErrX >= 0) || (stateError(0) <= 0 && _lastPosErrX <= 0)){
 		
 		if ((_sumPosErrX < limition) && (_sumPosErrX > -limition)){
@@ -408,8 +407,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 			_bIsFirstTimeReachPitch = false;
 			//~ ROS_INFO("Reset _sumPosErrX*******************************************************************,%d",_bIsFirstTimeReachPitch);
 			}
-		else{
-		_sumPosErrX += stateError(0)*DT;}
+		//~ else{
+		//~ _sumPosErrX += stateError(0)*DT;}
 	}
 	
 	if((stateError(1) >= 0 && _lastPosErrY >= 0) || (stateError(1) <= 0 && _lastPosErrY <= 0)){
@@ -429,8 +428,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 			_bIsFirstTimeReachRoll = false;
 			ROS_INFO("Reset _sumPosErrY*********************************************************************");
 			}
-		else{
-			_sumPosErrY += stateError(1)*DT;}
+		//~ else{
+			//~ _sumPosErrY += stateError(1)*DT;}
 	}
     
     _lastPosErrX = stateError(0);
@@ -1436,7 +1435,7 @@ void GoToTruckGPSLocation()
     //~ RunLocalPositionControl(desired_position, desired_yaw);
     //~ RunAttitudeControl(desired_position, desired_yaw);
     
-    if (bIsClose){
+    if (bIsClose && _bIsLocalLocationControlEnable ){
 		RunLocalPositionControl(desired_position, desired_yaw);
 	}
 	else{
@@ -1714,9 +1713,17 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
 
             // Reset search center
             _bIsSearchInitiated = false;
+            ROS_INFO_STREAM("Search center reinitialized.");
 
-            // Go back to Truck GPS location.
+            // Go back to Truck GPS location. RunAutonomousLanding3
             _IsOnTruckTop = false;
+            ROS_INFO_STREAM("Time to go back to Truck GPS location.");
+            
+            // Reset MPC integrator sum position error
+            _sumPosErrX = 0;
+            _sumPosErrY = 0;
+            ROS_INFO_STREAM("Reset MPC integrator sum position error.");
+            
             break;
 
         default: // It will take care of invalid inputs

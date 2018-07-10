@@ -169,8 +169,12 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 
 Vector4d MPCController::CorrectPrediction(Vector4d output)
 {
-    Hp_ = Hp_ + output.head(4) - Xp_.head(4);
-    // Hp_.segment(2,2) = MatrixXd::Zero(2, 1);
+	
+    //~ Hp_ = Hp_ + (output - Xp_.head(4))/40*0.1;
+    //~ Hp_.segment(2,2) = MatrixXd::Zero(2, 1);
+    //~ 
+    //~ std::cout << "error, Hp_: " << (output - Xp_.head(4)).transpose() << ", " << Hp_.transpose() << std::endl;
+    
     return Hp_;
 }
 
