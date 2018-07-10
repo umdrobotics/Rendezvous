@@ -9,17 +9,6 @@ using namespace Eigen;
 
 
 // constructor
-// MPCController::MPCController(MatrixXd Ain, MatrixXd Bin, MatrixXd Qin, MatrixXd Rin, int Pin, int Min)
-// {
-//     A_ = Ain;
-//     B_ = Bin;
-//     Q_ = Qin;
-//     R_ = Rin;
-//     M_ = Min;
-//     P_ = Pin;
-
-// }
-
 MPCController::MPCController()
 {
 
@@ -30,16 +19,6 @@ MPCController::MPCController()
     double q = 0.9;
 
 
-    //~ A_ <<   1, 0, 0.05, 0,
-            //~ 0, 1, 0, 0.05,
-            //~ 0, 0, 0.9989, 0,
-            //~ 0, 0, 0, 0.9989;
-	 //~ 
-	//~ B_ = Eigen::MatrixXd(4,2);
-    //~ B_ <<   -0.0123, 0,
-            //~ 0, -0.0123,
-            //~ -0.4901, 0,
-            //~ 0, -0.4901;
     A_ <<   1, 0, 0.025, 0,
             0, 1, 0, 0.025,
             0, 0, 0.9989, 0,
@@ -61,6 +40,7 @@ MPCController::MPCController()
     nu_ = B_.cols();
 
     Hp_ = MatrixXd::Zero(nx_,1);
+    LastXp_ = MatrixXd::Zero(nx_*P_,1);
 
 
 }
@@ -95,6 +75,7 @@ void MPCController::Initialize(float q, float ki)
         //~ Q_(4*i+1, 4*i+1) = 1;
     //~ }
 
+
     // Build Ap
     Ap_ = MatrixXd::Zero(nx_*P_, nx_);
     MatrixXd Ap0 = MatrixXd::Identity(nx_, nx_);
@@ -103,7 +84,6 @@ void MPCController::Initialize(float q, float ki)
         Ap0 = Ap0 * A_;
         Ap_.block(i*nx_,0,nx_,nx_) = Ap0;
     }
-    //~ std::cout << Ap_ << std::endl;
 
     // Build Bp
     Bp_ = MatrixXd::Zero(nx_*P_, nu_*M_);
@@ -128,7 +108,6 @@ void MPCController::Initialize(float q, float ki)
         
     }
     
-    //~ std::cout << Bp_ << std::endl;
 
     // cout <<
     Um_ = MatrixXd::Zero(nu_*M_,1);
@@ -143,10 +122,21 @@ void MPCController::Initialize(float q, float ki)
 VectorXd MPCController::Predict(Vector4d xk)
 {
     
-    VectorXd Xpd = Ap_*xk + Bp_*Um_;
-    Xp_ = Xpd;
+    Xp_ = Ap_*xk + Bp_*Um_;
 
-    return Xpd;
+    return Xp_;
+}
+
+
+Vector4d MPCController::CorrectPrediction(Vector4d output)
+{
+    
+    Hp_ = Hp_ + (output - LastXp_.head(4))/40*0.1;
+    Hp_.segment(2,2) = MatrixXd::Zero(2, 1);
+    
+    std::cout << "error, Hp_: " << (output - LastXp_.head(4)).transpose() << ", " << Hp_.transpose() << std::endl;
+    
+    return Hp_;
 }
 
 
@@ -161,21 +151,14 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
     Vector2d uk = Um_.segment(0,nu_);
     Um_.head(nu_*(M_-1)) = Um_.tail(nu_*(M_-1));
     Um_.tail(nu_) = MatrixXd::Zero(nu_, 1);
+
+    LastXp_ = Xp_;
     
     
     return uk;
 }
 
 
-Vector4d MPCController::CorrectPrediction(Vector4d output)
-{
-	
-    //~ Hp_ = Hp_ + (output - Xp_.head(4))/40*0.1;
-    //~ Hp_.segment(2,2) = MatrixXd::Zero(2, 1);
-    //~ 
-    //~ std::cout << "error, Hp_: " << (output - Xp_.head(4)).transpose() << ", " << Hp_.transpose() << std::endl;
-    
-    return Hp_;
-}
+
 
 

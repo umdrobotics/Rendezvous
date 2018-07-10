@@ -18,6 +18,7 @@ class MPCController {
 
         VectorXd Um_;
         VectorXd Xp_;
+        VectorXd LastXp_;
 		Vector4d Hp_;
         
         // constructor
