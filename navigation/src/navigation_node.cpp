@@ -380,19 +380,11 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     // predict
     Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
     VectorXd Xp = _mpc.Predict(xk);
-    
-    
-    //~ Vector4d Hp = MatrixXd::Zero(4,1); 
-    //~ Vector4d Hp = _mpc.CorrectPrediction(xk);
-    //~ _Hp.head(2) = _Hp.head(2) + xk.head(2) - _lastPrediction.head(2);
-    //~ _lastPrediction.head(2) = Xp.head(2);
-    //~ std::cout << "Hp: " << _Hp << endl;
-
-    //~ std::cout << xk.transpose() << ", " << Xp.block(0,0,12,1).transpose() << endl;
+    Vector4d Hp = _mpc.CorrectPrediction(xk);
 
     // Compute Optimal Input
     Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
-    VectorXd stateError = Xp + _Hp.colwise().replicate(P) - desiredState.colwise().replicate(P); 
+    VectorXd stateError = desiredState.colwise().replicate(P) - ( Xp + _Hp.colwise().replicate(P) ) ; 
     Vector2d uk = _mpc.ComputeOptimalInput(stateError);
 
     //~ _sumPosErrX = abs(stateError(0)) < 0.2 ? 0 : (_sumPosErrX + stateError(0)*DT);

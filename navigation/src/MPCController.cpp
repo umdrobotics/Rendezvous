@@ -142,16 +142,10 @@ void MPCController::Initialize(float q, float ki)
 
 VectorXd MPCController::Predict(Vector4d xk)
 {
-	//~ Xp_.block(0,0,nx_*(P_-1),1) = Xp_.block(nx_,0,nx_*(P_-1),1);
-    //~ Xp_.block(nx_*(P_-1),0,nx_,1) = MatrixXd::Zero(nx_, 1);
     
     VectorXd Xpd = Ap_*xk + Bp_*Um_;
     Xp_ = Xpd;
-    //~ MatrixXd Xpd = Ap_*xk;
-    //~ std::cout << xk.transpose() << ", "<< Xpd.block(76,0,4,1).transpose()  << std::endl;
 
-    //~ std::cout << xk.transpose() << ", " ;
-    //~ Xp_ = Xp_ + Xpd;
     return Xpd;
 }
 
@@ -159,7 +153,7 @@ VectorXd MPCController::Predict(Vector4d xk)
 Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 {
 	
-    VectorXd Umd = -K_*StateError;
+    VectorXd Umd = K_*StateError;
     Um_ += Umd;
     
     //~ std::cout << Um_.transpose() << std::endl;
@@ -175,8 +169,8 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 
 Vector4d MPCController::CorrectPrediction(Vector4d output)
 {
-    Hp_ = Hp_ + output.head(nx_) - Xp_.head(nx_);
-    Hp_.segment(2,2) = MatrixXd::Zero(2, 1);
+    Hp_ = Hp_ + output.head(4) - Xp_.head(4);
+    // Hp_.segment(2,2) = MatrixXd::Zero(2, 1);
     return Hp_;
 }
 

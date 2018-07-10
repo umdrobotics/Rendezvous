@@ -14,7 +14,10 @@ class MPCController {
         int P_, M_;
         int nx_, nu_;
         float q_, ki_;
-        
+                
+
+        VectorXd Um_;
+        VectorXd Xp_;
 		Vector4d Hp_;
         
         // constructor
@@ -45,16 +48,12 @@ class MPCController {
         MatrixXd Bp_;
             
         MatrixXd K_;
-        VectorXd Um_;
-        
-        VectorXd Xp_;
-        //~ VectorXd Hp_;
+
 
         
     private: // methods
         
-        
-        
+  
     private: // NOT IMPLEMENTED
 
 
