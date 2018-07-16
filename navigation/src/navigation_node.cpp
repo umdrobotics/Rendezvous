@@ -69,7 +69,7 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true;
-bool _bIsSimulation = false;
+bool _bIsSimulation = true;
 bool _bIsYawControlEnableSearch = false;
 bool _bIsLocalLocationControlEnable = false;
 
@@ -111,6 +111,10 @@ float _sumPosErrX = 0;
 float _sumPosErrY = 0;
 float _lastPosErrX = 0;
 float _lastPosErrY = 0;
+float _sumVecErrX = 0;
+float _sumVecErrY = 0;
+float _lastVecErrX = 0;
+float _lastVecErrY = 0;
 bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
 
@@ -367,6 +371,57 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
 
 }
 
+float IntegratorCalculationPos(float stateError, float lastStateError, float sumError)
+{
+	float limition = 70;
+	if((stateError * lastStateError)>= 0){	
+		if ((sumError < limition) && (sumError > -limition)){
+			sumError += lastStateError*DT;}
+		else{
+				if (sumError < 0){
+					sumError = -limition;}
+				else{
+					sumError = limition;}
+			}			
+    }
+    else{
+		if (_bIsFirstTimeReachPitch){
+			//~ _sumPosErrX = 0;
+			//~ _mpc.Dp_ = MatrixXd::Zero(_mpc.nx_,1);
+			_bIsFirstTimeReachPitch = false;
+			}
+		else{
+		sumError += lastStateError*DT;}
+	}
+	return sumError;
+}
+
+float IntegratorCalculationVec(float stateError, float lastStateError, float sumError)
+{
+	float limition = 30;
+	if((stateError * lastStateError)>= 0){	
+		if ((sumError < limition) && (sumError > -limition)){
+			sumError += lastStateError*DT;}
+		else{
+				if (sumError < 0){
+					sumError = -limition;}
+				else{
+					sumError = limition;}
+			}			
+    }
+    else{
+		if (_bIsFirstTimeReachPitch){
+			//~ _sumPosErrX = 0;
+			//~ _mpc.Dp_ = MatrixXd::Zero(_mpc.nx_,1);
+			_bIsFirstTimeReachPitch = false;
+			}
+		else{
+		//~ sumError += lastStateError*DT;
+		sumError = 0;}
+	}
+	return sumError;
+}
+
 float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {
     // MPC controller
@@ -374,71 +429,44 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 
     int P = _mpc.P_;
     int nx = _mpc.nx_;
-    float mpc_ki = _mpc.ki_;
-	float limition = 700;
+    float mpc_kiPos = _mpc.kiPos_;
+	float mpc_kiVec = _mpc.kiVec_;
 	
-    // predict
+    // list current state and desired state
     Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
-    VectorXd Xp = _mpc.Predict(xk);
-    Vector4d Hp = _mpc.CorrectPrediction(xk);
-    //~ Vector4d Hp = MatrixXd::Zero(4,1);
-
-    // Compute Optimal Input
+    //~ float testTruckVX = Xp(6) -  drone.velocity.vx;
+    //~ float testTruckVY = Xp(7) -  drone.velocity.vy;
+    //~ Vector4d desiredState(desired_position.x, desired_position.y, -testTruckVX, -testTruckVY);
+    //~ ROS_INFO("velocity of pred & real: x: %f, %f, y: %f, %f ", Xp(6), drone.velocity.vx, Xp(7), drone.velocity.vy);
     Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
-    VectorXd stateError = desiredState.colwise().replicate(P) - ( Xp + Hp.colwise().replicate(P) ) ; 
-    Vector2d uk = _mpc.ComputeOptimalInput(stateError);
+    Vector4d stateError = xk - desiredState;
+    _mpc.SetXpInitialPoint(xk);
+    
+    
+    VectorXd Xpc = _mpc.CorrectPrediction(xk);
+    //~ std::cout << "xk: " << xk.transpose() << std::endl;
+    //~ std::cout << "Xpc: " << Xpc.head(8).transpose() << std::endl;
+     
+    VectorXd statePredError = Xpc - desiredState.colwise().replicate(P);
+    Vector2d uk = _mpc.ComputeOptimalInput(statePredError);
+    VectorXd Xp = _mpc.Predict(xk);
 
     // Initialize integrator
-    if((stateError(0) >= 0 && _lastPosErrX >= 0) || (stateError(0) <= 0 && _lastPosErrX <= 0)){
-		
-		if ((_sumPosErrX < limition) && (_sumPosErrX > -limition)){
-			_sumPosErrX += stateError(0)*DT;}
-		else{
-				if (_sumPosErrX < 0){
-					_sumPosErrX = -limition;}
-				else{
-					_sumPosErrX = limition;}
-			}			
-    }
-    else{
-		//~ ROS_INFO("****************************************************************************************,%d",_bIsFirstTimeReachPitch);
-		if (_bIsFirstTimeReachPitch){
-			_sumPosErrX = 0;
-			_bIsFirstTimeReachPitch = false;
-			//~ ROS_INFO("Reset _sumPosErrX*******************************************************************,%d",_bIsFirstTimeReachPitch);
-			}
-		//~ else{
-		//~ _sumPosErrX += stateError(0)*DT;}
-	}
-	
-	if((stateError(1) >= 0 && _lastPosErrY >= 0) || (stateError(1) <= 0 && _lastPosErrY <= 0)){
-		if ((_sumPosErrY < limition) && (_sumPosErrY > -limition)){
-			_sumPosErrY += stateError(1)*DT;}	
-		else{
-				if (_sumPosErrY < 0){
-					_sumPosErrY = -limition;}
-				else{
-					_sumPosErrY = limition;}
-			}	
-    }
-    else{
-		//~ ROS_INFO("****************************************************************************************");
-		if (_bIsFirstTimeReachRoll){
-			_sumPosErrY = 0;
-			_bIsFirstTimeReachRoll = false;
-			ROS_INFO("Reset _sumPosErrY*********************************************************************");
-			}
-		//~ else{
-			//~ _sumPosErrY += stateError(1)*DT;}
-	}
     
+    _sumPosErrX = IntegratorCalculationPos(stateError(0), _lastPosErrX, _sumPosErrX);
+    _sumPosErrY = IntegratorCalculationPos(stateError(1), _lastPosErrY, _sumPosErrY);
+    _sumVecErrX = IntegratorCalculationVec(stateError(2), _lastVecErrX, _sumVecErrX);
+    _sumVecErrY = IntegratorCalculationVec(stateError(3), _lastVecErrY, _sumVecErrY);
+        
     _lastPosErrX = stateError(0);
     _lastPosErrY = stateError(1);
+    _lastVecErrX = stateError(2);
+    _lastVecErrY = stateError(3);
+    
+    std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_kiPos << endl;
 
-    std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_ki << endl;
-
-    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_ki*_sumPosErrX): -uk(0);
-    droll = _bIsIntegralEnable? (-uk(1) - mpc_ki*_sumPosErrY): -uk(1);
+    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX -mpc_kiVec*_sumVecErrX): -uk(0);
+    droll = _bIsIntegralEnable? (-uk(1) - mpc_kiPos*_sumPosErrY - mpc_kiVec*_sumVecErrY): -uk(1);
     //~ dpitch = -uk(0);
     //~ droll = -uk(1);
 
@@ -452,7 +480,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                              : droll < -maxAngle ? -maxAngle
                                                  : droll;
 
-    ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f ", stateError(0), stateError(1), dpitch, droll);
+    ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f", stateError(0), stateError(1), dpitch, droll); // -uk(0), -uk(1));
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
@@ -975,7 +1003,7 @@ void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
 
     // If the Truck is extremely far away from drone, then there must be something wrong
     if( abs(_msgTruckDistance.point.x) > 100 && abs(_msgTruckDistance.point.y) > 100 ) {
-        ROS_INFO_STREAM("DANGER: There is something wrong with the Truck GPS. Plz check NOW!!!!!");
+        ROS_INFO_STREAM("DANGER: There is something wrong with the Truck GPS or Drone GPS. Plz check NOW!!!!!");
         _bIsTargetTrackingRunning = false;  // mission cancel
         return;
     }
@@ -1720,6 +1748,8 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
             ROS_INFO_STREAM("Time to go back to Truck GPS location.");
             
             // Reset MPC integrator sum position error
+            _mpc.IsXpInitialized_ = false;
+            
             _sumPosErrX = 0;
             _sumPosErrY = 0;
             ROS_INFO_STREAM("Reset MPC integrator sum position error.");
@@ -1757,8 +1787,9 @@ int main(int argc, char **argv)
 
     // Initilize MPC controller
     float mpc_q = argc > 1 ? atof(argv[1]) : -1.0;
-    float mpc_ki = argc > 2 ? atof(argv[2]) : -1.0;
-    _mpc.Initialize(mpc_q, mpc_ki);
+    float mpc_kiPos = argc > 2 ? atof(argv[2]) : -1.0;
+    float mpc_kiVec = argc > 3 ? atof(argv[3]) : -1.0;
+    _mpc.Initialize(mpc_q, mpc_kiPos, mpc_kiVec);
 
 
     // Log files
@@ -1770,13 +1801,13 @@ int main(int argc, char **argv)
 
     //~ ss.str("");
     std::stringstream ss;
-    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME  << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_ki  << ".log";
+    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME  << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos  << ".log";
     _ofsGoToTruckLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsGoToTruckLog, "Failed to open file %s", ss.str().c_str());
     _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
 
     ss.str("");
-    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME   << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_ki << ".log";
+    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME   << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos << ".log";
     _ofsAutonomousLandingLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
     _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
@@ -1789,7 +1820,7 @@ int main(int argc, char **argv)
 
     // Log about MPC controller
     ss.str("");
-    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_ki << ".log";
+    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos << ".log";
     _ofsMPCControllerLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
 

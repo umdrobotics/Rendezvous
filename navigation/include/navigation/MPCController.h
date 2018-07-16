@@ -13,13 +13,21 @@ class MPCController {
     
         int P_, M_;
         int nx_, nu_;
-        float q_, ki_;
+        float q_, kiPos_, kiVec_;
+        
+        bool IsXpInitialized_;
                 
 
         VectorXd Um_;
         VectorXd Xp_;
         VectorXd LastXp_;
+        Vector4d LastXk_; 
 		Vector4d Hp_;
+		
+		Vector4d Dp_;
+		
+		Vector2d uk_;
+		VectorXd Umd_;
         
         // constructor
         MPCController();
@@ -28,12 +36,13 @@ class MPCController {
         virtual ~MPCController();
         
         // Setters and getters
+        void SetXpInitialPoint(Vector4d xk);
         
         // Core functions
-        void Initialize(float q, float ki);
+        void Initialize(float q, float kiPos, float kiVec);
         VectorXd Predict(Vector4d xk);
         Vector2d ComputeOptimalInput(VectorXd StateError);
-        Vector4d CorrectPrediction(Vector4d output);
+        VectorXd CorrectPrediction(Vector4d output);
 
 
 
