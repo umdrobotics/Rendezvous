@@ -69,7 +69,7 @@ bool _bIsDroneLandingPrinted = false;
 bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true;
-bool _bIsSimulation = true;
+bool _bIsSimulation = false;
 bool _bIsYawControlEnableSearch = false;
 bool _bIsLocalLocationControlEnable = false;
 
