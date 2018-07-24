@@ -13,13 +13,15 @@ from geometry_msgs.msg import PointStamped, PoseStamped
 # import sys
 # from io import FileIO, BufferedWriter
 
-class Truck:
 
+
+class Truck:
 
     LAT_PER_NORTH = 0.0000089354
     LON_PER_EAST = 0.0000121249
+    
     TimeStep = 0.1
-    isEnableNoise = True
+    isEnableNoise = False
 
     def __init__(self, bIsSimulationMode = True):
         # inital the class
@@ -243,12 +245,13 @@ class Truck:
 
 
 def main():
-    
+	
+    global LON_PER_EAST
     truck = Truck()
 
     # # GPS location of Simulahstion 
-    simLatitudeStart = 42.3233966
-    simLongitudeStart = -83.2229528
+    simLatitudeStart = 42.323396612189850
+    simLongitudeStart = -83.222952844799720 - 400*truck.LON_PER_EAST
 
     # SetSimulationPath has no effect if isSimulation is False
     path = raw_input("Please enter the truck path:\n 1. Straight_line \n 2. Circle \n 3. Zigzag \n 4. Figure_eight \n 5. Arrow_heading \n")

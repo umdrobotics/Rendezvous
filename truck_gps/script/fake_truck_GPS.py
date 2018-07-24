@@ -36,7 +36,7 @@ def TimerCallback(event):
     msgTruckLocation.header.stamp = rospy.Time.now()
 #    msgTruckLocation.point.x = 42.3179651
 #    msgTruckLocation.point.y = -83.2327746
-    msgTruckLocation.point.x = 42.323396612189850 + 10*LAT_PER_NORTH
+    msgTruckLocation.point.x = 42.323396612189850 + 0*LAT_PER_NORTH
     msgTruckLocation.point.y = -83.222952844799720 
     msgTruckLocation.point.z = 0
     truckGpsPub.publish(msgTruckLocation)

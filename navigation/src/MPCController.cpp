@@ -12,7 +12,7 @@ using namespace Eigen;
 MPCController::MPCController()
 {
 
-    double m = 3.1;
+    double m = 2.883;
     double g = 9.80665;
     double kd = 0.0705;
 
@@ -21,8 +21,8 @@ MPCController::MPCController()
 
     A_ <<   1, 0, 0.025, 0,
             0, 1, 0, 0.025,
-            0, 0, 0.9989, 0,
-            0, 0, 0, 0.9989;
+            0, 0, 0.9994, 0,
+            0, 0, 0, 0.9994;
 	 
 	B_ = Eigen::MatrixXd(4,2);
     B_ <<   -0.0031, 0,
@@ -30,9 +30,9 @@ MPCController::MPCController()
             -0.2451, 0,
             0, -0.2451;
 
-	P_ = 18;
+	P_ = 12;
 
-    M_ = 4;
+    M_ = 5;
 
     
     //~ 
@@ -70,20 +70,30 @@ void MPCController::Initialize(float q, float kiPos, float kiVec)
 	kiVec_ = kiVec >= 0 ? kiVec : 0;
 
     Q_ = q_*MatrixXd::Identity(nx_*P_, nx_*P_);
-    R_ = (1-q_)*MatrixXd::Identity(nu_*M_, nu_*M_);
+    R_ = 0.35*(1-q_)*MatrixXd::Identity(nu_*M_, nu_*M_); 
 
-    // Add more penalty on velocity
-    int k = 2;
-    for(int i = k; i<P_; i++){
-        Q_(4*i+2, 4*i+2) = 1.2;
-        Q_(4*i+3, 4*i+3) = 1.2;
-    } 
-    for(int i = 0; i<(P_-k); i++){
-        Q_(4*i, 4*i) = 1.05;
-        Q_(4*i+1, 4*i+1) = 1.05;
+    //~ // Add more penalty on velocity
+    int k = 7;
+    //~ for(int i = k; i<P_-k; i++){
+        //~ Q_(4*i+2, 4*i+2) = 1.1;
+        //~ Q_(4*i+3, 4*i+3) = 1.1;
+    //~ } 
+    for(int i = 0; i<k; i++){
+        Q_(4*i, 4*i) = 10;
+        Q_(4*i+1, 4*i+1) = 10;
     }
-
-
+	for(int i = P_-k; i<P_; i++){
+        Q_(4*i, 4*i) = 1.15;
+        Q_(4*i+1, 4*i+1) = 1.15;
+    } 
+    //~ for(int i = k; i<P_-k; i++){
+        //~ Q_(4*i+2, 4*i+2) = 1;
+        //~ Q_(4*i+3, 4*i+3) = 1;
+    //~ } 
+    //~ for(int i = 0; i<k; i++){
+        //~ Q_(4*i, 4*i) = 3;
+        //~ Q_(4*i+1, 4*i+1) = 3;
+    //~ }
     // Build Ap
     Ap_ = MatrixXd::Zero(nx_*P_, nx_);
     MatrixXd Ap0 = MatrixXd::Identity(nx_, nx_);
@@ -139,9 +149,9 @@ VectorXd MPCController::CorrectPrediction(Vector4d output)
     
     //~ std::cout << "xk, xp: " << output.transpose() << std::endl << ", " << Xp_.segment(0,16).transpose() << std::endl;
     
-    
+     
     Hp_ = output - Xp_.segment(0,4);
-    Dp_.head(4) += (output - Xp_.segment(68,4)).head(4)*0.0048;              /// 76: /20*0.045;
+    //~ Dp_.head(4) += (output - Xp_.segment(52,4)).head(4)*0.006;              /// 76: /20*0.045;
 	//~ Dp_.head(2) += Hp_.head(2)*2;       //
 
 	//~ std::cout << "error, Dp: " << (output - Xp_.segment(76,4)).head(2).transpose() << ", " << Dp_.head(2).transpose() << std::endl;
@@ -172,6 +182,7 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 
         
     Um_ += Umd_;
+    //~ Um_ = Umd_;
     
     //~ std::cout << "Umd, uk: " << Umd_.transpose() << ", "<< uk_.transpose() << std::endl;
     
@@ -189,8 +200,10 @@ Vector2d MPCController::ComputeOptimalInput(VectorXd StateError)
 VectorXd MPCController::Predict(Vector4d xk)
 {
     
-    VectorXd Xpd = Ap_*(xk-LastXk_) + Bp_*Umd_;
-    Xp_ += Xpd;
+    //~ VectorXd Xpd = Ap_*(xk-LastXk_) + Bp_*Umd_;    //20s
+    //~ Xp_ += Xpd;
+    VectorXd Xpd = Ap_*(xk) + Bp_*Umd_;                //16s
+    Xp_ = Xpd;
     
     LastXk_ = xk;
     
