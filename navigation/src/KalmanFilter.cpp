@@ -8,20 +8,25 @@
 using namespace std;
 using namespace Eigen;
 
-
 // constructor
 KalmanFilter::KalmanFilter()
 {
-    sigma_ax = 0.25;
-    sigma_ay = 0.25;
+    float sigma_ax = 0.5; // cause max acceleration = 1.5 m/s2
+    float sigma_ay = 0.5;
 
-    dt = 0.025;
+    float dt = 0.1;
+    float dpt = 0.025; // for prediction
 
     // Initialize system matrixes
     A_ <<   1, 0, dt, 0,
             0, 1, 0, dt,
             0, 0, 1, 0,
             0, 0, 0, 1;
+            
+    Ap_ <<  1, 0, dpt, 0,
+            0, 1, 0, dpt,
+            0, 0, 1, 0,
+            0, 0, 0, 1;    // for prediction
      
     // B_ = Eigen::MatrixXd(4,2);
     B_ = 0 ;
@@ -37,7 +42,7 @@ KalmanFilter::KalmanFilter()
             0, pow(dt,3.0)/2*pow(sigma_ay,2.0), 0, pow(dt,2.0)*pow(sigma_ay,2.0);
 
     R_ <<   0.09, 0,
-            0, 0.09;
+            0, 0.09;    // noise, sigma = 0.3
 
 
     nx_ = A_.cols();
@@ -50,18 +55,18 @@ KalmanFilter::~KalmanFilter()
 
 }
 
-
-
-
 // 
-void KalmanFilter::Initialize(int nPred)
+void KalmanFilter::Initialize()
 {
 
-    nPred_ = nPred;
-
-    XP_ = MatrixXd::Zero(nx_*nPred_,1);
-
 }
+
+void KalmanFilter::SetPredHorizon(int nPred){
+    
+    nPred_ = nPred;
+    XP_ = MatrixXd::Zero(nx_*nPred_,1);
+    
+}    
 
 void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
 	if (!IsXhatInitialized_){
@@ -74,17 +79,19 @@ void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
 }
 
 
-Vector4d KalmanFilter::Update(Vector4d output)
+Vector4d KalmanFilter::Update(Vector4d xk)
 {
+    
+    Vector2d output = xk.head(2);
 
     // Predict
-    xpred = A_ * xhat_ ;              // local var, prediction for time k
-    ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
+    Vector4d xpred = A_ * xhat_ ;              // local var, prediction for time k
+    Matrix4d ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
 
     // Compute Kalman Gain
-    innovation = output - C_ * xpred;
-    S = C_ * ppred * C_.transpose() + R_;
-    K = ppred * C_.transpost() / S;
+    Vector2d innovation = output - C_ * xpred;
+    Matrix2d S = C_ * ppred * C_.transpose() + R_;
+    MatrixXd K = ppred * C_.transpose() * S.inverse();
 
     // Update estimate
     xhat_ = xpred + K * innovation;
@@ -96,12 +103,12 @@ Vector4d KalmanFilter::Update(Vector4d output)
 
 
 
-VectorXd KalmanFilter::Predict(Vector4d xk)
+VectorXd KalmanFilter::Predict()
 {
     for(int i = 0; i < nPred_; i++){
 
-        xPred_ = A_ * xhat_;
-        // pPred_ = A_ * P_ * A_.transpose() + Q_;
+        xPred_ = Ap_ * xhat_;
+        // pPred_ = Ap_ * P_ * Ap_.transpose() + Q_;
 
         XP_.segment(i*nx_, nx_) = xPred_;
 

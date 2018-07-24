@@ -124,6 +124,7 @@ include_directories(${catkin_INCLUDE_DIRS}
 ## Declare a C++ library
 #add_library(navigation src/navigation.cpp )
 add_library(MPCController src/MPCController.cpp )
+add_library(KalmanFilter src/KalmanFilter.cpp )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -153,7 +154,7 @@ add_dependencies(navigation_menu navigation_generate_messages_cpp)
 # add_dependencies(MPCController navigation_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} MPCController)
+target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} MPCController KalmanFilter)
 
 target_link_libraries(navigation_node_simulation ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
 

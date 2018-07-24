@@ -33,11 +33,12 @@ class KalmanFilter {
         
         // Setters and getters
         void SetXhatInitialPoint(Vector4d xk);
-        
+        void SetPredHorizon(int nPred){
+
         // Core functions
-        void Initialize(int nPred);
-        Vector4d Update(Vector4d output);
-        VectorXd Predict(Vector4d xk);
+        void Initialize();
+        Vector4d Update(Vector4d xk);
+        VectorXd Predict();
 
 
 
@@ -45,6 +46,7 @@ class KalmanFilter {
     private: // members
 
         Matrix4d A_;
+        Matrix4d Ap_;
         int B_;
         MatrixXd C_;
 

@@ -24,6 +24,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Geometry>
 #include "navigation/MPCController.h"
+#include "navigation/KalmanFilter.h"
 
 using namespace std;
 using namespace Eigen;
@@ -33,6 +34,7 @@ using namespace Eigen;
 #define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/AutonomousLanding_"
 #define DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME "/home/ubuntu/SearchRange_"
 #define DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME "/home/ubuntu/MPCController_"
+#define DEFAULT_KALMAN_FILTER_LOG_FILE_NAME "/home/ubuntu/KalmanFilter_"
 #define TARGET_LOST_TIME_OUT_SEC (2.0)
 
 // Searching path parameters
@@ -110,6 +112,8 @@ bool _IsOnTruckTop = false;
 //~ float _lqrGain[8] = {-2.38047614,0,-6.33407922,0,-2.38047614,0,-6.33407922,0}; // 50m 9s overshoot < 0.3m
 float _lqrGain[8] = {-1.52752523,0,-4.07731867,0,-1.52752523,0,-4.07731867,0}; // 50m 11s overshoot < 2.8m ki 0.03 dt 0.08
 //~ float _lqrGain[8] = {-1.52752523,0,-4.07731867,0,-1.52752523,0,-4.07731867,0};
+
+
 // MPC controller
 MPCController _mpc;
 float _sumPosErrX = 0;
@@ -122,6 +126,10 @@ float _lastVecErrX = 0;
 float _lastVecErrY = 0;
 bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
+
+// Kalman Filter
+KalmanFilter _kf;
+Vector4d _truckEstmState;
 
 
 // PD controller
@@ -140,7 +148,8 @@ std::ofstream _ofsGoToTruckLog;
 std::ofstream _ofsAutonomousLandingLog;
 std::ofstream _ofsSearchingRangeLog;
 std::ofstream _ofsMPCControllerLog;
-geometry_msgs::PointStamped _msgDesiredAttitudeDeg;
+std::ofstream _ofsKalmanFilterLog;
+
 
 // GPS & Camera data funsion
 std::queue <dji_sdk::Gimbal> _queMsgGimbal;
@@ -160,6 +169,8 @@ geometry_msgs::PointStamped _msgTruckLocalPosition;
 geometry_msgs::PointStamped _msgTruckGPSPosition;
 geometry_msgs::PointStamped _msgRealTruckLocalPosition;
 geometry_msgs::PointStamped _msgTruckVelocity;
+
+geometry_msgs::PointStamped _msgDesiredAttitudeDeg;
 
 // Publishers
 ros::Publisher _GimbalAnglePub;
@@ -502,20 +513,26 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
     //~ ROS_INFO("*********************************************************************");
     //~ std::cout << "desired_position: " << desired_position.x << desired_position.y << "TruckVelocity:" <<  _msgTruckVelocity.point.x << _msgTruckVelocity.point.y << std::endl;
+    
     //~ // predict the target position and velocity here, KF
-    VectorXd desiredState(P*nx);
-    desiredState <<   	desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.025 +0.0003, desired_position.y + drone.velocity.vy*0.025 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.05 +0.0003, desired_position.y + drone.velocity.vy*0.05 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.075 +0.0003, desired_position.y + drone.velocity.vy*0.075 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.1 +0.0003, desired_position.y + drone.velocity.vy*0.1 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.125 +0.0003, desired_position.y + drone.velocity.vy*0.125 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.15 +0.0003, desired_position.y + drone.velocity.vy*0.15 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.175 +0.0003, desired_position.y + drone.velocity.vy*0.175 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.2 +0.0003, desired_position.y + drone.velocity.vy*0.2 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.225 +0.0003, desired_position.y + drone.velocity.vy*0.225 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.25 +0.0003, desired_position.y + drone.velocity.vy*0.25 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
-						desired_position.x + drone.velocity.vx*0.275 +0.0003, desired_position.y + drone.velocity.vy*0.275 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y;
+    int nPred = 5;
+    _kf.SetPredHorizon(nPred + P);
+    VectorXd truckPred = _kf.Predict();
+    VectorXd desiredState = truckPred.tail(P*nx);
+    
+    //~ VectorXd desiredState(P*nx);
+    //~ desiredState <<   	desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.025 +0.0003, desired_position.y + drone.velocity.vy*0.025 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.05 +0.0003, desired_position.y + drone.velocity.vy*0.05 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.075 +0.0003, desired_position.y + drone.velocity.vy*0.075 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.1 +0.0003, desired_position.y + drone.velocity.vy*0.1 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.125 +0.0003, desired_position.y + drone.velocity.vy*0.125 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.15 +0.0003, desired_position.y + drone.velocity.vy*0.15 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.175 +0.0003, desired_position.y + drone.velocity.vy*0.175 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.2 +0.0003, desired_position.y + drone.velocity.vy*0.2 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.225 +0.0003, desired_position.y + drone.velocity.vy*0.225 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.25 +0.0003, desired_position.y + drone.velocity.vy*0.25 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
+						//~ desired_position.x + drone.velocity.vx*0.275 +0.0003, desired_position.y + drone.velocity.vy*0.275 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y;
     //~ 
     //~ ROS_INFO("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
     Vector4d stateError = xk - desiredState.head(4);
@@ -524,8 +541,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     
     VectorXd Xpc = _mpc.CorrectPrediction(xk);
-    std::cout << "xk: " << xk.transpose() << std::endl;
-    std::cout << "Xpc: " << Xpc.transpose()  << std::endl;
+    //~ std::cout << "xk: " << xk.transpose() << std::endl;
+    //~ std::cout << "Xpc: " << Xpc.transpose()  << std::endl;
      
     //~ VectorXd statePredError = Xpc - desiredState.colwise().replicate(P);
     VectorXd statePredError = Xpc - desiredState;
@@ -589,7 +606,23 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << _sumPosErrX << ","
                             << _sumPosErrY << ","
                             << yaw << std::endl;                             // drone local position
-
+	
+	_ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            << ros::Time::now().toSec() << ","							
+                            << _msgTruckLocalPosition.point.x << ","
+                            << _msgTruckLocalPosition.point.y << ","
+                            << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
+                            << _msgTruckVelocity.point.x << ","
+							<< _msgTruckVelocity.point.y << ","
+							//~ << _msgRealTruckLocalPosition.point.x << ","
+							//~ << _msgRealTruckLocalPosition.point.y << ","
+							//~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
+							<< _truckEstmState(0) << ","
+							<< _truckEstmState(1) << ","    // truck estimated position
+							<< _truckEstmState(2) << ","
+							<< _truckEstmState(3) << std::endl;  // truck estimated velocity
+							
+							
 }
 
 
@@ -1121,6 +1154,11 @@ void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
     if( !_bIsTargetFound ){
         RunSensorFusing();
     }
+    
+    // Update estimate by kalman filter
+	Vector4d truckState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
+	_kf.SetXhatInitialPoint(truckState);
+	_truckEstmState = _kf.Update(truckState);
 
 }
 
@@ -1880,11 +1918,12 @@ int main(int argc, char **argv)
     // Initialize global variables
     _ptrDrone = new DJIDrone(nh);
 
-    // Initilize MPC controller
+    // Initialize MPC controller
     float mpc_q = argc > 1 ? atof(argv[1]) : -1.0;
     float mpc_kiPos = argc > 2 ? atof(argv[2]) : -1.0;
     float mpc_kiVec = argc > 3 ? atof(argv[3]) : -1.0;
     _mpc.Initialize(mpc_q, mpc_kiPos, mpc_kiVec);
+    
 
 
     // Log files
@@ -1918,6 +1957,13 @@ int main(int argc, char **argv)
     ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos << ".log";
     _ofsMPCControllerLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
+    
+    // Log about KalmanFilter
+    ss.str("");
+    ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
+    _ofsKalmanFilterLog.open(ss.str());
+    ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
+    
 
     // Ultrasonic
     _msgUltraSonic.ranges.resize(1);
