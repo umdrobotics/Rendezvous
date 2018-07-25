@@ -513,12 +513,14 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ Vector4d desiredState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
     //~ ROS_INFO("*********************************************************************");
     //~ std::cout << "desired_position: " << desired_position.x << desired_position.y << "TruckVelocity:" <<  _msgTruckVelocity.point.x << _msgTruckVelocity.point.y << std::endl;
-    
+    Vector4d targetState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
     //~ // predict the target position and velocity here, KF
-    int nPred = 5;
+    int nPred = 3; 
     _kf.SetPredHorizon(nPred + P);
     VectorXd truckPred = _kf.Predict();
     VectorXd desiredState = truckPred.tail(P*nx);
+    
+    //~ std::cout << "desiredState: " << desiredState.transpose() << std::endl;
     
     //~ VectorXd desiredState(P*nx);
     //~ desiredState <<   	desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y,
@@ -535,7 +537,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 						//~ desired_position.x + drone.velocity.vx*0.275 +0.0003, desired_position.y + drone.velocity.vy*0.275 + 0.0003, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y;
     //~ 
     //~ ROS_INFO("&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&");
-    Vector4d stateError = xk - desiredState.head(4);
+    Vector4d stateError = xk - targetState;
     //~ Vector4d stateError = xk - desiredState;
     _mpc.SetXpInitialPoint(xk);
     
@@ -614,13 +616,14 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
                             << _msgTruckVelocity.point.x << ","
 							<< _msgTruckVelocity.point.y << ","
-							//~ << _msgRealTruckLocalPosition.point.x << ","
-							//~ << _msgRealTruckLocalPosition.point.y << ","
-							//~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
+							<< _msgRealTruckLocalPosition.point.x << ","
+							<< _msgRealTruckLocalPosition.point.y << ","
+							<< _msgRealTruckLocalPosition.point.z << "," // truck true local position 
 							<< _truckEstmState(0) << ","
 							<< _truckEstmState(1) << ","    // truck estimated position
 							<< _truckEstmState(2) << ","
-							<< _truckEstmState(3) << std::endl;  // truck estimated velocity
+							<< _truckEstmState(3) << ","    // truck estimated velocity
+							<< desiredState.segment((nPred+1)*nx,4).transpose() << std::endl;  
 							
 							
 }
@@ -1162,27 +1165,27 @@ void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
 
 }
 
-//~ void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
-//~ {
-//~ 
-    //~ DJIDrone& drone = *_ptrDrone;
-    //~ // Record GPS position
-//~ 
-    //~ // Calculate the distance from truck to drone
-    //~ float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
-    //~ float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
-//~ 
-//~ 
-    //~ // Calculate the truck local location
-    //~ // drone.local_position.x means northing
-    //~ // drone.local_position.y means easting
-    //~ _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
-    //~ _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
-    //~ _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
-    //~ _msgRealTruckLocalPosition.point.z = 0;
-//~ 
-//~ 
-//~ }
+void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
+{
+
+    DJIDrone& drone = *_ptrDrone;
+    // Record GPS position
+
+    // Calculate the distance from truck to drone
+    float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
+    float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
+
+
+    // Calculate the truck local location
+    // drone.local_position.x means northing
+    // drone.local_position.y means easting
+    _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
+    _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
+    _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
+    _msgRealTruckLocalPosition.point.z = 0;
+
+
+}
 
 
 
@@ -1977,7 +1980,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     // ros::Subscriber sub4 = nh.subscribe("/LQR_K", numMessagesToBuffer, lqrGainCallback);
     ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
-    //~ ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
+    ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
     ros::Subscriber sub7 = nh.subscribe("/truck/velocity", numMessagesToBuffer, truckVelocityCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
 

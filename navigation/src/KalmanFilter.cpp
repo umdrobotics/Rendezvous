@@ -15,7 +15,7 @@ KalmanFilter::KalmanFilter()
     float sigma_ay = 0.5;
 
     float dt = 0.1;
-    float dpt = 0.025; // for prediction
+    float dpt = 0.1; // for prediction
 
     // Initialize system matrixes
     A_ <<   1, 0, dt, 0,
@@ -96,18 +96,32 @@ Vector4d KalmanFilter::Update(Vector4d xk)
     // Update estimate
     xhat_ = xpred + K * innovation;
     P_ = ppred - K * C_ * ppred;
+    
+    
+    xPred2_ = xhat_;
 
     return xhat_;
 
 }
 
 
+Vector4d KalmanFilter::PredictWOObservation(){
+	
+	xPred2_ = Ap_ * xPred2_;
+	
+	
+}
+
 
 VectorXd KalmanFilter::Predict()
 {
-    for(int i = 0; i < nPred_; i++){
+	
+	xPred_ = xhat_;
+	XP_.segment(0, nx_) = xPred_;
+	
+    for(int i = 1; i < nPred_; i++){
 
-        xPred_ = Ap_ * xhat_;
+        xPred_ = Ap_ * xPred_;
         // pPred_ = Ap_ * P_ * Ap_.transpose() + Q_;
 
         XP_.segment(i*nx_, nx_) = xPred_;

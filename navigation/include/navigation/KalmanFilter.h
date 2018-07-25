@@ -15,6 +15,7 @@ class KalmanFilter {
         int nPred_;
     
         bool IsXhatInitialized_;
+        bool IsNoObservation_;
 
         Vector4d xhat_;
 
@@ -22,6 +23,7 @@ class KalmanFilter {
         Matrix4d pPred_;
 
         VectorXd XP_;
+        Vector4d xPred2_;
 
 
         
