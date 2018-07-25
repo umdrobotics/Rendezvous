@@ -33,7 +33,7 @@ class KalmanFilter {
         
         // Setters and getters
         void SetXhatInitialPoint(Vector4d xk);
-        void SetPredHorizon(int nPred){
+        void SetPredHorizon(int nPred);
 
         // Core functions
         void Initialize();
