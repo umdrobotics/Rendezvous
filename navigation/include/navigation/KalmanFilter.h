@@ -23,7 +23,7 @@ class KalmanFilter {
         Matrix4d pPred_;
 
         VectorXd XP_;
-        Vector4d xPred2_;
+        Vector4d xEstmWO_;
 
 
         
@@ -40,7 +40,8 @@ class KalmanFilter {
         // Core functions
         void Initialize();
         Vector4d Update(Vector4d xk);
-        VectorXd Predict();
+        Vector4d PredictWOObservation();
+        VectorXd Predict(Vector4d xk);
 
 
 

@@ -21,7 +21,7 @@ class Truck:
     LON_PER_EAST = 0.0000121249
     
     TimeStep = 0.1
-    isEnableNoise = False
+    isEnableNoise = True
 
     def __init__(self, bIsSimulationMode = True):
         # inital the class
@@ -29,12 +29,14 @@ class Truck:
         self.truckGpsPub =            rospy.Publisher("/truck/location_GPS", PointStamped, queue_size=10)
         self.truckVelocityPub =       rospy.Publisher("/truck/velocity", PointStamped, queue_size=10)
         self.truckRealPositionPub=    rospy.Publisher("/truck/real_location_GPS", PointStamped, queue_size=10)
+        self.StartSimulationPub=    rospy.Publisher("/truck/start_simulation", PointStamped, queue_size=10)
         self.isSimulationMode = bIsSimulationMode 
         self.timeStep = 0.1
         self.turning_case = 1 
         self.noiseRange = 0.3 
         self.count1 = 0
         self.count2 = 0
+        self.isPublishStart = False
         # self.LoggerWarningLevel = logging.DEBUG
         # # self.LoggerWarningLevel = logging.INFO
         # #self.LoggerWarningLevel = logging.WARNING
@@ -68,7 +70,10 @@ class Truck:
         self.turning_time = variable_y
         self.simLatitudeStart = simLatitudeStart
         self.simLongitudeStart = simLongitudeStart
-
+		
+        self.simStart = PointStamped()
+        self.simStart.point.x = 22 
+       
         self.simRealLocation = PointStamped()
         self.simRealLocation.point.x = simLatitudeStart
         self.simRealLocation.point.y = simLongitudeStart
@@ -95,7 +100,10 @@ class Truck:
 
         self.truckGpsPub.publish(msgVehicleGps)
         self.truckVelocityPub.publish(msgVehicleVelocity)
-
+        #~ if not self.isPublishStart:
+       	self.StartSimulationPub.publish(self.simStart)	
+            #~ self.isPublishStart = True
+		    
         # self.logger.debug("send the truck data")
 
     def PublishSimulationMsg(self):
@@ -107,7 +115,7 @@ class Truck:
         self.truckGpsPub.publish(self.simGlobalLocation)
         self.truckVelocityPub.publish(self.simVehicleVelocity)
         self.truckRealPositionPub.publish(self.simRealLocation)
-
+        #~ self.StartSimulationPub.publish(self.simStart)
         if self.simPathNumber == 1:
 
 
@@ -224,6 +232,7 @@ class Truck:
                 angle = math.atan2((self.simGlobalLocation.point.y - last_y), (self.simGlobalLocation.point.x - last_x))
                 self.simVehicleVelocity.point.x = self.variable_x * math.cos(angle)       # north speed
                 self.simVehicleVelocity.point.y = self.variable_x * math.sin(angle)       # east speed
+                
                 # self.logger.debug("Simulation: send the truck data")            
                 self.time += Truck.TimeStep
         else:
@@ -231,11 +240,15 @@ class Truck:
 
 
         if Truck.isEnableNoise:
-            self.simGlobalLocation.point.x += (2*self.noiseRange*np.random.random_sample()-self.noiseRange)*Truck.LAT_PER_NORTH
-            self.simGlobalLocation.point.y += (2*self.noiseRange*np.random.random_sample()-self.noiseRange)*Truck.LON_PER_EAST
+            self.simGlobalLocation.point.x += (np.random.normal(0, 0.3))*Truck.LAT_PER_NORTH
+            self.simGlobalLocation.point.y += (np.random.normal(0, 0.3))*Truck.LON_PER_EAST
+            
+            self.simVehicleVelocity.point.x += np.random.normal(0, 0.18)      # north speed
+            self.simVehicleVelocity.point.y += np.random.normal(0, 0.18)       # east speed
+                
             
     def TimerCallback(self, event):     
-
+		
    
         self.PublishSimulationMsg()
 

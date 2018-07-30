@@ -11,11 +11,11 @@ using namespace Eigen;
 // constructor
 KalmanFilter::KalmanFilter()
 {
-    float sigma_ax = 0.5; // cause max acceleration = 1.5 m/s2
-    float sigma_ay = 0.5;
+    float sigma_ax = 0.1; // cause max acceleration = 1.5 m/s2
+    float sigma_ay = 0.1;
 
     float dt = 0.1;
-    float dpt = 0.1; // for prediction
+    float dpt = 0.025; // for prediction
 
     // Initialize system matrixes
     A_ <<   1, 0, dt, 0,
@@ -41,8 +41,8 @@ KalmanFilter::KalmanFilter()
             pow(dt,3.0)/2*pow(sigma_ax,2.0), 0, pow(dt,2.0)*pow(sigma_ax,2.0), 0,
             0, pow(dt,3.0)/2*pow(sigma_ay,2.0), 0, pow(dt,2.0)*pow(sigma_ay,2.0);
 
-    R_ <<   0.09, 0,
-            0, 0.09;    // noise, sigma = 0.3
+    R_ <<   0.2, 0,
+            0, 0.2;    // noise, sigma = 0.5
 
 
     nx_ = A_.cols();
@@ -74,6 +74,8 @@ void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
         xhat_ = xk;
         P_ = MatrixXd::Identity(4, 4);
         
+        xEstmWO_ = xhat_;
+        
 		IsXhatInitialized_ = true;
 	}
 }
@@ -98,7 +100,7 @@ Vector4d KalmanFilter::Update(Vector4d xk)
     P_ = ppred - K * C_ * ppred;
     
     
-    xPred2_ = xhat_;
+    xEstmWO_ = xhat_;
 
     return xhat_;
 
@@ -107,16 +109,16 @@ Vector4d KalmanFilter::Update(Vector4d xk)
 
 Vector4d KalmanFilter::PredictWOObservation(){
 	
-	xPred2_ = Ap_ * xPred2_;
+	xEstmWO_ = Ap_ * xEstmWO_;
 	
-	
+	return xEstmWO_;
 }
 
 
-VectorXd KalmanFilter::Predict()
+VectorXd KalmanFilter::Predict(Vector4d xk)
 {
 	
-	xPred_ = xhat_;
+	xPred_ = xk;
 	XP_.segment(0, nx_) = xPred_;
 	
     for(int i = 1; i < nPred_; i++){
