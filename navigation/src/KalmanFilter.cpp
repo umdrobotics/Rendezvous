@@ -31,9 +31,7 @@ KalmanFilter::KalmanFilter()
     // B_ = Eigen::MatrixXd(4,2);
     B_ = 0 ;
 
-    C_ = Eigen::MatrixXd(2,4);  
-    C_ <<   1, 0, 0, 0,
-            0, 1, 0, 0; 
+    C_ = MatrixXd::Identity(4, 4);
 
     // Initialize uncertainty and noise
     Q_ <<   pow(dt,4.0)/4*pow(sigma_ax,2.0), 0, pow(dt,3.0)/2*pow(sigma_ax,2.0), 0,
@@ -41,8 +39,10 @@ KalmanFilter::KalmanFilter()
             pow(dt,3.0)/2*pow(sigma_ax,2.0), 0, pow(dt,2.0)*pow(sigma_ax,2.0), 0,
             0, pow(dt,3.0)/2*pow(sigma_ay,2.0), 0, pow(dt,2.0)*pow(sigma_ay,2.0);
 
-    R_ <<   0.2, 0,
-            0, 0.2;    // noise, sigma = 0.5
+    R_ <<   0.2, 0, 0, 0,
+            0, 0.2, 0, 0,
+            0, 0, 0.18, 0,
+            0, 0, 0, 0.18;    // noise, sigma = 0.5
 
 
     nx_ = A_.cols();
@@ -84,15 +84,15 @@ void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
 Vector4d KalmanFilter::Update(Vector4d xk)
 {
     
-    Vector2d output = xk.head(2);
+    Vector4d output = xk;
 
     // Predict
     Vector4d xpred = A_ * xhat_ ;              // local var, prediction for time k
     Matrix4d ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
 
     // Compute Kalman Gain
-    Vector2d innovation = output - C_ * xpred;
-    Matrix2d S = C_ * ppred * C_.transpose() + R_;
+    Vector4d innovation = output - C_ * xpred;
+    Matrix4d S = C_ * ppred * C_.transpose() + R_;
     MatrixXd K = ppred * C_.transpose() * S.inverse();
 
     // Update estimate

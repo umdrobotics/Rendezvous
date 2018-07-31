@@ -1477,6 +1477,15 @@ void RunAutonomousLanding2()
     {    
 		float distance_square = (_msgRealTruckLocalPosition.point.x - drone_x)*(_msgRealTruckLocalPosition.point.x - drone_x) + (_msgRealTruckLocalPosition.point.y - drone_y)*(_msgRealTruckLocalPosition.point.y - drone_y);
         bool bIsClose = distance_square < limitRadius_square;
+        bool bIsStartLanding = false;
+        if (bIsClose)
+        {
+			_counter = _counter + 1;
+		}
+        if ((_counter > 80) && (bIsClose))
+        {
+			bIsStartLanding = true;
+		}
         // bool bIsClose = true;
 
         // float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
@@ -1484,7 +1493,7 @@ void RunAutonomousLanding2()
         geometry_msgs::Point desired_position;
         desired_position.x = _msgTruckLocalPosition.point.x;
         desired_position.y = _msgTruckLocalPosition.point.y;;
-        desired_position.z = bIsClose ? -0.1 : drone_z;
+        desired_position.z = bIsStartLanding ? -0.1 : drone_z;
 	    float desired_yaw = 0;
         if (_bIsLocalLocationControlEnable)
         {	RunLocalPositionControl(desired_position, desired_yaw);}

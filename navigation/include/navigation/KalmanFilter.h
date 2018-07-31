@@ -51,10 +51,10 @@ class KalmanFilter {
         Matrix4d A_;
         Matrix4d Ap_;
         int B_;
-        MatrixXd C_;
+        Matrix4d C_;
 
         Matrix4d Q_;
-        Matrix2d R_;
+        Matrix4d R_;
         Matrix4d P_;
 
 
