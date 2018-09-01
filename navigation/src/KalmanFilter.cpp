@@ -39,8 +39,8 @@ KalmanFilter::KalmanFilter()
             pow(dt,3.0)/2*pow(sigma_ax,2.0), 0, pow(dt,2.0)*pow(sigma_ax,2.0), 0,
             0, pow(dt,3.0)/2*pow(sigma_ay,2.0), 0, pow(dt,2.0)*pow(sigma_ay,2.0);
 
-    R_ <<   0.2, 0, 0, 0,
-            0, 0.2, 0, 0,
+    R_ <<   0.3, 0, 0, 0,
+            0, 0.3, 0, 0,
             0, 0, 0.18, 0,
             0, 0, 0, 0.18;    // noise, sigma = 0.5
 

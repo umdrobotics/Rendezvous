@@ -10,6 +10,28 @@ using namespace Eigen;
 class MPCController {
 
     public: // methods
+        Matrix4d A_;
+        MatrixXd B_;
+
+        MatrixXd Q_;
+        MatrixXd R_;
+
+        MatrixXd Ap_; 
+        MatrixXd Bp_;
+            
+        MatrixXd K_;
+        
+        MatrixXd H_;
+        MatrixXd F_;
+        
+        MatrixXd Cv_;
+        MatrixXd G_;
+        MatrixXd S_;
+        
+        MatrixXd Md_;
+        MatrixXd D_;
+        double L_;
+        
     
         int P_, M_;
         int nx_, nu_;
@@ -23,6 +45,9 @@ class MPCController {
         VectorXd LastXp_;
         Vector4d LastXk_; 
 		Vector4d Hp_;
+		
+		//~ Vector4d xk_;
+		//~ VectorXd rp_;
 		
 		Vector4d Dp_;
 		
@@ -43,21 +68,29 @@ class MPCController {
         VectorXd Predict(Vector4d xk);
         Vector2d ComputeOptimalInput(VectorXd StateError);
         VectorXd CorrectPrediction(Vector4d output);
+        
+        // QP solver
+        //~ double CostFunc(unsigned n, const double *x, double *grad, void *data);
+        //~ double MyConstraints(unsigned n, const double *x, double *grad, void *data);
+        Vector2d ComputeOptimalInput2(Vector4d xk, VectorXd rp);
 
 
 
     private: // members
 
-        Matrix4d A_;
-        MatrixXd B_;
-
-        MatrixXd Q_;
-        MatrixXd R_;
-
-        MatrixXd Ap_; 
-        MatrixXd Bp_;
-            
-        MatrixXd K_;
+        //~ Matrix4d A_;
+        //~ MatrixXd B_;
+//~ 
+        //~ MatrixXd Q_;
+        //~ MatrixXd R_;
+//~ 
+        //~ MatrixXd Ap_; 
+        //~ MatrixXd Bp_;
+            //~ 
+        //~ MatrixXd K_;
+        //~ MatrixXd K1_;
+        //~ MatrixXd K2_;
+        //~ MatrixXd K3_;
 
 
         

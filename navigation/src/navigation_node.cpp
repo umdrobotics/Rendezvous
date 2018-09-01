@@ -5,13 +5,14 @@
 #include <navigation/conversion.h>
 #include <navigation/UasMath.h>
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <signal.h>
 #include <math.h>
 #include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
 #include <apriltags_ros/AprilTagDetection.h>
 #include <apriltags_ros/AprilTagDetectionArray.h>
-#include <apriltags2_ros/AprilTagDetection.h>
-#include <apriltags2_ros/AprilTagDetectionArray.h>
+//~ #include <apriltags2_ros/AprilTagDetection.h>
+//~ #include <apriltags2_ros/AprilTagDetectionArray.h>
 #include <sstream>
 #include <fstream>
 #include <iostream>
@@ -26,8 +27,13 @@
 #include "navigation/MPCController.h"
 #include "navigation/KalmanFilter.h"
 
+#include <math.h>
+#include <nlopt.hpp>
+#include <vector>
+
 using namespace std;
 using namespace Eigen;
+using namespace nlopt;
 
 //~ #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
 #define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/GoToTruck_"
@@ -441,60 +447,6 @@ float IntegratorCalculationVec(float stateError, float lastStateError, float sum
 	return sumError;
 }
 
-float AttitudeControlHelper3(geometry_msgs::Point desired_position, float& dpitch, float& droll)
-{
-	DJIDrone& drone = *_ptrDrone;
-	Vector3d u(desired_position.x - drone.local_position.x, desired_position.y - drone.local_position.y, 0);
-	Vector3d u_dot(_msgTruckVelocity.point.x - drone.velocity.vx, _msgTruckVelocity.point.y - drone.velocity.vy, 0);
-    
-    float lamda = 4;
-    float kp = 1;
-    float kd = 2;
-    float m = 2.883;
-    float g = 9.8;
-    
-    Vector3d Omiga = (u.cross(u_dot))/(u.dot(u));
-    Vector3d aNor = - lamda * u_dot.norm() * (u/u.norm()).cross(Omiga);
-    Vector3d aTan = u*kp + u_dot*kd;
-    Vector3d a = aTan + aNor;
-    
-    dpitch = atan(a(0)/g + 0.705*drone.velocity.vx*fabs(drone.velocity.vx));
-    droll = atan((a(1)/g + 0.705*drone.velocity.vy*fabs(drone.velocity.vy)*cos(dpitch)));
-	
-	float maxAngle = 30.0;
-    dpitch = dpitch > maxAngle ? maxAngle
-                               : dpitch < -maxAngle ? -maxAngle
-                                                    : dpitch;
-
-    droll = droll > maxAngle ? maxAngle
-                             : droll < -maxAngle ? -maxAngle
-                                                 : droll;
-                                                 
-    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
-    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
-    ROS_INFO(" error_px, error_py, dpitch, droll:%f, %f, %f, %f",u(0),u(1), dpitch, droll); // -uk(0), -uk(1));
-    _ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            << ros::Time::now().toSec() << ","
-                            <<  _msgUltraSonic.ranges[0] << ","
-                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
-                            << _msgTruckLocalPosition.point.x << ","
-                            << _msgTruckLocalPosition.point.y << ","
-                            << _msgTruckLocalPosition.point.z << ","   // truck local position
-                            << _msgTargetLocalPosition.point.x << ","
-                            << _msgTargetLocalPosition.point.y << ","
-                            << _msgTargetLocalPosition.point.z << ","   // target local position
-                            << drone.local_position.x << ","
-                            << drone.local_position.y << ","
-                            << drone.local_position.z << ","
-                            << drone.velocity.vx << ","
-                            << drone.velocity.vy << ","
-                            << drone.velocity.vz << ","
-                            << dpitch << ","
-                            << droll << ","
-                            << _sumPosErrX << ","
-                            << _sumPosErrY << ","
-                            << yaw << std::endl;  
-	}
 
 float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {
@@ -512,7 +464,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     Vector4d stateError = xk - targetState;
     _mpc.SetXpInitialPoint(xk);
     
-    int nPred = 25; 
+    
+    int nPred = 25;  // 25
     _kf.SetPredHorizon(nPred + P);
     
     
@@ -534,7 +487,9 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
      
     //~ VectorXd statePredError = Xpc - targetState.colwise().replicate(P); // For stationary target
     VectorXd statePredError = Xpc - desiredState;   // For moving target
-    Vector2d uk = _mpc.ComputeOptimalInput(statePredError);
+    //~ Vector2d uk = _mpc.ComputeOptimalInput(statePredError);
+    
+    Vector2d uk = _mpc.ComputeOptimalInput2(xk, desiredState);
     VectorXd Xp = _mpc.Predict(xk);
 
     // Initialize integrator
@@ -550,13 +505,13 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_kiPos << endl;
 
-    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX -mpc_kiVec*_sumVecErrX): -uk(0);
+    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX - mpc_kiVec*_sumVecErrX): -uk(0);
     droll = _bIsIntegralEnable? (-uk(1) - mpc_kiPos*_sumPosErrY - mpc_kiVec*_sumVecErrY): -uk(1);
     //~ dpitch = -uk(0);
     //~ droll = -uk(1);
 
     // Saturate desired pitch and roll angle to -30deg or 30deg
-    float maxAngle = 35.0;
+    float maxAngle = 45.0; 
     dpitch = dpitch > maxAngle ? maxAngle
                                : dpitch < -maxAngle ? -maxAngle
                                                     : dpitch;
@@ -565,7 +520,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                              : droll < -maxAngle ? -maxAngle
                                                  : droll;
 
-    ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f", drone.local_position.x - _msgRealTruckLocalPosition.point.x, drone.local_position.y - _msgRealTruckLocalPosition.point.y, dpitch, droll); // -uk(0), -uk(1));
+    ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f, %f, %f", drone.local_position.x - _msgRealTruckLocalPosition.point.x, drone.local_position.y - _msgRealTruckLocalPosition.point.y, dpitch, droll, -uk(0), -uk(1));
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
@@ -596,18 +551,18 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << _sumPosErrY << ","
                             << yaw << std::endl;                             // drone local position
 	
-	_ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            << ros::Time::now().toSec() << ","							
-                            << _msgTruckLocalPosition.point.x << ","
-                            << _msgTruckLocalPosition.point.y << ","
-                            << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
-                            << _msgTruckVelocity.point.x << ","
-							<< _msgTruckVelocity.point.y << ","
-							<< _msgRealTruckLocalPosition.point.x << ","
-							<< _msgRealTruckLocalPosition.point.y << ","
-							<< _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-							<< _truckEstmState.transpose() << ","  // truck estimated position & velocity
-							<< truckPred.segment((nPred+1)*nx,4).transpose() << std::endl;  
+	//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            //~ << ros::Time::now().toSec() << ","							
+                            //~ << _msgTruckLocalPosition.point.x << ","
+                            //~ << _msgTruckLocalPosition.point.y << ","
+                            //~ << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
+                            //~ << _msgTruckVelocity.point.x << ","
+							//~ << _msgTruckVelocity.point.y << ","
+							//~ << _msgRealTruckLocalPosition.point.x << ","
+							//~ << _msgRealTruckLocalPosition.point.y << ","
+							//~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
+							//~ << _truckEstmState.transpose() << ","  // truck estimated position & velocity
+							//~ << truckPred.segment((nPred+1)*nx,4).transpose() << std::endl;  
 							
 							
 }
@@ -626,12 +581,10 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
         AttitudeControlHelper2(desired_position, setAnglePitch, setAngleRoll);  
         
     }
-    else if (_bIsLQREnable){
+    else {
         AttitudeControlHelper(desired_position, setAnglePitch, setAngleRoll);
     }
-    else{
-		AttitudeControlHelper3(desired_position, setAnglePitch, setAngleRoll);
-		}
+
 		
     float setpoint_z = LocalPositionControlAltitudeHelper(desired_position.z, drone.local_position.z);
 	
@@ -1038,45 +991,45 @@ void RunSensorFusing(){
 
 
 // // This the original tag_detection callback
-// void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
-// {
-//     // If Target Tracking is not running, do nothing.
-//     if (!_bIsTargetTrackingRunning) { return; }
+void tagDetectionCallback(const apriltags_ros::AprilTagDetectionArray vecTagDetections)
+{
+     // If Target Tracking is not running, do nothing.
+     if (!_bIsTargetTrackingRunning) { return; }
 
-//     FindDesiredGimbalAngle(vecTagDetections);
-//  }
+     FindDesiredGimbalAngle(vecTagDetections);
+}
 
 // Experimental: tag_detection callback for apriltag2_ros
-void tagDetectionCallback(const apriltags2_ros::AprilTagDetectionArray vecTagDetections2)
-{
-
-    // If Target Tracking is not running, do nothing.
-    if (!_bIsTargetTrackingRunning) { return; }
-
-    // If found nothing, do noting.
-    if (vecTagDetections2.detections.empty())
-    {
-        // There is nothing we can do
-        return;
-    }
-
-    // transfer detection format from apriltag2 to apriltag
-    // It's just a quick fix. Later need to discard apriltag and use apriltag2
-    apriltags_ros::AprilTagDetection TagDetection;
-    apriltags_ros::AprilTagDetectionArray vecTagDetections;
-    // TagDetection.id            = vecTagDetections2.detections.at(0).id[0];
-    // TagDetection.size          = vecTagDetections2.detections.at(0).size[0];
-    // TagDetection.pose.header   = vecTagDetections2.detections.at(0).pose.header;
-    TagDetection.pose.pose     = vecTagDetections2.detections.at(0).pose.pose.pose;
-    vecTagDetections.detections.push_back(TagDetection);
-
-    FindDesiredGimbalAngle(vecTagDetections);
-
-    // If target found, sensor fuse at 30hz.
-    if( _bIsTargetFound ){
-        RunSensorFusing();
-    }
- }
+//~ void tagDetectionCallback(const apriltags2_ros::AprilTagDetectionArray vecTagDetections2)
+//~ {
+//~ 
+    //~ // If Target Tracking is not running, do nothing.
+    //~ if (!_bIsTargetTrackingRunning) { return; }
+//~ 
+    //~ // If found nothing, do noting.
+    //~ if (vecTagDetections2.detections.empty())
+    //~ {
+        //~ // There is nothing we can do
+        //~ return;
+    //~ }
+//~ 
+    //~ // transfer detection format from apriltag2 to apriltag
+    //~ // It's just a quick fix. Later need to discard apriltag and use apriltag2
+    //~ apriltags_ros::AprilTagDetection TagDetection;
+    //~ apriltags_ros::AprilTagDetectionArray vecTagDetections;
+    //~ // TagDetection.id            = vecTagDetections2.detections.at(0).id[0];
+    //~ // TagDetection.size          = vecTagDetections2.detections.at(0).size[0];
+    //~ // TagDetection.pose.header   = vecTagDetections2.detections.at(0).pose.header;
+    //~ TagDetection.pose.pose     = vecTagDetections2.detections.at(0).pose.pose.pose;
+    //~ vecTagDetections.detections.push_back(TagDetection);
+//~ 
+    //~ FindDesiredGimbalAngle(vecTagDetections);
+//~ 
+    //~ // If target found, sensor fuse at 30hz.
+    //~ if( _bIsTargetFound ){
+        //~ RunSensorFusing();
+    //~ }
+ //~ }
 
 
 // void lqrGainCallback(const geometry_msgs::PoseWithCovariance msgLQRGain)
@@ -1105,19 +1058,31 @@ void startSimCallback(const geometry_msgs::PointStamped msgStartSim)
 	
 }
 
-void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
+void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
 {
 
     DJIDrone& drone = *_ptrDrone;
 
     // Record GPS position
-    _msgTruckGPSPosition.point.x = msgTruckPosition.point.x;
-    _msgTruckGPSPosition.point.y = msgTruckPosition.point.y;
-    _msgTruckGPSPosition.point.z = msgTruckPosition.point.z;
+    _msgTruckGPSPosition.point.x = msgTruckPosition.pose.position.x;
+    _msgTruckGPSPosition.point.y = msgTruckPosition.pose.position.y;
+    _msgTruckGPSPosition.point.z = msgTruckPosition.pose.position.z;
+    
+    float truckDistance_x = (msgTruckPosition.pose.orientation.x - drone.global_position.latitude)/0.0000089354;
+    float truckDistance_y = (msgTruckPosition.pose.orientation.y - drone.global_position.longitude)/0.0000121249;
+
+
+    // Calculate the truck local location
+    // drone.local_position.x means northing
+    // drone.local_position.y means easting
+    _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
+    _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
+    _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
+    _msgRealTruckLocalPosition.point.z = 0;
 
     // Calculate the distance from truck to drone
-    _msgTruckDistance.point.x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
-    _msgTruckDistance.point.y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
+    _msgTruckDistance.point.x = (msgTruckPosition.pose.position.x - drone.global_position.latitude)/0.0000089354;
+    _msgTruckDistance.point.y = (msgTruckPosition.pose.position.y - drone.global_position.longitude)/0.0000121249;
     _msgTruckDistance.point.z = 0;
 
     // If the Truck is extremely far away from drone, then there must be something wrong
@@ -1156,30 +1121,41 @@ void truckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
 	_truckEstmState = _kf.Update(truckState);
 	
 	_IsGPSUpdated = true;
+			_ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            << ros::Time::now().toSec() << ","							
+                            << _msgTruckLocalPosition.point.x << ","
+                            << _msgTruckLocalPosition.point.y << ","
+                            << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
+                            << _msgTruckVelocity.point.x << ","
+							<< _msgTruckVelocity.point.y << ","
+							<< _msgRealTruckLocalPosition.point.x << ","
+							<< _msgRealTruckLocalPosition.point.y << ","
+							<< _msgRealTruckLocalPosition.point.z << "," // truck true local position 
+							<< _truckEstmState.transpose() << std::endl;   
 
 }
 
-void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
-{
-
-    DJIDrone& drone = *_ptrDrone;
-    // Record GPS position
-
-    // Calculate the distance from truck to drone
-    float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
-    float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
-
-
-    // Calculate the truck local location
-    // drone.local_position.x means northing
-    // drone.local_position.y means easting
-    _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
-    _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
-    _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
-    _msgRealTruckLocalPosition.point.z = 0;
-
-
-}
+//~ void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
+//~ {
+//~ 
+    //~ DJIDrone& drone = *_ptrDrone;
+    //~ // Record GPS position
+//~ 
+    //~ // Calculate the distance from truck to drone
+    //~ float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
+    //~ float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
+//~ 
+//~ 
+    //~ // Calculate the truck local location
+    //~ // drone.local_position.x means northing
+    //~ // drone.local_position.y means easting
+    //~ _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
+    //~ _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
+    //~ _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
+    //~ _msgRealTruckLocalPosition.point.z = 0;
+//~ 
+//~ 
+//~ }
 
 
 
@@ -1482,9 +1458,10 @@ void RunAutonomousLanding2()
         {
 			_counter = _counter + 1;
 		}
-        if ((_counter > 80) && (bIsClose))
+        if ((_counter > 60) && (bIsClose))
         {
 			bIsStartLanding = true;
+			ROS_INFO("The drone has landed!*********************************************************");
 		}
         // bool bIsClose = true;
 
@@ -1983,7 +1960,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     // ros::Subscriber sub4 = nh.subscribe("/LQR_K", numMessagesToBuffer, lqrGainCallback);
     ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
-    ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
+    //~ ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
     ros::Subscriber sub7 = nh.subscribe("/truck/velocity", numMessagesToBuffer, truckVelocityCallback);
     ros::Subscriber sub8 = nh.subscribe("/truck/start_simulation", numMessagesToBuffer, startSimCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);

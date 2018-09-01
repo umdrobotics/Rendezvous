@@ -26,7 +26,7 @@ class Truck:
     def __init__(self, bIsSimulationMode = True):
         # inital the class
 
-        self.truckGpsPub =            rospy.Publisher("/truck/location_GPS", PointStamped, queue_size=10)
+        self.truckGpsPub =            rospy.Publisher("/truck/location_GPS", PoseStamped, queue_size=10)
         self.truckVelocityPub =       rospy.Publisher("/truck/velocity", PointStamped, queue_size=10)
         self.truckRealPositionPub=    rospy.Publisher("/truck/real_location_GPS", PointStamped, queue_size=10)
         self.StartSimulationPub=    rospy.Publisher("/truck/start_simulation", PointStamped, queue_size=10)
@@ -72,16 +72,13 @@ class Truck:
         self.simLongitudeStart = simLongitudeStart
 		
         self.simStart = PointStamped()
-        self.simStart.point.x = 22 
+        self.simStart.point.x = 22
        
-        self.simRealLocation = PointStamped()
-        self.simRealLocation.point.x = simLatitudeStart
-        self.simRealLocation.point.y = simLongitudeStart
-
-
-        self.simGlobalLocation = PointStamped()
-        self.simGlobalLocation.point.x = simLatitudeStart   # latitude
-        self.simGlobalLocation.point.y = simLongitudeStart  # longitude
+        self.simGlobalLocation = PoseStamped()
+        self.simGlobalLocation.pose.position.x = simLatitudeStart
+        self.simGlobalLocation.pose.position.y = simLongitudeStart
+        self.simGlobalLocation.pose.orientation.x = simLatitudeStart   # latitude
+        self.simGlobalLocation.pose.orientation.y = simLongitudeStart  # longitude
      
         self.simVehicleVelocity = PointStamped()
         self.simVehicleVelocity.point.x = 0                 # north speed
@@ -100,8 +97,8 @@ class Truck:
 
         self.truckGpsPub.publish(msgVehicleGps)
         self.truckVelocityPub.publish(msgVehicleVelocity)
-        #~ if not self.isPublishStart:
-       	self.StartSimulationPub.publish(self.simStart)	
+        #~ if self.isPublishStart:
+       	#~ self.StartSimulationPub.publish(self.simStart)	
             #~ self.isPublishStart = True
 		    
         # self.logger.debug("send the truck data")
@@ -110,20 +107,20 @@ class Truck:
 
         self.simGlobalLocation.header.stamp = rospy.Time.now()   
         self.simVehicleVelocity.header.stamp = rospy.Time.now()
-        self.simRealLocation.header.stamp = rospy.Time.now()
+        #~ self.simRealLocation.header.stamp = rospy.Time.now()
 
         self.truckGpsPub.publish(self.simGlobalLocation)
         self.truckVelocityPub.publish(self.simVehicleVelocity)
-        self.truckRealPositionPub.publish(self.simRealLocation)
-        self.StartSimulationPub.publish(self.simStart)
+        #~ self.truckRealPositionPub.publish(self.simRealLocation)
+        #~ self.StartSimulationPub.publish(self.simStart)
         if self.simPathNumber == 1:
 
 
-                self.simRealLocation.point.x += (self.variable_x * self.timeStep) * Truck.LAT_PER_NORTH 
-                self.simRealLocation.point.y += (self.variable_y * self.timeStep) * Truck.LON_PER_EAST 
+                self.simGlobalLocation.pose.orientation.x += (self.variable_x * self.timeStep) * Truck.LAT_PER_NORTH 
+                self.simGlobalLocation.pose.orientation.y += (self.variable_y * self.timeStep) * Truck.LON_PER_EAST 
 
-                self.simGlobalLocation.point.x = self.simRealLocation.point.x
-                self.simGlobalLocation.point.y = self.simRealLocation.point.y
+                self.simGlobalLocation.pose.position.x = self.simGlobalLocation.pose.orientation.x
+                self.simGlobalLocation.pose.position.y = self.simGlobalLocation.pose.orientation.y
 
 
 
@@ -140,16 +137,16 @@ class Truck:
                 omega = self.variable_x/self.variable_y
                 distance_x = self.variable_y * (1.0 - math.cos(omega*self.time))
                 distance_y = self.variable_y * math.sin(omega*self.time)
-                last_x = self.simGlobalLocation.point.x
-                last_y = self.simGlobalLocation.point.y
+                last_x = self.simGlobalLocation.pose.position.x
+                last_y = self.simGlobalLocation.pose.position.y
 
-                self.simGlobalLocation.point.x = distance_x * Truck.LAT_PER_NORTH + self.simLatitudeStart
-                self.simGlobalLocation.point.y = distance_y * Truck.LON_PER_EAST + self.simLongitudeStart
+                self.simGlobalLocation.pose.position.x = distance_x * Truck.LAT_PER_NORTH + self.simLatitudeStart
+                self.simGlobalLocation.pose.position.y = distance_y * Truck.LON_PER_EAST + self.simLongitudeStart
 
-                self.simRealLocation.point.x = distance_x * Truck.LAT_PER_NORTH + self.simLatitudeStart
-                self.simRealLocation.point.y = distance_y * Truck.LON_PER_EAST + self.simLongitudeStart
+                self.simGlobalLocation.pose.orientation.x = distance_x * Truck.LAT_PER_NORTH + self.simLatitudeStart
+                self.simGlobalLocation.pose.orientation.y = distance_y * Truck.LON_PER_EAST + self.simLongitudeStart
 
-                angle = math.atan2((self.simGlobalLocation.point.y - last_y), (self.simGlobalLocation.point.x - last_x))
+                angle = math.atan2((self.simGlobalLocation.pose.position.y - last_y), (self.simGlobalLocation.pose.position.x - last_x))
                 self.simVehicleVelocity.point.x = self.variable_x * math.cos(angle)       # north speed
                 self.simVehicleVelocity.point.y = self.variable_x * math.sin(angle)       # east speed
                 # self.logger.debug("Simulation: send the truck data")            
@@ -240,8 +237,8 @@ class Truck:
 
 
         if Truck.isEnableNoise:
-            self.simGlobalLocation.point.x += (np.random.normal(0, 0.3))*Truck.LAT_PER_NORTH
-            self.simGlobalLocation.point.y += (np.random.normal(0, 0.3))*Truck.LON_PER_EAST
+            self.simGlobalLocation.pose.position.x += (np.random.normal(0, 0.3))*Truck.LAT_PER_NORTH
+            self.simGlobalLocation.pose.position.y += (np.random.normal(0, 0.3))*Truck.LON_PER_EAST
             
             self.simVehicleVelocity.point.x += np.random.normal(0, 0.18)      # north speed
             self.simVehicleVelocity.point.y += np.random.normal(0, 0.18)       # east speed
@@ -264,7 +261,7 @@ def main():
 
     # # GPS location of Simulahstion 
     simLatitudeStart = 42.323396612189850
-    simLongitudeStart = -83.222952844799720 - 400*truck.LON_PER_EAST
+    simLongitudeStart = -83.222952844799720 - 0*truck.LON_PER_EAST
 
     # SetSimulationPath has no effect if isSimulation is False
     path = raw_input("Please enter the truck path:\n 1. Straight_line \n 2. Circle \n 3. Zigzag \n 4. Figure_eight \n 5. Arrow_heading \n")
