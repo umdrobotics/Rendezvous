@@ -140,7 +140,7 @@ void MPCController::Initialize(float q, float kiPos, float kiVec)
     
     // Constrainted MPC parms 
     H_ = Bp_.transpose()*Q_*Bp_ + R_;
-    F_ = Bp_.transpose()*Q_;
+    Fd_ = Bp_.transpose()*Q_;
     
     Cv_ = MatrixXd::Zero(2*P_, nx_*P_);
     for(int i = 0; i<P_; i++){
@@ -154,14 +154,7 @@ void MPCController::Initialize(float q, float kiPos, float kiVec)
     G_.block(4*M_,0,2*P_,2*M_) = Cv_*Bp_;
     G_.block(2*P_+4*M_,0,2*P_,2*M_) = -Cv_*Bp_;
     
-    S_ = MatrixXd::Zero(4*P_+4*M_, 4*P_);
-    S_.block(0,0,2*M_,4*P_) = MatrixXd::Zero(2*M_, nx_*P_);
-    S_.block(2*M_,0,2*M_,4*P_) = MatrixXd::Zero(2*M_, nx_*P_); 
-    S_.block(4*M_,0,2*P_,4*P_) = -Cv_;
-    S_.block(2*P_+4*M_,0,2*P_,4*P_) = Cv_; 
-    
     Md_ = G_*H_.inverse()*G_.transpose();
-    D_ = G_*H_.inverse()*F_ + S_;
     L_ = Md_.norm();
     
     //~ std::cout << "Cv_: " << Cv_ << std::endl;
@@ -237,22 +230,29 @@ Vector2d MPCController::ComputeOptimalInput2(Vector4d xk, VectorXd rp)
 	//~ ArrayXd ub = 20*MatrixXd::Ones(4*P_, 1);
 	ArrayXd lb = MatrixXd::Zero(4*P_+4*M_, 1);
 	
-	VectorXd W = MatrixXd::Zero(4*P_+4*M_, 1);
-	W.head(2*M_) = 20*MatrixXd::Ones(2*M_, 1);
-	W.segment(2*M_, 2*M_) = 20*MatrixXd::Ones(2*M_, 1);
-    W.segment(4*M_, 2*P_) = 17*MatrixXd::Ones(2*P_, 1) - Cv_*rp;
-    W.tail(2*P_) = 17*MatrixXd::Ones(2*P_, 1) + Cv_*rp;
+	F_ = Fd_*(Ap_*xk - rp);
+	
+	S_ = MatrixXd::Zero(4*P_+4*M_, 1);
+    S_.block(0,0,2*M_,1) = 20*MatrixXd::Ones(2*M_, 1);
+    S_.block(2*M_,0,2*M_,1) = 20*MatrixXd::Ones(2*M_, 1); 
+    S_.block(4*M_,0,2*P_,1) = 17*MatrixXd::Ones(2*P_, 1) - Cv_*Ap_*xk;
+    S_.block(2*P_+4*M_,0,2*P_,1) = 17*MatrixXd::Ones(2*P_, 1) + Cv_*Ap_*xk; 
+    
+    D_ = G_*H_.inverse()*F_ + S_;
+	
+	//~ VectorXd W = MatrixXd::Zero(4*P_+4*M_, 1);
+	//~ W.head(2*M_) = 20*MatrixXd::Ones(2*M_, 1);
+	//~ W.segment(2*M_, 2*M_) = 20*MatrixXd::Ones(2*M_, 1);
+    //~ W.segment(4*M_, 2*P_) = 17*MatrixXd::Ones(2*P_, 1) - Cv_*rp;
+    //~ W.tail(2*P_) = 17*MatrixXd::Ones(2*P_, 1) + Cv_*rp;
     
   
     // Parms of iterator
-    MatrixXd xp = Ap_*xk - rp;
     MatrixXd K1 = MatrixXd::Ones(4*P_+4*M_, 4*P_+4*M_) - Md_/L_;
-    MatrixXd K2 = (D_*xp + W)/L_;
-    
-    
+    MatrixXd K2 = D_/L_;
     
     // Start iterating
-    //~ VectorXd yk = MatrixXd::Zero(4*P_+4*M_, 1);
+    VectorXd yk = MatrixXd::Zero(4*P_+4*M_, 1);
     //~ VectorXd iterator = (K1*yk - K2).min(ub).max(lb);
     //~ while((iterator - yk).norm() > 0.1){
 		//~ yk = iterator;
@@ -261,8 +261,8 @@ Vector2d MPCController::ComputeOptimalInput2(Vector4d xk, VectorXd rp)
 	//~ yk = iterator;
 	VectorXd iterator;
     for(int i = 0; i < 100; i++){
-		//~ iterator = (K1*yk - K2).array().max(lb);
-		iterator = K1*yk - K2;
+		iterator = (K1*yk - K2).array().max(lb);
+		//~ iterator = K1*yk - K2;
 		std::cout << yk.head(nu_).transpose() << "," << iterator.head(nu_).transpose() << std::endl;
 		
 		if ((iterator - yk).norm() < 0.1) { 
@@ -276,7 +276,7 @@ Vector2d MPCController::ComputeOptimalInput2(Vector4d xk, VectorXd rp)
 	
 	//~ std::cout << yk << std::endl;
 
-	Um_ = -H_.inverse()*(G_.transpose()*yk + F_*xp);
+	Um_ = -H_.inverse()*(G_.transpose()*yk + F_);
 	uk_ = Um_.head(nu_);
 
    

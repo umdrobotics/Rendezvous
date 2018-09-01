@@ -447,6 +447,188 @@ float IntegratorCalculationVec(float stateError, float lastStateError, float sum
 	return sumError;
 }
 
+float AttitudeControlHelper3(geometry_msgs::Point desired_position, float& dpitch, float& droll)
+{
+	DJIDrone& drone = *_ptrDrone;
+	Vector3d u(desired_position.x - drone.local_position.x, desired_position.y - drone.local_position.y, 0);
+	Vector3d u_dot(_msgTruckVelocity.point.x - drone.velocity.vx, _msgTruckVelocity.point.y - drone.velocity.vy, 0);
+    
+    float lamda = 4;
+    float kp = 1;
+    float kd = 2;
+    float m = 2.883;
+    float g = 9.8;
+    
+    Vector3d Omiga = (u.cross(u_dot))/(u.dot(u));
+    Vector3d aNor = - lamda * u_dot.norm() * (u/u.norm()).cross(Omiga);
+    Vector3d aTan = u*kp + u_dot*kd;
+    Vector3d a = aTan + aNor;
+    
+    dpitch = atan(a(0)/g + 0.705*drone.velocity.vx*fabs(drone.velocity.vx));
+    droll = atan((a(1)/g + 0.705*drone.velocity.vy*fabs(drone.velocity.vy)*cos(dpitch)));
+	
+	float maxAngle = 30.0;
+    dpitch = dpitch > maxAngle ? maxAngle
+                               : dpitch < -maxAngle ? -maxAngle
+                                                    : dpitch;
+
+    droll = droll > maxAngle ? maxAngle
+                             : droll < -maxAngle ? -maxAngle
+                                                 : droll;
+                                                 
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    ROS_INFO(" error_px, error_py, dpitch, droll:%f, %f, %f, %f",u(0),u(1), dpitch, droll); // -uk(0), -uk(1));
+    _ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            << ros::Time::now().toSec() << ","
+                            <<  _msgUltraSonic.ranges[0] << ","
+                            << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                            << _msgTruckLocalPosition.point.x << ","
+                            << _msgTruckLocalPosition.point.y << ","
+                            << _msgTruckLocalPosition.point.z << ","   // truck local position
+                            << _msgTargetLocalPosition.point.x << ","
+                            << _msgTargetLocalPosition.point.y << ","
+                            << _msgTargetLocalPosition.point.z << ","   // target local position
+                            << drone.local_position.x << ","
+                            << drone.local_position.y << ","
+                            << drone.local_position.z << ","
+                            << drone.velocity.vx << ","
+                            << drone.velocity.vy << ","
+                            << drone.velocity.vz << ","
+                            << dpitch << ","
+                            << droll << ","
+                            << _sumPosErrX << ","
+                            << _sumPosErrY << ","
+                            << yaw << std::endl;  
+	}
+
+
+//~ double CostFunc(const std::vector<double> &x, std::vector<double> &grad, void *my_func_data){
+	//~ 
+	//~ int i;
+	//~ 
+	//~ // Cost function
+	//~ // Um(R+BpQBp)Um + 2(xkApQBp - rpQBp)Um
+	//~ VectorXd Um = MatrixXd::Zero(_mpc.M_*_mpc.nu_, 1);
+	//~ for(i = 0; i < _mpc.M_*_mpc.nu_; i++){
+		//~ Um(i) = x[i];
+	//~ }
+	//~ 
+	//~ double cost;
+	//~ cost = Um.transpose()*_mpc.K1_*Um ;//+ 2*_mpc.xk_.transpose()*_mpc.K2_*Um - 2*_mpc.rp_.transpose()*_mpc.K3_*Um;
+	//~ 
+	//~ // Gradient function
+	//~ VectorXd gradv = 2*_mpc.K1_*Um + 2*(_mpc.xk_.transpose()*_mpc.K2_ - _mpc.rp_.transpose()*_mpc.K3_);
+	//~ if (!grad.empty()) {
+		//~ for ( i = 0; i < _mpc.M_; i++){
+			//~ grad[i] = gradv(i);
+		//~ }
+	//~ }
+		//~ 
+		//~ 
+	//~ return cost;
+		//~ 
+//~ }
+//~ 
+//~ 
+//~ typedef struct {
+	//~ int sign;
+	//~ int index;
+//~ } my_constraints_data;
+//~ 
+//~ 
+//~ double MyConstraints(const std::vector<double> &x, std::vector<double> &grad, void *data){
+	//~ 
+	//~ my_constraints_data *d  = reinterpret_cast<my_constraints_data *> (data);
+	//~ int sign = d->sign;
+	//~ int index = d->index;
+	//~ 
+	//~ int i;
+	//~ 
+	//~ VectorXd Um = MatrixXd::Zero(_mpc.M_*_mpc.nu_, 1);
+	//~ for( i = 0; i < _mpc.M_; i ++){
+		//~ Um(i) = x[i];
+	//~ }
+	//~ 
+	//~ double constraints = sign*(_mpc.Bp_*Um)(index) - 17 + sign*(_mpc.Ap_*_mpc.xk_)(index);
+	//~ 
+	//~ // gradient function
+	//~ if(!grad.empty()){
+		//~ for(i = 0; i<_mpc.nu_*_mpc.M_ ; i++){
+			//~ grad[i] = sign*_mpc.Bp_(index, i); 
+		//~ }
+	//~ }
+	//~ 
+	//~ return constraints;
+//~ }
+
+
+//~ Vector2d ComputeOptimalInput2(){
+	
+
+	
+	// Initialize
+	//~ int i;
+	//~ int n = _mpc.nu_*_mpc.M_;
+    //~ nlopt::opt opt(nlopt::LD_MMA, n);
+    
+    
+    // boundaries
+    //~ std::vector<double> lb(_mpc.nu_*_mpc.M_);
+    //~ std::vector<double> hb(_mpc.nu_*_mpc.M_);
+    //~ for ( i = 0; i<_mpc.nu_*_mpc.M_ ; i++){
+		//~ lb[i] = -30;
+		//~ hb[i] = 30;
+	//~ }
+    //~ opt.set_lower_bounds(lb);
+    //~ opt.set_upper_bounds(hb);
+    
+    //~ opt.set_min_objective(CostFunc, NULL); 
+    //~ 
+    //~ 
+    //~ // inequality constraints
+    //~ my_constraints_data data[_mpc.P_*_mpc.nx_/2];
+    //~ 
+    //~ for ( i = 0; i<_mpc.P_*_mpc.nx_/2 ; i++){
+		//~ (&data[i])->sign = i < _mpc.P_ ? 1 : -1;
+		//~ (&data[i])->index = i < _mpc.P_ ? 4*i+2 : 4*(i-_mpc.P_)+3;
+	//~ }
+	//~ 
+	//~ for ( i = 0; i<_mpc.P_*_mpc.nx_/2 ; i++){
+		//~ opt.add_inequality_constraint(MyConstraints, &data[i], 1e-8);
+	//~ }
+	
+	//~ // settings
+	//~ opt.set_xtol_rel(1e-2);
+	//~ std::vector<double> x(_mpc.nu_*_mpc.M_);
+	//~ for ( i = 0; i<_mpc.nu_*_mpc.M_ ; i++){
+		//~ x[i] = 1;
+	//~ }
+	//~ 
+	//~ // Start optimize
+	//~ double minf;
+	//~ 
+	//~ nlopt::result result = opt.optimize(x, minf);
+	//~ std::cout << "found minimum at f(" << x[0] << "," << x[1] << ") = "
+			  //~ << std::setprecision(10) << minf << std::endl;
+//~ 
+	//~ try{
+		//~ nlopt::result result = opt.optimize(x, minf);
+		//~ std::cout << "found minimum at f(" << x[0] << "," << x[1] << ") = "
+			//~ << std::setprecision(10) << minf << std::endl;
+	//~ }
+	//~ catch(std::exception &e) {
+		//~ std::cout << "nlopt failed: " << e.what() << std::endl;
+	//~ }
+	//~ 
+	//~ _mpc.uk_(0) = x[0];
+	//~ _mpc.uk_(1) = x[1];
+		 
+    
+    //~ return _mpc.uk_;
+//~ }
+	
+
 
 float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {
@@ -465,7 +647,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     _mpc.SetXpInitialPoint(xk);
     
     
-    int nPred = 25;  // 25
+    int nPred = 25; 
     _kf.SetPredHorizon(nPred + P);
     
     
@@ -478,6 +660,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 	
     VectorXd truckPred = _kf.Predict(_truckEstmState);
     VectorXd desiredState = truckPred.tail(P*nx);
+    //~ _mpc.xk_ = xk;
+    //~ _mpc.rp_ = desiredState;
     
 
     // Start MPC calculation each loop
@@ -488,7 +672,6 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ VectorXd statePredError = Xpc - targetState.colwise().replicate(P); // For stationary target
     VectorXd statePredError = Xpc - desiredState;   // For moving target
     //~ Vector2d uk = _mpc.ComputeOptimalInput(statePredError);
-    
     Vector2d uk = _mpc.ComputeOptimalInput2(xk, desiredState);
     VectorXd Xp = _mpc.Predict(xk);
 
@@ -505,7 +688,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_kiPos << endl;
 
-    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX - mpc_kiVec*_sumVecErrX): -uk(0);
+    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX -mpc_kiVec*_sumVecErrX): -uk(0);
     droll = _bIsIntegralEnable? (-uk(1) - mpc_kiPos*_sumPosErrY - mpc_kiVec*_sumVecErrY): -uk(1);
     //~ dpitch = -uk(0);
     //~ droll = -uk(1);
@@ -519,7 +702,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     droll = droll > maxAngle ? maxAngle
                              : droll < -maxAngle ? -maxAngle
                                                  : droll;
-
+	
     ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f, %f, %f", drone.local_position.x - _msgRealTruckLocalPosition.point.x, drone.local_position.y - _msgRealTruckLocalPosition.point.y, dpitch, droll, -uk(0), -uk(1));
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
@@ -581,10 +764,12 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
         AttitudeControlHelper2(desired_position, setAnglePitch, setAngleRoll);  
         
     }
-    else {
+    else if (_bIsLQREnable){
         AttitudeControlHelper(desired_position, setAnglePitch, setAngleRoll);
     }
-
+    else{
+		AttitudeControlHelper3(desired_position, setAnglePitch, setAngleRoll);
+		}
 		
     float setpoint_z = LocalPositionControlAltitudeHelper(desired_position.z, drone.local_position.z);
 	

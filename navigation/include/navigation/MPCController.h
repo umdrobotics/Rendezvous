@@ -22,7 +22,8 @@ class MPCController {
         MatrixXd K_;
         
         MatrixXd H_;
-        MatrixXd F_;
+        MatrixXd Fd_;
+        VectorXd F_;
         
         MatrixXd Cv_;
         MatrixXd G_;
