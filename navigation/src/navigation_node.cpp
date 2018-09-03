@@ -31,6 +31,16 @@
 #include <nlopt.hpp>
 #include <vector>
 
+#include "navigation/rt_nonfinite.h" 
+#include "navigation/solveQP.h"
+#include "navigation/solveQP_terminate.h"
+#include "navigation/solveQP_emxAPI.h"
+#include "navigation/solveQP_initialize.h"
+#include <stddef.h>
+#include <stdlib.h>
+#include "navigation/rtwtypes.h"
+#include "navigation/solveQP_types.h"
+
 using namespace std;
 using namespace Eigen;
 using namespace nlopt;
@@ -627,8 +637,51 @@ float AttitudeControlHelper3(geometry_msgs::Point desired_position, float& dpitc
     
     //~ return _mpc.uk_;
 //~ }
-	
 
+
+
+	
+/* Function Definitions */
+static void argInit_4x1_real_T(double result[4], Vector4d xk)
+{
+  int idx0;
+
+  /* Loop over the array to initialize each element. */
+  for (idx0 = 0; idx0 < 4; idx0++) {
+    /* Set the value of the array element.
+       Change this value to the value that the application requires. */
+    result[idx0] = xk(idx0);
+  }
+}
+
+static emxArray_real_T *argInit_Unboundedx1_real_T(VectorXd desiredState)
+{
+  emxArray_real_T *result;
+  static int iv2[1] = { 48 };
+
+  int idx0;
+
+  /* Set the size of the array.
+     Change this size to the value that the application requires. */
+  result = emxCreateND_real_T(1, iv2);
+
+  /* Loop over the array to initialize each element. */
+  for (idx0 = 0; idx0 < result->size[0U]; idx0 = idx0 + 4) {
+    /* Set the value of the array element.
+       Change this value to the value that the application requires. */
+    result->data[idx0] = desiredState(idx0);
+    result->data[idx0+1] = desiredState(idx0+1);
+    result->data[idx0+2] = desiredState(idx0+2);
+    result->data[idx0+3] = desiredState(idx0+3);
+  }
+
+  return result;
+}
+
+static double argInit_real_T()
+{
+  return 0.0;
+}
 
 float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {
@@ -672,8 +725,41 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ VectorXd statePredError = Xpc - targetState.colwise().replicate(P); // For stationary target
     VectorXd statePredError = Xpc - desiredState;   // For moving target
     //~ Vector2d uk = _mpc.ComputeOptimalInput(statePredError);
-    Vector2d uk = _mpc.ComputeOptimalInput2(xk, desiredState);
+    //~ Vector2d uk = _mpc.ComputeOptimalInput2(xk, desiredState);
+    
+    // test
+    //~ xk = MatrixXd::Zero(4,1);
+    //~ VectorXd a(100,100,0,0);
+    //~ desiredState = a.colwise().replicate(P);
+    
+    
+    double xkarray[4];
+    //~ double rp[80];
+    emxArray_real_T *rp;
+    double x_data[10];
+    int x_size[1];
+    //~ xk = {0,0,0,0};
+    /* Initialize function 'solveQP' input arguments. */
+    /* Initialize function input argument 'xk'. */
+    argInit_4x1_real_T(xkarray, xk);
+
+    /* Initialize function input argument 'rp'. */
+    rp = argInit_Unboundedx1_real_T(desiredState);
+    //~ rp = {100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0};
+    /* Call the entry-point 'solveQP'. */
+    solveQP(xkarray, rp, x_data, x_size); 
+    emxDestroyArray_real_T(rp); 
+    VectorXd um = MatrixXd::Zero(10,1);
+    for( int i = 0; i<2 ;i++){
+        um(i) = x_data[i];
+    }
+    
+    Vector2d uk = um.head(2);
+    _mpc.Um_ = um;
+  
     VectorXd Xp = _mpc.Predict(xk);
+    
+    std::cout << um << endl;
 
     // Initialize integrator
     _sumPosErrX = IntegratorCalculationPos(stateError(0)*1.65, _lastPosErrX, _sumPosErrX);
@@ -694,7 +780,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ droll = -uk(1);
 
     // Saturate desired pitch and roll angle to -30deg or 30deg
-    float maxAngle = 45.0; 
+    float maxAngle = 35.0; 
     dpitch = dpitch > maxAngle ? maxAngle
                                : dpitch < -maxAngle ? -maxAngle
                                                     : dpitch;
@@ -2092,6 +2178,7 @@ int main(int argc, char **argv)
     float mpc_kiVec = argc > 3 ? atof(argv[3]) : -1.0;
     _mpc.Initialize(mpc_q, mpc_kiPos, mpc_kiVec);
     
+    solveQP_initialize();
 
 
     // Log files

@@ -129,6 +129,31 @@ include_directories(${catkin_INCLUDE_DIRS}
 add_library(MPCController src/MPCController.cpp )
 add_library(KalmanFilter src/KalmanFilter.cpp )
 
+add_library(abs src/abs.cpp)
+add_library(eye src/eye.cpp)
+add_library(inv src/inv.cpp)
+add_library(mpcqpsolver src/mpcqpsolver.cpp)
+add_library(mpower src/mpower.cpp)
+add_library(norm src/norm.cpp)
+add_library(qpkwik src/qpkwik.cpp)
+add_library(qr src/qr.cpp)
+add_library(rtGetInf src/rtGetInf.cpp)
+add_library(rtGetNaN src/rtGetNaN.cpp)
+add_library(rt_nonfinite src/rt_nonfinite.cpp)
+add_library(solveQP src/solveQP.cpp src/inv.cpp src/mpower.cpp src/mpcqpsolver.cpp src/eye.cpp src/qpkwik.cpp src/abs.cpp src/norm.cpp src/qr.cpp src/xgemv.cpp src/xnrm2.cpp src/xger.cpp)
+add_library(solveQP_emxAPI src/solveQP_emxAPI.cpp)
+add_library(solveQP_emxutil src/solveQP_emxutil.cpp)
+add_library(solveQP_initialize src/solveQP_initialize.cpp src/rt_nonfinite.cpp)
+add_library(solveQP_terminate src/solveQP_terminate.cpp)
+add_library(xgemv src/xgemv.cpp)
+add_library(xgeqrf src/xgeqrf.cpp)
+add_library(xger src/xger.cpp)
+#~ add_library(xgetrf src/xgetrf.cpp)
+add_library(xnrm2 src/xnrm2.cpp)
+#~ add_library(xpotrf src/xpotrf.cpp)
+#~ add_library(xzlarf src/xzlarf.cpp)
+#~ add_library(xzlarfg src/xzlarfg.cpp)
+
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
@@ -143,6 +168,7 @@ add_executable(navigation_node src/navigation_node.cpp)# src/MPCController.cpp)
 
 add_executable(navigation_menu src/navigation_menu.cpp)
 
+#~ add_executable(main src/main.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -157,7 +183,7 @@ add_dependencies(navigation_menu navigation_generate_messages_cpp)
 # add_dependencies(MPCController navigation_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} MPCController KalmanFilter)
+target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} MPCController KalmanFilter abs eye inv mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite solveQP solveQP_emxAPI solveQP_emxutil solveQP_initialize solveQP_terminate xgemv xgeqrf xger xnrm2)
 #"/usr/local/lib/lbnlopt.a"  ${nlopt_LIBRARIES}
 #~ target_link_libraries(navigation_node_simulation ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
 
@@ -165,6 +191,8 @@ target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} MPC
 
 target_link_libraries(navigation_menu ${catkin_LIBRARIES} )
 # target_link_libraries(MPCController ${catkin_LIBRARIES}  ${Eigen_LIBRARIES} )
+
+#~ target_link_libraries(main ${catkin_LIBRARIES} abs eye inv mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite solveQP solveQP_emxAPI solveQP_emxutil solveQP_initialize solveQP_terminate xgemv xgeqrf xger xnrm2)
 
 #############
 ## Install ##

@@ -36,9 +36,9 @@ MPCController::MPCController()
             -0.2451, 0,
             0, -0.2451;
 
-	P_ = 3; //12
+	P_ = 12; //12
 
-    M_ = 2; //5
+    M_ = 5; //5
 
     
     //~ 
@@ -82,7 +82,7 @@ void MPCController::Initialize(float q, float kiPos, float kiVec)
     R_ = 0.35*(1-q_)*MatrixXd::Identity(nu_*M_, nu_*M_); 
 
     //~ // Add more penalty on velocity
-    int k = 1; //7
+    int k = 7; //7
     //~ for(int i = k; i<P_-k; i++){
         //~ Q_(4*i+2, 4*i+2) = 1.1;
         //~ Q_(4*i+3, 4*i+3) = 1.1;
@@ -233,8 +233,8 @@ Vector2d MPCController::ComputeOptimalInput2(Vector4d xk, VectorXd rp)
 	F_ = Fd_*(Ap_*xk - rp);
 	
 	S_ = MatrixXd::Zero(4*P_+4*M_, 1);
-    S_.block(0,0,2*M_,1) = 20*MatrixXd::Ones(2*M_, 1);
-    S_.block(2*M_,0,2*M_,1) = 20*MatrixXd::Ones(2*M_, 1); 
+    S_.block(0,0,2*M_,1) = 35*MatrixXd::Ones(2*M_, 1);
+    S_.block(2*M_,0,2*M_,1) = 35*MatrixXd::Ones(2*M_, 1); 
     S_.block(4*M_,0,2*P_,1) = 17*MatrixXd::Ones(2*P_, 1) - Cv_*Ap_*xk;
     S_.block(2*P_+4*M_,0,2*P_,1) = 17*MatrixXd::Ones(2*P_, 1) + Cv_*Ap_*xk; 
     
