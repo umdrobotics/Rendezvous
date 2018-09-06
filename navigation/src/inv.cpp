@@ -1,26 +1,33 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * inv.cpp
- *
- * Code generation for function 'inv'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: inv.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include <cmath>
 #include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/inv.h"
 
-/* Function Declarations */
+// Function Declarations
 static void invNxN(const double x_data[], const int x_size[2], double y_data[],
                    int y_size[2]);
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : const double x_data[]
+//                const int x_size[2]
+//                double y_data[]
+//                int y_size[2]
+// Return Type  : void
+//
 static void invNxN(const double x_data[], const int x_size[2], double y_data[],
                    int y_size[2])
 {
@@ -189,6 +196,11 @@ static void invNxN(const double x_data[], const int x_size[2], double y_data[],
   }
 }
 
+//
+// Arguments    : double x_data[]
+//                int x_size[2]
+// Return Type  : void
+//
 void inv(double x_data[], int x_size[2])
 {
   int b_x_size[2];
@@ -207,4 +219,8 @@ void inv(double x_data[], int x_size[2])
   }
 }
 
-/* End of code generation (inv.cpp) */
+//
+// File trailer for inv.cpp
+//
+// [EOF]
+//

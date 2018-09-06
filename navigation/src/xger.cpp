@@ -1,20 +1,31 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * xger.cpp
- *
- * Code generation for function 'xger'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: xger.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/xger.h"
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : int m
+//                int n
+//                double alpha1
+//                int ix0
+//                const double y_data[]
+//                double A_data[]
+//                int ia0
+//                int lda
+// Return Type  : void
+//
 void xger(int m, int n, double alpha1, int ix0, const double y_data[], double
           A_data[], int ia0, int lda)
 {
@@ -45,4 +56,8 @@ void xger(int m, int n, double alpha1, int ix0, const double y_data[], double
   }
 }
 
-/* End of code generation (xger.cpp) */
+//
+// File trailer for xger.cpp
+//
+// [EOF]
+//

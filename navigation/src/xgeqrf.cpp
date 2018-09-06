@@ -1,15 +1,14 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * xgeqrf.cpp
- *
- * Code generation for function 'xgeqrf'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: xgeqrf.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include <cmath>
 #include "navigation/rt_nonfinite.h"
 #include <string.h>
@@ -19,10 +18,16 @@
 #include "navigation/xgemv.h"
 #include "navigation/xnrm2.h"
 
-/* Function Declarations */
+// Function Declarations
 static double rt_hypotd_snf(double u0, double u1);
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : double u0
+//                double u1
+// Return Type  : double
+//
 static double rt_hypotd_snf(double u0, double u1)
 {
   double y;
@@ -45,6 +50,13 @@ static double rt_hypotd_snf(double u0, double u1)
   return y;
 }
 
+//
+// Arguments    : double A_data[]
+//                int A_size[2]
+//                double tau_data[]
+//                int tau_size[1]
+// Return Type  : void
+//
 void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
 {
   int m;
@@ -194,4 +206,8 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
   }
 }
 
-/* End of code generation (xgeqrf.cpp) */
+//
+// File trailer for xgeqrf.cpp
+//
+// [EOF]
+//

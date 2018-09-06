@@ -1,21 +1,26 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * abs.cpp
- *
- * Code generation for function 'abs'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: abs.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include <cmath>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/abs.h"
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : const double x[10]
+//                double y[10]
+// Return Type  : void
+//
 void b_abs(const double x[10], double y[10])
 {
   int k;
@@ -24,6 +29,11 @@ void b_abs(const double x[10], double y[10])
   }
 }
 
+//
+// Arguments    : const double x[68]
+//                double y[68]
+// Return Type  : void
+//
 void c_abs(const double x[68], double y[68])
 {
   int k;
@@ -32,4 +42,8 @@ void c_abs(const double x[68], double y[68])
   }
 }
 
-/* End of code generation (abs.cpp) */
+//
+// File trailer for abs.cpp
+//
+// [EOF]
+//

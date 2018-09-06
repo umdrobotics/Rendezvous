@@ -1,15 +1,14 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * qr.cpp
- *
- * Code generation for function 'qr'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: qr.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
@@ -18,7 +17,17 @@
 #include "navigation/xgemv.h"
 #include "navigation/xgeqrf.h"
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : const double A_data[]
+//                const int A_size[2]
+//                double Q_data[]
+//                int Q_size[2]
+//                double R_data[]
+//                int R_size[2]
+// Return Type  : void
+//
 void qr(const double A_data[], const int A_size[2], double Q_data[], int Q_size
         [2], double R_data[], int R_size[2])
 {
@@ -256,4 +265,8 @@ void qr(const double A_data[], const int A_size[2], double Q_data[], int Q_size
   }
 }
 
-/* End of code generation (qr.cpp) */
+//
+// File trailer for qr.cpp
+//
+// [EOF]
+//

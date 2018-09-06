@@ -1,22 +1,28 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * mpower.cpp
- *
- * Code generation for function 'mpower'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: mpower.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include <cmath>
 #include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/mpower.h"
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : const double a[16]
+//                double b
+//                double c[16]
+// Return Type  : void
+//
 void mpower(const double a[16], double b, double c[16])
 {
   double b_a[16];
@@ -252,4 +258,8 @@ void mpower(const double a[16], double b, double c[16])
   }
 }
 
-/* End of code generation (mpower.cpp) */
+//
+// File trailer for mpower.cpp
+//
+// [EOF]
+//

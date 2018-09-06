@@ -407,7 +407,7 @@ float AttitudeControlHelper(geometry_msgs::Point desired_position, float& dpitch
 
 float IntegratorCalculationPos(float stateError, float lastStateError, float sumError)
 {
-	float limition = 85;
+	float limition = 95;
 	if((stateError >= 0 && lastStateError >= 0) || (stateError <= 0 && lastStateError <= 0)){	
 		if ((sumError < limition) && (sumError > -limition)){
 			sumError += stateError*DT;}
@@ -687,7 +687,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 {
     // MPC controller
     DJIDrone& drone = *_ptrDrone;
-
+ 
     int P = _mpc.P_;
     int nx = _mpc.nx_;
     float mpc_kiPos = _mpc.kiPos_;
@@ -700,7 +700,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     _mpc.SetXpInitialPoint(xk);
     
     
-    int nPred = 25; 
+    int nPred = 6; 
     _kf.SetPredHorizon(nPred + P);
     
     
@@ -750,9 +750,9 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     solveQP(xkarray, rp, x_data, x_size); 
     emxDestroyArray_real_T(rp); 
     VectorXd um = MatrixXd::Zero(10,1);
-    for( int i = 0; i<2 ;i++){
+    for( int i = 0; i<10 ;i++){
         um(i) = x_data[i];
-    }
+    } 
     
     Vector2d uk = um.head(2);
     _mpc.Um_ = um;
@@ -760,22 +760,37 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     VectorXd Xp = _mpc.Predict(xk);
     
     std::cout << um << endl;
-
+    float distance_x = drone.local_position.x - _msgRealTruckLocalPosition.point.x;
+    float distance_y = drone.local_position.y - _msgRealTruckLocalPosition.point.y;
+    
+    if (abs(distance_x) < 20)
+    {
+        _sumPosErrX = IntegratorCalculationPos(stateError(0)*1.05, _lastPosErrX, _sumPosErrX);
+        _sumVecErrX = IntegratorCalculationVec(stateError(2), _lastVecErrX, _sumVecErrX);
+        _lastPosErrX = stateError(0);
+        _lastVecErrX = stateError(2);
+        dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX -mpc_kiVec*_sumVecErrX): -uk(0);
+    }
+    else
+    {
+        dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX -mpc_kiVec*_sumVecErrX): -uk(0);
+    }
+    
+    if (abs(distance_y) < 20)
+    {
+        _sumPosErrY = IntegratorCalculationPos(stateError(1)*1.05, _lastPosErrY, _sumPosErrY);
+        _sumVecErrY = IntegratorCalculationVec(stateError(3), _lastVecErrY, _sumVecErrY);
+        _lastPosErrY = stateError(1);
+        _lastVecErrY = stateError(3);
+        droll = _bIsIntegralEnable? (-uk(1) - mpc_kiPos*_sumPosErrY - mpc_kiVec*_sumVecErrY): -uk(1);
+    }
+    else
+    {
+        droll = _bIsIntegralEnable? (-uk(1) - mpc_kiPos*_sumPosErrY - mpc_kiVec*_sumVecErrY): -uk(1);
+    }
     // Initialize integrator
-    _sumPosErrX = IntegratorCalculationPos(stateError(0)*1.65, _lastPosErrX, _sumPosErrX);
-    _sumPosErrY = IntegratorCalculationPos(stateError(1)*1.65, _lastPosErrY, _sumPosErrY);
-    _sumVecErrX = IntegratorCalculationVec(stateError(2), _lastVecErrX, _sumVecErrX);
-    _sumVecErrY = IntegratorCalculationVec(stateError(3), _lastVecErrY, _sumVecErrY);
-        
-    _lastPosErrX = stateError(0);
-    _lastPosErrY = stateError(1);
-    _lastVecErrX = stateError(2);
-    _lastVecErrY = stateError(3);
     
     std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_kiPos << endl;
-
-    dpitch = _bIsIntegralEnable ? (-uk(0) - mpc_kiPos*_sumPosErrX -mpc_kiVec*_sumVecErrX): -uk(0);
-    droll = _bIsIntegralEnable? (-uk(1) - mpc_kiPos*_sumPosErrY - mpc_kiVec*_sumVecErrY): -uk(1);
     //~ dpitch = -uk(0);
     //~ droll = -uk(1);
 
@@ -789,7 +804,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                              : droll < -maxAngle ? -maxAngle
                                                  : droll;
 	
-    ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f, %f, %f", drone.local_position.x - _msgRealTruckLocalPosition.point.x, drone.local_position.y - _msgRealTruckLocalPosition.point.y, dpitch, droll, -uk(0), -uk(1));
+    ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f, %f, %f, %f", distance_x, distance_y, dpitch, droll, -uk(0), -uk(1), - mpc_kiPos*_sumPosErrY);
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
@@ -818,7 +833,9 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << droll << ","
                             << _sumPosErrX << ","
                             << _sumPosErrY << ","
-                            << yaw << std::endl;                             // drone local position
+                            << yaw << ","
+                            << -uk(0) << ","
+                            << -uk(1) << std::endl;                             // drone local position
 	
 	//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             //~ << ros::Time::now().toSec() << ","							
@@ -872,7 +889,7 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
 		drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
 	}
 	else{
-		setpoint_yaw = 0;
+		setpoint_yaw = 90;
 	    drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
 	}
 
@@ -1009,7 +1026,7 @@ void TemporaryTest(void)
                       //~ << start << ","
                       //~ << yaw  << std::endl; 
                       
-     drone.local_position_control(-50, -400, 3, 0);
+     drone.local_position_control(-50, 0, 3, 0);
      //~ drone.velocity_control(0x00,-5,0,0,0);
      std::cout << "velocity: vx, vy: " << drone.velocity.vx << ", " << drone.velocity.vy << std::endl;
                       
@@ -1729,7 +1746,7 @@ void RunAutonomousLanding2()
         {
 			_counter = _counter + 1;
 		}
-        if ((_counter > 60) && (bIsClose))
+        if ((_counter > 160) && (bIsClose)) //240
         {
 			bIsStartLanding = true;
 			ROS_INFO("The drone has landed!*********************************************************");
@@ -1763,7 +1780,7 @@ void RunAutonomousLanding2()
         desired_position.z = bIsClose ? -0.1 : drone_z;
         ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
         //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
-        float desired_yaw = 0;
+        float desired_yaw = 90;
         if (_bIsLocalLocationControlEnable)
         {	RunLocalPositionControl(desired_position, desired_yaw);}
         else

@@ -1,21 +1,32 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * mpcqpsolver.cpp
- *
- * Code generation for function 'mpcqpsolver'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: mpcqpsolver.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/mpcqpsolver.h"
 #include "navigation/qpkwik.h"
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : const double Linv_data[]
+//                const int Linv_size[2]
+//                const double f[10]
+//                const double A[680]
+//                const double b[68]
+//                double x_data[]
+//                int x_size[1]
+//                double *status
+// Return Type  : void
+//
 void mpcqpsolver(const double Linv_data[], const int Linv_size[2], const double
                  f[10], const double A[680], const double b[68], double x_data[],
                  int x_size[1], double *status)
@@ -83,4 +94,8 @@ void mpcqpsolver(const double Linv_data[], const int Linv_size[2], const double
          lam, status, iA1);
 }
 
-/* End of code generation (mpcqpsolver.cpp) */
+//
+// File trailer for mpcqpsolver.cpp
+//
+// [EOF]
+//

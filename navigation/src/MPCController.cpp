@@ -92,8 +92,8 @@ void MPCController::Initialize(float q, float kiPos, float kiVec)
         Q_(4*i+1, 4*i+1) = 10;
     }
 	for(int i = P_-k; i<P_; i++){
-        Q_(4*i, 4*i) = 1.15;
-        Q_(4*i+1, 4*i+1) = 1.15;
+        Q_(4*i, 4*i) = 1.15;    //1.15
+        Q_(4*i+1, 4*i+1) = 1.15;   //1.15
     } 
     //~ for(int i = k; i<P_-k; i++){
         //~ Q_(4*i+2, 4*i+2) = 1;

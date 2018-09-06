@@ -1,22 +1,27 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * solveQP_emxAPI.cpp
- *
- * Code generation for function 'solveQP_emxAPI'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: solveQP_emxAPI.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include <stdlib.h>
-#include "rt_nonfinite.h"
-#include "solveQP.h"
-#include "solveQP_emxAPI.h"
-#include "solveQP_emxutil.h"
+#include "navigation/rt_nonfinite.h"
+#include "navigation/solveQP.h"
+#include "navigation/solveQP_emxAPI.h"
+#include "navigation/solveQP_emxutil.h"
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : int numDimensions
+//                int *size
+// Return Type  : emxArray_real_T *
+//
 emxArray_real_T *emxCreateND_real_T(int numDimensions, int *size)
 {
   emxArray_real_T *emx;
@@ -35,6 +40,12 @@ emxArray_real_T *emxCreateND_real_T(int numDimensions, int *size)
   return emx;
 }
 
+//
+// Arguments    : double *data
+//                int numDimensions
+//                int *size
+// Return Type  : emxArray_real_T *
+//
 emxArray_real_T *emxCreateWrapperND_real_T(double *data, int numDimensions, int *
   size)
 {
@@ -55,6 +66,12 @@ emxArray_real_T *emxCreateWrapperND_real_T(double *data, int numDimensions, int 
   return emx;
 }
 
+//
+// Arguments    : double *data
+//                int rows
+//                int cols
+// Return Type  : emxArray_real_T *
+//
 emxArray_real_T *emxCreateWrapper_real_T(double *data, int rows, int cols)
 {
   emxArray_real_T *emx;
@@ -77,6 +94,11 @@ emxArray_real_T *emxCreateWrapper_real_T(double *data, int rows, int cols)
   return emx;
 }
 
+//
+// Arguments    : int rows
+//                int cols
+// Return Type  : emxArray_real_T *
+//
 emxArray_real_T *emxCreate_real_T(int rows, int cols)
 {
   emxArray_real_T *emx;
@@ -98,14 +120,27 @@ emxArray_real_T *emxCreate_real_T(int rows, int cols)
   return emx;
 }
 
+//
+// Arguments    : emxArray_real_T *emxArray
+// Return Type  : void
+//
 void emxDestroyArray_real_T(emxArray_real_T *emxArray)
 {
   emxFree_real_T(&emxArray);
 }
 
+//
+// Arguments    : emxArray_real_T **pEmxArray
+//                int numDimensions
+// Return Type  : void
+//
 void emxInitArray_real_T(emxArray_real_T **pEmxArray, int numDimensions)
 {
   emxInit_real_T1(pEmxArray, numDimensions);
 }
 
-/* End of code generation (solveQP_emxAPI.cpp) */
+//
+// File trailer for solveQP_emxAPI.cpp
+//
+// [EOF]
+//

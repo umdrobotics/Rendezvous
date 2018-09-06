@@ -2,11 +2,10 @@
  * Academic License - for use in teaching, academic research, and meeting
  * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
+ * File: rt_nonfinite.h
  *
- * rt_nonfinite.h
- *
- * Code generation for function 'solveQP'
- *
+ * MATLAB Coder version            : 4.0
+ * C/C++ source code generated on  : 02-Sep-2018 11:08:41
  */
 
 #ifndef RT_NONFINITE_H
@@ -28,4 +27,8 @@ extern boolean_T rtIsNaNF(real32_T value);
 
 #endif
 
-/* End of code generation (rt_nonfinite.h) */
+/*
+ * File trailer for rt_nonfinite.h
+ *
+ * [EOF]
+ */

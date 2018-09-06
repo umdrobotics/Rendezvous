@@ -1,15 +1,14 @@
-/*
- * Academic License - for use in teaching, academic research, and meeting
- * course requirements at degree granting institutions only.  Not for
- * government, commercial, or other organizational use.
- *
- * qpkwik.cpp
- *
- * Code generation for function 'qpkwik'
- *
- */
+//
+// Academic License - for use in teaching, academic research, and meeting
+// course requirements at degree granting institutions only.  Not for
+// government, commercial, or other organizational use.
+// File: qpkwik.cpp
+//
+// MATLAB Coder version            : 4.0
+// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+//
 
-/* Include files */
+// Include Files
 #include <cmath>
 #include <string.h>
 #include "navigation/rt_nonfinite.h"
@@ -19,7 +18,7 @@
 #include "navigation/abs.h"
 #include "navigation/norm.h"
 
-/* Function Declarations */
+// Function Declarations
 static void DropConstraint(short kDrop, short iA[68], short *nA, short iC[68]);
 static double KWIKfactor(const double Ac[680], const short iC[68], short nA,
   const double Linv_data[], const int Linv_size[2], double RLinv_data[], int
@@ -27,7 +26,15 @@ static double KWIKfactor(const double Ac[680], const short iC[68], short nA,
 static void Unconstrained(const double Hinv_data[], const int Hinv_size[2],
   const double f[10], double x_data[]);
 
-/* Function Definitions */
+// Function Definitions
+
+//
+// Arguments    : short kDrop
+//                short iA[68]
+//                short *nA
+//                short iC[68]
+// Return Type  : void
+//
 static void DropConstraint(short kDrop, short iA[68], short *nA, short iC[68])
 {
   int i7;
@@ -55,6 +62,20 @@ static void DropConstraint(short kDrop, short iA[68], short *nA, short iC[68])
   *nA = (short)i7;
 }
 
+//
+// Arguments    : const double Ac[680]
+//                const short iC[68]
+//                short nA
+//                const double Linv_data[]
+//                const int Linv_size[2]
+//                double RLinv_data[]
+//                int RLinv_size[2]
+//                double D_data[]
+//                int D_size[2]
+//                double H_data[]
+//                int H_size[2]
+// Return Type  : double
+//
 static double KWIKfactor(const double Ac[680], const short iC[68], short nA,
   const double Linv_data[], const int Linv_size[2], double RLinv_data[], int
   RLinv_size[2], double D_data[], int D_size[2], double H_data[], int H_size[2])
@@ -217,6 +238,13 @@ static double KWIKfactor(const double Ac[680], const short iC[68], short nA,
   return Status;
 }
 
+//
+// Arguments    : const double Hinv_data[]
+//                const int Hinv_size[2]
+//                const double f[10]
+//                double x_data[]
+// Return Type  : void
+//
 static void Unconstrained(const double Hinv_data[], const int Hinv_size[2],
   const double f[10], double x_data[])
 {
@@ -240,6 +268,21 @@ static void Unconstrained(const double Hinv_data[], const int Hinv_size[2],
   }
 }
 
+//
+// Arguments    : const double Linv_data[]
+//                const int Linv_size[2]
+//                const double Hinv_data[]
+//                const int Hinv_size[2]
+//                const double f[10]
+//                const double Ac[680]
+//                const double b[68]
+//                double x_data[]
+//                int x_size[1]
+//                double lambda[68]
+//                double *status
+//                short iA[68]
+// Return Type  : void
+//
 void qpkwik(const double Linv_data[], const int Linv_size[2], const double
             Hinv_data[], const int Hinv_size[2], const double f[10], const
             double Ac[680], const double b[68], double x_data[], int x_size[1],
@@ -622,4 +665,8 @@ void qpkwik(const double Linv_data[], const int Linv_size[2], const double
   } while (exitg2 == 0);
 }
 
-/* End of code generation (qpkwik.cpp) */
+//
+// File trailer for qpkwik.cpp
+//
+// [EOF]
+//

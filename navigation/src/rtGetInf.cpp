@@ -2,11 +2,10 @@
  * Academic License - for use in teaching, academic research, and meeting
  * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
+ * File: rtGetInf.cpp
  *
- * rtGetInf.cpp
- *
- * Code generation for function 'solveQP'
- *
+ * MATLAB Coder version            : 4.0
+ * C/C++ source code generated on  : 02-Sep-2018 11:08:41
  */
 
 /*
@@ -51,4 +50,8 @@ real32_T rtGetMinusInfF(void)
   return rtMinusInfF;
 }
 
-/* End of code generation (rtGetInf.cpp) */
+/*
+ * File trailer for rtGetInf.cpp
+ *
+ * [EOF]
+ */
