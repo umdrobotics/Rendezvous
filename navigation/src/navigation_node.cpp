@@ -513,133 +513,6 @@ float AttitudeControlHelper3(geometry_msgs::Point desired_position, float& dpitc
 	}
 
 
-//~ double CostFunc(const std::vector<double> &x, std::vector<double> &grad, void *my_func_data){
-	//~ 
-	//~ int i;
-	//~ 
-	//~ // Cost function
-	//~ // Um(R+BpQBp)Um + 2(xkApQBp - rpQBp)Um
-	//~ VectorXd Um = MatrixXd::Zero(_mpc.M_*_mpc.nu_, 1);
-	//~ for(i = 0; i < _mpc.M_*_mpc.nu_; i++){
-		//~ Um(i) = x[i];
-	//~ }
-	//~ 
-	//~ double cost;
-	//~ cost = Um.transpose()*_mpc.K1_*Um ;//+ 2*_mpc.xk_.transpose()*_mpc.K2_*Um - 2*_mpc.rp_.transpose()*_mpc.K3_*Um;
-	//~ 
-	//~ // Gradient function
-	//~ VectorXd gradv = 2*_mpc.K1_*Um + 2*(_mpc.xk_.transpose()*_mpc.K2_ - _mpc.rp_.transpose()*_mpc.K3_);
-	//~ if (!grad.empty()) {
-		//~ for ( i = 0; i < _mpc.M_; i++){
-			//~ grad[i] = gradv(i);
-		//~ }
-	//~ }
-		//~ 
-		//~ 
-	//~ return cost;
-		//~ 
-//~ }
-//~ 
-//~ 
-//~ typedef struct {
-	//~ int sign;
-	//~ int index;
-//~ } my_constraints_data;
-//~ 
-//~ 
-//~ double MyConstraints(const std::vector<double> &x, std::vector<double> &grad, void *data){
-	//~ 
-	//~ my_constraints_data *d  = reinterpret_cast<my_constraints_data *> (data);
-	//~ int sign = d->sign;
-	//~ int index = d->index;
-	//~ 
-	//~ int i;
-	//~ 
-	//~ VectorXd Um = MatrixXd::Zero(_mpc.M_*_mpc.nu_, 1);
-	//~ for( i = 0; i < _mpc.M_; i ++){
-		//~ Um(i) = x[i];
-	//~ }
-	//~ 
-	//~ double constraints = sign*(_mpc.Bp_*Um)(index) - 17 + sign*(_mpc.Ap_*_mpc.xk_)(index);
-	//~ 
-	//~ // gradient function
-	//~ if(!grad.empty()){
-		//~ for(i = 0; i<_mpc.nu_*_mpc.M_ ; i++){
-			//~ grad[i] = sign*_mpc.Bp_(index, i); 
-		//~ }
-	//~ }
-	//~ 
-	//~ return constraints;
-//~ }
-
-
-//~ Vector2d ComputeOptimalInput2(){
-	
-
-	
-	// Initialize
-	//~ int i;
-	//~ int n = _mpc.nu_*_mpc.M_;
-    //~ nlopt::opt opt(nlopt::LD_MMA, n);
-    
-    
-    // boundaries
-    //~ std::vector<double> lb(_mpc.nu_*_mpc.M_);
-    //~ std::vector<double> hb(_mpc.nu_*_mpc.M_);
-    //~ for ( i = 0; i<_mpc.nu_*_mpc.M_ ; i++){
-		//~ lb[i] = -30;
-		//~ hb[i] = 30;
-	//~ }
-    //~ opt.set_lower_bounds(lb);
-    //~ opt.set_upper_bounds(hb);
-    
-    //~ opt.set_min_objective(CostFunc, NULL); 
-    //~ 
-    //~ 
-    //~ // inequality constraints
-    //~ my_constraints_data data[_mpc.P_*_mpc.nx_/2];
-    //~ 
-    //~ for ( i = 0; i<_mpc.P_*_mpc.nx_/2 ; i++){
-		//~ (&data[i])->sign = i < _mpc.P_ ? 1 : -1;
-		//~ (&data[i])->index = i < _mpc.P_ ? 4*i+2 : 4*(i-_mpc.P_)+3;
-	//~ }
-	//~ 
-	//~ for ( i = 0; i<_mpc.P_*_mpc.nx_/2 ; i++){
-		//~ opt.add_inequality_constraint(MyConstraints, &data[i], 1e-8);
-	//~ }
-	
-	//~ // settings
-	//~ opt.set_xtol_rel(1e-2);
-	//~ std::vector<double> x(_mpc.nu_*_mpc.M_);
-	//~ for ( i = 0; i<_mpc.nu_*_mpc.M_ ; i++){
-		//~ x[i] = 1;
-	//~ }
-	//~ 
-	//~ // Start optimize
-	//~ double minf;
-	//~ 
-	//~ nlopt::result result = opt.optimize(x, minf);
-	//~ std::cout << "found minimum at f(" << x[0] << "," << x[1] << ") = "
-			  //~ << std::setprecision(10) << minf << std::endl;
-//~ 
-	//~ try{
-		//~ nlopt::result result = opt.optimize(x, minf);
-		//~ std::cout << "found minimum at f(" << x[0] << "," << x[1] << ") = "
-			//~ << std::setprecision(10) << minf << std::endl;
-	//~ }
-	//~ catch(std::exception &e) {
-		//~ std::cout << "nlopt failed: " << e.what() << std::endl;
-	//~ }
-	//~ 
-	//~ _mpc.uk_(0) = x[0];
-	//~ _mpc.uk_(1) = x[1];
-		 
-    
-    //~ return _mpc.uk_;
-//~ }
-
-
-
 	
 /* Function Definitions */
 static void argInit_4x1_real_T(double result[4], Vector4d xk)
@@ -700,12 +573,11 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     _mpc.SetXpInitialPoint(xk);
     
     
+    // predict the target position and velocity here, KF
+    // First decide now we use prediction or estimation, based whether there exists observations or not
     int nPred = 6; 
     _kf.SetPredHorizon(nPred + P);
     
-    
-    // predict the target position and velocity here, KF
-    // First decide now we use prediction or estimation, based whether there exists observations or not
     if(!_IsGPSUpdated){
 		_truckEstmState = _kf.PredictWOObservation();
 	}
@@ -725,27 +597,18 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     //~ VectorXd statePredError = Xpc - targetState.colwise().replicate(P); // For stationary target
     VectorXd statePredError = Xpc - desiredState;   // For moving target
     //~ Vector2d uk = _mpc.ComputeOptimalInput(statePredError);
-    //~ Vector2d uk = _mpc.ComputeOptimalInput2(xk, desiredState);
-    
-    // test
-    //~ xk = MatrixXd::Zero(4,1);
-    //~ VectorXd a(100,100,0,0);
-    //~ desiredState = a.colwise().replicate(P);
-    
-    
+      
+    // Optimal control input
     double xkarray[4];
-    //~ double rp[80];
     emxArray_real_T *rp;
     double x_data[10];
     int x_size[1];
-    //~ xk = {0,0,0,0};
     /* Initialize function 'solveQP' input arguments. */
     /* Initialize function input argument 'xk'. */
     argInit_4x1_real_T(xkarray, xk);
 
     /* Initialize function input argument 'rp'. */
     rp = argInit_Unboundedx1_real_T(desiredState);
-    //~ rp = {100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0,100,100,0,0};
     /* Call the entry-point 'solveQP'. */
     solveQP(xkarray, rp, x_data, x_size); 
     emxDestroyArray_real_T(rp); 
@@ -851,6 +714,107 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 							//~ << truckPred.segment((nPred+1)*nx,4).transpose() << std::endl;  
 							
 							
+}
+
+int icount = 0, jcount = 0, stage = 0;
+
+void SystemIDTest(){
+	DJIDrone& drone = *_ptrDrone;
+	
+	switch (stage)
+	{	
+		
+		// increase roll
+		case 0:
+			if(icount<5){
+				if(jcount<200){
+					drone.attitude_control(0x10, 20, 0, 3, 0);
+					jcount++;
+				}
+				else{
+					jcount = 0;
+					icount++;
+				}
+			}
+			else{
+				icount = 0;
+				jcount = 0;
+				stage++;
+				//~ cout << "stage,i,j: " << stage<<","<< icount <<"," <<jcount<<"**************"<<endl;
+			}
+		
+		// increase pitch
+		case 1:
+			if(icount<5){
+				if(jcount<200){
+					drone.attitude_control(0x10, 20, 20, 3, 0);
+					jcount++;
+				}
+				else{
+					jcount = 0;
+					icount++;
+				}
+			}
+			else{
+				icount = 4;
+				jcount = 0;
+				stage++;
+
+			}
+			
+		//~ // decrease roll	
+		//~ case 2:
+			//~ if(icount>=0){
+				//~ if(jcount<200){
+					//~ drone.attitude_control(0x10, icount*5, 20, 3, 0);
+					//~ jcount++;
+				//~ }
+				//~ else{
+					//~ jcount = 0;
+					//~ icount--;
+				//~ }
+			//~ }
+			//~ else{
+				//~ stage++;
+				//~ icount = 4;
+				//~ jcount = 0;
+			//~ }
+		
+		//~ // decrease pitch
+		//~ case 3:
+			//~ if(icount>=0){
+				//~ if(jcount<200){
+					//~ drone.attitude_control(0x10, 0, icount*5, 3, 0);
+					//~ jcount++;
+				//~ }
+				//~ else{
+					//~ jcount = 0;
+					//~ icount--;
+				//~ }
+			//~ }
+			//~ else{
+				//~ stage++;
+				//~ icount = 4;
+				//~ jcount = 0;
+			//~ }
+	}
+		
+		    // Calculate yaw angle
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
+    float roll = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
+	_ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            << ros::Time::now().toSec() << ","
+                            << drone.local_position.x << ","
+                            << drone.local_position.y << ","
+                            << drone.velocity.vx << ","
+                            << drone.velocity.vy << ","
+                            << roll << ","
+                            << pitch << ","
+                            << yaw << std::endl; 
+	
+	cout << "stage,i,j: " << stage<<","<< icount <<"," <<jcount<<","<<endl;
 }
 
 
@@ -1965,8 +1929,8 @@ void timerCallback(const ros::TimerEvent&)
 
     // we need to run this functioin regardless of the navigation menu.
     RunTimeCriticalTasks();
-    RunTargetTracking();
-    //~ RunSensorFusing();
+    // RunTargetTracking();
+    RunSensorFusing();
 
 
     if (_nNavigationTask < 21 || _nNavigationTask > 90)
@@ -1997,6 +1961,10 @@ void timerCallback(const ros::TimerEvent&)
         case 25:
             GoToTruckGPSLocation();
             break;
+            
+        case 26:
+            SystemIDTest();
+            break;
 
         case 30:
             RunAttitudeControlTest();
@@ -2022,7 +1990,7 @@ void timerCallback(const ros::TimerEvent&)
             break;
     }
 
-
+	std::cout << std::setprecision(std::numeric_limits<double>::max_digits10) << ros::Time::now().toSec() << std::endl;
 }
 
 void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
@@ -2241,7 +2209,7 @@ int main(int argc, char **argv)
     _msgUltraSonic.ranges.resize(1);
     _msgUltraSonic.intensities.resize(1);
 
-
+//~ 
     // Subscribers
     int numMessagesToBuffer = 10;
     ros::Subscriber sub1 = nh.subscribe("/navigation_menu/navigation_task", numMessagesToBuffer, navigationTaskCallback);
@@ -2249,7 +2217,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     // ros::Subscriber sub4 = nh.subscribe("/LQR_K", numMessagesToBuffer, lqrGainCallback);
     ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
-    //~ ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
+    // ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
     ros::Subscriber sub7 = nh.subscribe("/truck/velocity", numMessagesToBuffer, truckVelocityCallback);
     ros::Subscriber sub8 = nh.subscribe("/truck/start_simulation", numMessagesToBuffer, startSimCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
@@ -2262,7 +2230,7 @@ int main(int argc, char **argv)
     _FusedTargetLocalPositionPub = nh.advertise<geometry_msgs::PointStamped>("/navigation/fused_target_local_position", 10);
 
     // main control loop = 20 Hz
-    double dTimeStepSec = 0.025;
+    double dTimeStepSec = 0.05;
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
 
 

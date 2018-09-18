@@ -12,26 +12,15 @@ class MPCController {
     public: // methods
         Matrix4d A_;
         MatrixXd B_;
+        Matrix4d C_;
 
         MatrixXd Q_;
         MatrixXd R_;
 
         MatrixXd Ap_; 
         MatrixXd Bp_;
-            
+        
         MatrixXd K_;
-        
-        MatrixXd H_;
-        MatrixXd Fd_;
-        VectorXd F_;
-        
-        MatrixXd Cv_;
-        MatrixXd G_;
-        MatrixXd S_;
-        
-        MatrixXd Md_;
-        MatrixXd D_;
-        double L_;
         
     
         int P_, M_;
@@ -69,11 +58,6 @@ class MPCController {
         VectorXd Predict(Vector4d xk);
         Vector2d ComputeOptimalInput(VectorXd StateError);
         VectorXd CorrectPrediction(Vector4d output);
-        
-        // QP solver
-        //~ double CostFunc(unsigned n, const double *x, double *grad, void *data);
-        //~ double MyConstraints(unsigned n, const double *x, double *grad, void *data);
-        Vector2d ComputeOptimalInput2(Vector4d xk, VectorXd rp);
 
 
 
