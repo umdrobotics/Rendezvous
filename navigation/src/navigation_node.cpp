@@ -628,7 +628,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     if (abs(distance_x) < 20)
     {
-        _sumPosErrX = IntegratorCalculationPos(stateError(0)*1.05, _lastPosErrX, _sumPosErrX);
+        _sumPosErrX = IntegratorCalculationPos(stateError(0)*1.65, _lastPosErrX, _sumPosErrX);
         _sumVecErrX = IntegratorCalculationVec(stateError(2), _lastVecErrX, _sumVecErrX);
         _lastPosErrX = stateError(0);
         _lastVecErrX = stateError(2);
@@ -641,7 +641,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     if (abs(distance_y) < 20)
     {
-        _sumPosErrY = IntegratorCalculationPos(stateError(1)*1.05, _lastPosErrY, _sumPosErrY);
+        _sumPosErrY = IntegratorCalculationPos(stateError(1)*1.65, _lastPosErrY, _sumPosErrY);
         _sumVecErrY = IntegratorCalculationVec(stateError(3), _lastVecErrY, _sumVecErrY);
         _lastPosErrY = stateError(1);
         _lastVecErrY = stateError(3);
@@ -698,7 +698,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << _sumPosErrY << ","
                             << yaw << ","
                             << -uk(0) << ","
-                            << -uk(1) << std::endl;                             // drone local position
+                            << -uk(1) << ","
+                            << 0 << std::endl;                             // drone local position
 	
 	//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             //~ << ros::Time::now().toSec() << ","							
@@ -1990,7 +1991,7 @@ void timerCallback(const ros::TimerEvent&)
             break;
     }
 
-	std::cout << std::setprecision(std::numeric_limits<double>::max_digits10) << ros::Time::now().toSec() << std::endl;
+	//~ std::cout << std::setprecision(std::numeric_limits<double>::max_digits10) << ros::Time::now().toSec() << std::endl;
 }
 
 void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)

@@ -112,7 +112,7 @@ class Truck:
         self.truckGpsPub.publish(self.simGlobalLocation)
         self.truckVelocityPub.publish(self.simVehicleVelocity)
         #~ self.truckRealPositionPub.publish(self.simRealLocation)
-        self.StartSimulationPub.publish(self.simStart)
+        #~ self.StartSimulationPub.publish(self.simStart)
         if self.simPathNumber == 1:
 
 
