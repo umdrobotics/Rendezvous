@@ -79,6 +79,8 @@ using namespace nlopt;
 #define KI (0.03)
 #define DT (0.08)
 
+#define EKF_DEBUG
+
 DJIDrone* _ptrDrone;
 
 int _nNavigationTask = 0;
@@ -143,10 +145,17 @@ float _lastVecErrY = 0;
 bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
 
+#ifdef EKF_DEBUG
+// Extended Kalman Filter
+ExtendedKalmanFilter _ekf;
+VectorXd _truckEstmState(5);
+bool _IsGPSUpdated = false;
+#else 
 // Kalman Filter
 KalmanFilter _kf;
 Vector4d _truckEstmState;
 bool _IsGPSUpdated = false;
+#endif
 
 
 // PD controller
@@ -576,14 +585,25 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     // predict the target position and velocity here, KF
     // First decide now we use prediction or estimation, based whether there exists observations or not
     int nPred = 6; 
-    _kf.SetPredHorizon(nPred + P);
-    
+#ifdef EKF_DEBUG
+    _ekf.SetPredHorizon(nPred + P);
     if(!_IsGPSUpdated){
-		_truckEstmState = _kf.PredictWOObservation();
-	}
-	_IsGPSUpdated = false;
-	
+        _truckEstmState = _ekf.PredictWOObservation();
+    }
+    _IsGPSUpdated = false;
+    VectorXd truckPred = _ekf.Predict(_truckEstmState);
+#else
+    _kf.SetPredHorizon(nPred + P);
+    if(!_IsGPSUpdated){
+        _truckEstmState = _kf.PredictWOObservation();
+    }
+    _IsGPSUpdated = false;
     VectorXd truckPred = _kf.Predict(_truckEstmState);
+#endif
+    
+
+	
+
     VectorXd desiredState = truckPred.tail(P*nx);
     //~ _mpc.xk_ = xk;
     //~ _mpc.rp_ = desiredState;
@@ -1370,8 +1390,13 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     
     // Update estimate by kalman filter
 	Vector4d truckState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
+#ifdef EKF_DEBUG
+    _ekf.SetXhatInitialPoint(truckState);
+    _truckEstmState = _ekf.Update(truckState);
+#else
 	_kf.SetXhatInitialPoint(truckState);
 	_truckEstmState = _kf.Update(truckState);
+#endif
 	
 	_IsGPSUpdated = true;
 			_ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
@@ -2147,26 +2172,8 @@ const std::string currentDateTime() {
     return buf;
 }
 
-int main(int argc, char **argv)
-{
 
-    ros::init(argc, argv, "navigation_node");
-
-    ros::NodeHandle nh;
-    signal(SIGINT, SigintHandler);
-
-    // Initialize global variables
-    _ptrDrone = new DJIDrone(nh);
-
-    // Initialize MPC controller
-    float mpc_q = argc > 1 ? atof(argv[1]) : -1.0;
-    float mpc_kiPos = argc > 2 ? atof(argv[2]) : -1.0;
-    float mpc_kiVec = argc > 3 ? atof(argv[3]) : -1.0;
-    _mpc.Initialize(mpc_q, mpc_kiPos, mpc_kiVec);
-    
-    solveQP_initialize();
-
-
+void InitializeLogFiles(){
     // Log files
     // std::stringstream ss;
     // ss << DEFAULT_TARGET_TRACKING_LOG_FILE_NAME << ros::WallTime::now() << ".log";
@@ -2204,6 +2211,29 @@ int main(int argc, char **argv)
     ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
     _ofsKalmanFilterLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
+}
+
+int main(int argc, char **argv)
+{
+
+    ros::init(argc, argv, "navigation_node");
+
+    ros::NodeHandle nh;
+    signal(SIGINT, SigintHandler);
+
+    // Initialize global variables
+    _ptrDrone = new DJIDrone(nh);
+
+    // Initialize MPC controller
+    float mpc_q = argc > 1 ? atof(argv[1]) : -1.0;
+    float mpc_kiPos = argc > 2 ? atof(argv[2]) : -1.0;
+    float mpc_kiVec = argc > 3 ? atof(argv[3]) : -1.0;
+    _mpc.Initialize(mpc_q, mpc_kiPos, mpc_kiVec);
+    
+    solveQP_initialize();
+
+    // Log files
+    InitializeLogFiles();
     
 
     // Ultrasonic
