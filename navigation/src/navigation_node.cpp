@@ -26,6 +26,7 @@
 #include <Eigen/Geometry>
 #include "navigation/MPCController.h"
 #include "navigation/KalmanFilter.h"
+#include "navigation/ExtendedKalmanFilter.h"
 
 #include <math.h>
 #include <nlopt.hpp>
@@ -43,7 +44,6 @@
 
 using namespace std;
 using namespace Eigen;
-using namespace nlopt;
 
 //~ #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
 #define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/GoToTruck_"
@@ -53,6 +53,7 @@ using namespace nlopt;
 #define DEFAULT_KALMAN_FILTER_LOG_FILE_NAME "/home/ubuntu/KalmanFilter_"
 #define TARGET_LOST_TIME_OUT_SEC (2.0)
 
+#define PI 3.1415926
 // Searching path parameters
 // Cont sin path
 #define OMEGA (3.1415926)
@@ -146,15 +147,15 @@ bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
 
 #ifdef EKF_DEBUG
-// Extended Kalman Filter
-ExtendedKalmanFilter _ekf;
-VectorXd _truckEstmState(5);
-bool _IsGPSUpdated = false;
+	// Extended Kalman Filter
+	ExtendedKalmanFilter _ekf;
+	VectorXd _truckEstmState(5);
+	bool _IsGPSUpdated = false;
 #else 
-// Kalman Filter
-KalmanFilter _kf;
-Vector4d _truckEstmState;
-bool _IsGPSUpdated = false;
+	// Kalman Filter
+	KalmanFilter _kf;
+	Vector4d _truckEstmState;
+	bool _IsGPSUpdated = false;
 #endif
 
 
@@ -721,121 +722,20 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << -uk(1) << ","
                             << 0 << std::endl;                             // drone local position
 	
-	//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            //~ << ros::Time::now().toSec() << ","							
-                            //~ << _msgTruckLocalPosition.point.x << ","
-                            //~ << _msgTruckLocalPosition.point.y << ","
-                            //~ << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
-                            //~ << _msgTruckVelocity.point.x << ","
-							//~ << _msgTruckVelocity.point.y << ","
-							//~ << _msgRealTruckLocalPosition.point.x << ","
-							//~ << _msgRealTruckLocalPosition.point.y << ","
-							//~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-							//~ << _truckEstmState.transpose() << ","  // truck estimated position & velocity
-							//~ << truckPred.segment((nPred+1)*nx,4).transpose() << std::endl;  
+	_ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            << ros::Time::now().toSec() << ","							
+                            << _msgTruckLocalPosition.point.x << ","
+                            << _msgTruckLocalPosition.point.y << ","
+                            << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
+                            << _msgTruckVelocity.point.x << ","
+							<< _msgTruckVelocity.point.y << ","
+							<< _msgRealTruckLocalPosition.point.x << ","
+							<< _msgRealTruckLocalPosition.point.y << ","
+							<< _msgRealTruckLocalPosition.point.z << "," // truck true local position 
+							<< _truckEstmState.transpose() << ","  // truck estimated position & velocity
+							<< truckPred.segment((nPred+1)*nx,4).transpose() << std::endl;  
 							
 							
-}
-
-int icount = 0, jcount = 0, stage = 0;
-
-void SystemIDTest(){
-	DJIDrone& drone = *_ptrDrone;
-	
-	switch (stage)
-	{	
-		
-		// increase roll
-		case 0:
-			if(icount<5){
-				if(jcount<200){
-					drone.attitude_control(0x10, 20, 0, 3, 0);
-					jcount++;
-				}
-				else{
-					jcount = 0;
-					icount++;
-				}
-			}
-			else{
-				icount = 0;
-				jcount = 0;
-				stage++;
-				//~ cout << "stage,i,j: " << stage<<","<< icount <<"," <<jcount<<"**************"<<endl;
-			}
-		
-		// increase pitch
-		case 1:
-			if(icount<5){
-				if(jcount<200){
-					drone.attitude_control(0x10, 20, 20, 3, 0);
-					jcount++;
-				}
-				else{
-					jcount = 0;
-					icount++;
-				}
-			}
-			else{
-				icount = 4;
-				jcount = 0;
-				stage++;
-
-			}
-			
-		//~ // decrease roll	
-		//~ case 2:
-			//~ if(icount>=0){
-				//~ if(jcount<200){
-					//~ drone.attitude_control(0x10, icount*5, 20, 3, 0);
-					//~ jcount++;
-				//~ }
-				//~ else{
-					//~ jcount = 0;
-					//~ icount--;
-				//~ }
-			//~ }
-			//~ else{
-				//~ stage++;
-				//~ icount = 4;
-				//~ jcount = 0;
-			//~ }
-		
-		//~ // decrease pitch
-		//~ case 3:
-			//~ if(icount>=0){
-				//~ if(jcount<200){
-					//~ drone.attitude_control(0x10, 0, icount*5, 3, 0);
-					//~ jcount++;
-				//~ }
-				//~ else{
-					//~ jcount = 0;
-					//~ icount--;
-				//~ }
-			//~ }
-			//~ else{
-				//~ stage++;
-				//~ icount = 4;
-				//~ jcount = 0;
-			//~ }
-	}
-		
-		    // Calculate yaw angle
-    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
-    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
-    float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
-    float roll = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
-	_ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            << ros::Time::now().toSec() << ","
-                            << drone.local_position.x << ","
-                            << drone.local_position.y << ","
-                            << drone.velocity.vx << ","
-                            << drone.velocity.vy << ","
-                            << roll << ","
-                            << pitch << ","
-                            << yaw << std::endl; 
-	
-	cout << "stage,i,j: " << stage<<","<< icount <<"," <<jcount<<","<<endl;
 }
 
 
@@ -1391,25 +1291,35 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     // Update estimate by kalman filter
 	Vector4d truckState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
 #ifdef EKF_DEBUG
-    _ekf.SetXhatInitialPoint(truckState);
-    _truckEstmState = _ekf.Update(truckState);
+    VectorXd xk1(5);
+
+    double x = _msgTruckLocalPosition.point.x;
+    double y = _msgTruckLocalPosition.point.y;
+    double theta = atan2(y,x)*180/PI;
+    double v = sqrt(pow(_msgTruckVelocity.point.x,2) + pow(_msgTruckVelocity.point.y,2));
+    double omega = 0;
+    
+    xk1 << x, y, theta, v, omega;
+    
+    _ekf.SetXhatInitialPoint(xk1);
+    _truckEstmState = _ekf.Update(xk1);
 #else
 	_kf.SetXhatInitialPoint(truckState);
 	_truckEstmState = _kf.Update(truckState);
 #endif
 	
 	_IsGPSUpdated = true;
-			_ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            << ros::Time::now().toSec() << ","							
-                            << _msgTruckLocalPosition.point.x << ","
-                            << _msgTruckLocalPosition.point.y << ","
-                            << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
-                            << _msgTruckVelocity.point.x << ","
-							<< _msgTruckVelocity.point.y << ","
-							<< _msgRealTruckLocalPosition.point.x << ","
-							<< _msgRealTruckLocalPosition.point.y << ","
-							<< _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-							<< _truckEstmState.transpose() << std::endl;   
+			//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            //~ << ros::Time::now().toSec() << ","							
+                            //~ << _msgTruckLocalPosition.point.x << ","
+                            //~ << _msgTruckLocalPosition.point.y << ","
+                            //~ << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
+                            //~ << _msgTruckVelocity.point.x << ","
+							//~ << _msgTruckVelocity.point.y << ","
+							//~ << _msgRealTruckLocalPosition.point.x << ","
+							//~ << _msgRealTruckLocalPosition.point.y << ","
+							//~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
+							//~ << _truckEstmState.transpose() << std::endl;   
 
 }
 
@@ -1989,7 +1899,6 @@ void timerCallback(const ros::TimerEvent&)
             break;
             
         case 26:
-            SystemIDTest();
             break;
 
         case 30:
@@ -2173,7 +2082,7 @@ const std::string currentDateTime() {
 }
 
 
-void InitializeLogFiles(){
+void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
     // Log files
     // std::stringstream ss;
     // ss << DEFAULT_TARGET_TRACKING_LOG_FILE_NAME << ros::WallTime::now() << ".log";
@@ -2231,9 +2140,11 @@ int main(int argc, char **argv)
     _mpc.Initialize(mpc_q, mpc_kiPos, mpc_kiVec);
     
     solveQP_initialize();
+    
+    
 
     // Log files
-    InitializeLogFiles();
+    InitializeLogFiles(mpc_q, mpc_kiPos, mpc_kiVec);
     
 
     // Ultrasonic

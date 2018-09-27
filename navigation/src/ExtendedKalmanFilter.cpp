@@ -18,9 +18,9 @@ ExtendedKalmanFilter::ExtendedKalmanFilter()
 
     // Initialize uncertainty and noise
     Q_ = MatrixXd::Zero(5,5);
-    Q_.bottomRightCorner(2,2) = MatrixXd::Identity(2,2);
+    Q_.block(3,3,2,2) = MatrixXd::Identity(2,2);
 
-    R_ <<   0.3, 0
+    R_ <<   0.3, 0,
             0, 0.3;   // noise, sigma = 0.5
 
 
@@ -29,10 +29,15 @@ ExtendedKalmanFilter::ExtendedKalmanFilter()
 }
 
 // destructor   
-ExtendedKalmanFilter::~ExtendedKalmanFilter(){}
+ExtendedKalmanFilter::~ExtendedKalmanFilter()
+{
+	
+}
 
 // Initializer
-void ExtendedKalmanFilter::Initialize(){}
+void ExtendedKalmanFilter::Initialize(){
+	
+}
 
 // Setter and getter
 void ExtendedKalmanFilter::SetPredHorizon(int nPred){
@@ -45,7 +50,7 @@ void ExtendedKalmanFilter::SetPredHorizon(int nPred){
 void ExtendedKalmanFilter::SetXhatInitialPoint(VectorXd xk){
 	if (!IsXhatInitialized_){
 
-        xhat_ = MatrixXd::Zero(5, 1);
+        xhat_ = xk;
         xEstmWO_ = xhat_;
         P_ = MatrixXd::Identity(5, 5);
         
@@ -105,8 +110,9 @@ VectorXd ExtendedKalmanFilter::SystemModel(VectorXd xk, double dt){
 
 VectorXd ExtendedKalmanFilter::ObservationModel(VectorXd xk, double dt){
 
-    MatrixXd H(2,5) <<  1, 0, 0, 0, 0,
-                        0, 1, 0, 0, 0;
+    MatrixXd H(2,5);
+    H <<  1, 0, 0, 0, 0,
+          0, 1, 0, 0, 0;
 
     VectorXd output = H*xk;
 
@@ -122,7 +128,8 @@ MatrixXd ExtendedKalmanFilter::JacobianSystemModel(VectorXd xk, double dt){
     double v = xk(3);
     // double omega = xk(4);
     
-    MatrixXd jacobian <<    1,  0, -dt*v*sin(theta), dt*cos(theta), 0,
+    MatrixXd jacobian(5,5);
+    jacobian <<    			1,  0, -dt*v*sin(theta), dt*cos(theta), 0,
                             0,  1,  dt*v*cos(theta), dt*sin(theta), 0,
                             0,  0,                1,             0, dt,
                             0,  0,                0,             1, 0,
@@ -133,8 +140,9 @@ MatrixXd ExtendedKalmanFilter::JacobianSystemModel(VectorXd xk, double dt){
 
 MatrixXd ExtendedKalmanFilter::JacobianObservationModel(VectorXd xk, double dt){
 
-    MatrixXd jacobian(2,5) <<   1, 0, 0, 0, 0,
-                                0, 1, 0, 0, 0;
+    MatrixXd jacobian(2,5);
+    jacobian <<   1, 0, 0, 0, 0,
+                  0, 1, 0, 0, 0;
     return jacobian;
     
 }                            

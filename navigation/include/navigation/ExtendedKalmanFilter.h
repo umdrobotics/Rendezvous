@@ -1,5 +1,5 @@
-#ifndef KALMAN_FILTER_CLASS_H_
-#define KALMAN_FILTER_CLASS_H_
+#ifndef EXTENDED_KALMAN_FILTER_CLASS_H_
+#define EXTENDED_KALMAN_FILTER_CLASS_H_
 
 #include <Eigen/Dense>
 #include <unsupported/Eigen/MatrixFunctions>
@@ -13,9 +13,12 @@ class ExtendedKalmanFilter {
 
         int nx_;
         int nPred_;
+        
+        float dt_;
+        float dpt_;
     
         bool IsXhatInitialized_;
-        bool IsNoObservation_;
+
 
         VectorXd xhat_;
 
@@ -25,8 +28,7 @@ class ExtendedKalmanFilter {
         VectorXd XP_;
         VectorXd xEstmWO_;
 
-        float dt_;
-        float dpt_;
+
         
         // constructor
         ExtendedKalmanFilter();
@@ -40,6 +42,12 @@ class ExtendedKalmanFilter {
         void SetPredHorizon(int nPred);
 
         // Core functions
+        VectorXd SystemModel(VectorXd xk, double dt);
+        VectorXd ObservationModel(VectorXd xk, double dt);
+        MatrixXd JacobianSystemModel(VectorXd xk, double dt);
+        MatrixXd JacobianObservationModel(VectorXd xk, double dt);
+        
+        
         VectorXd Update(VectorXd xk);
         VectorXd PredictWOObservation();
         VectorXd Predict(VectorXd xk);
@@ -47,10 +55,11 @@ class ExtendedKalmanFilter {
 
 
 
+
     private: // members
 
         MatrixXd Q_;
-        MatrixXd R_;
+        Matrix2d R_;
         MatrixXd P_;
 
 
