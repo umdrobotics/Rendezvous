@@ -12,6 +12,7 @@ class ExtendedKalmanFilter {
     public: // methods
 
         int nx_;
+        int nxdrone_;
         int nPred_;
         
         float dt_;
@@ -51,6 +52,7 @@ class ExtendedKalmanFilter {
         VectorXd Update(VectorXd xk);
         VectorXd PredictWOObservation();
         VectorXd Predict(VectorXd xk);
+        Vector4d StateTransformer(VectorXd xk);
 
 
 

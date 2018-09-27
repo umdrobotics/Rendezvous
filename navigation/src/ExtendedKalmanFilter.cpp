@@ -18,13 +18,16 @@ ExtendedKalmanFilter::ExtendedKalmanFilter()
 
     // Initialize uncertainty and noise
     Q_ = MatrixXd::Zero(5,5);
-    Q_.block(3,3,2,2) = MatrixXd::Identity(2,2);
+    //~ Q_.block(3,3,2,2) = MatrixXd::Identity(2,2);
+    Q_(3,3) = 0.1;    
+    Q_(4,4) = 0.01;  //0.04
 
     R_ <<   0.3, 0,
             0, 0.3;   // noise, sigma = 0.5
 
 
-    nx_ = 5;
+    nx_ = 5;  
+    nxdrone_ = 4;// for drone state
 
 }
 
@@ -43,7 +46,7 @@ void ExtendedKalmanFilter::Initialize(){
 void ExtendedKalmanFilter::SetPredHorizon(int nPred){
     
     nPred_ = nPred;
-    XP_ = MatrixXd::Zero(nx_*nPred_,1);
+    XP_ = MatrixXd::Zero(nxdrone_*nPred_,1);
     
 }    
 
@@ -98,9 +101,9 @@ VectorXd ExtendedKalmanFilter::SystemModel(VectorXd xk, double dt){
 
     double dx = x + dt*v*cos(theta);
     double dy = y + dt*v*sin(theta);
-    double dtheta = theta + dt*omega;
+    double dtheta = theta + dt*omega;  // rads
     double dv = v;
-    double domega = omega;
+    double domega = omega;				// rads/s
 
     xk1 << dx, dy, dtheta, dv, domega;
     return xk1;
@@ -149,7 +152,7 @@ MatrixXd ExtendedKalmanFilter::JacobianObservationModel(VectorXd xk, double dt){
 
 VectorXd ExtendedKalmanFilter::PredictWOObservation(){
 	
-	xEstmWO_ = SystemModel(xEstmWO_, dt_);
+	xEstmWO_ = SystemModel(xEstmWO_, dpt_);
 	
 	return xEstmWO_;
 }
@@ -159,7 +162,7 @@ VectorXd ExtendedKalmanFilter::Predict(VectorXd xk)
 {
 	
 	xPred_ = xk;
-	XP_.segment(0, nx_) = xPred_;
+	XP_.segment(0, nxdrone_) = StateTransformer(xPred_);
 	
     for(int i = 1; i < nPred_; i++){
 
@@ -167,7 +170,7 @@ VectorXd ExtendedKalmanFilter::Predict(VectorXd xk)
         // MatrixXd F = JacobianSystemModel(xPred_, dpt_);           // state transition Jacobian
         // MatrixXd pPred_ = F * P_ * F.transpose() + Q_;             // local var, prediction for time k
 
-        XP_.segment(i*nx_, nx_) = xPred_;
+        XP_.segment(i*nxdrone_, nxdrone_) = StateTransformer(xPred_);
 
     }
 
@@ -176,5 +179,24 @@ VectorXd ExtendedKalmanFilter::Predict(VectorXd xk)
 }
 
 
+Vector4d ExtendedKalmanFilter::StateTransformer(VectorXd xk){
+	
+	Vector4d xk1;
+
+    double x = xk(0);
+    double y = xk(1);
+    double theta = xk(2);
+    double v = xk(3);
+    double omega = xk(4);
+
+    double px = x;
+    double py = y;
+    double vx = v*cos(theta);
+    double vy = v*sin(theta);
 
 
+    xk1 << px, py, vx, vy;
+    
+    return xk1;
+
+}
