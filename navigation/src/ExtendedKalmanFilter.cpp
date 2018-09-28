@@ -14,13 +14,13 @@ ExtendedKalmanFilter::ExtendedKalmanFilter()
 
     dt_ = 0.1;
     dpt_ = 0.05; // for prediction
+    
 
 
     // Initialize uncertainty and noise
     Q_ = MatrixXd::Zero(5,5);
     //~ Q_.block(3,3,2,2) = MatrixXd::Identity(2,2);
-    Q_(3,3) = 0.1;    
-    Q_(4,4) = 0.01;  //0.04
+
 
     R_ <<   0.3, 0,
             0, 0.3;   // noise, sigma = 0.5
@@ -65,6 +65,13 @@ void ExtendedKalmanFilter::SetXhatInitialPoint(VectorXd xk){
 VectorXd ExtendedKalmanFilter::Update(VectorXd xk){
 
     VectorXd output = ObservationModel(xk, dt_);
+    
+    float sigma_a = 0.1;
+    Q_ <<   pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(2))*cos(xk(2)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(2))*sin(xk(2)), 0, pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(2)), 0,
+            pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(2))*sin(xk(2)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*sin(xk(2))*sin(xk(2)), 0, pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(2)), 0,
+            0,													   0													, 0.0017, 0,										 0,
+            pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(2)), 		   pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(2)),            0, pow(dt_,2.0)*pow(sigma_a,2.0),              0,
+            0, 													   0,                                                     0, 0,                                          0.0017;
 
     // Predict
     VectorXd xpred = SystemModel(xhat_, dt_) ;              // local var, prediction for time 
