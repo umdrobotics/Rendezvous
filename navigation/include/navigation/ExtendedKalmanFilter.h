@@ -61,7 +61,7 @@ class ExtendedKalmanFilter {
     private: // members
 
         MatrixXd Q_;
-        Matrix2d R_;
+        Matrix4d R_;
         MatrixXd P_;
 
 

@@ -29,7 +29,6 @@
 #include "navigation/ExtendedKalmanFilter.h"
 
 #include <math.h>
-#include <nlopt.hpp>
 #include <vector>
 
 #include "navigation/rt_nonfinite.h" 
@@ -149,7 +148,7 @@ bool _bIsFirstTimeReachRoll = true;
 #ifdef EKF_DEBUG
 	// Extended Kalman Filter
 	ExtendedKalmanFilter _ekf;
-	VectorXd _truckEstmState(5);
+	VectorXd _truckEstmState(4);
 	bool _IsGPSUpdated = false;
 #else 
 	// Kalman Filter
@@ -1292,15 +1291,15 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     // Update estimate by kalman filter
 	Vector4d truckState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
 #ifdef EKF_DEBUG
-    VectorXd xk1(5);
+    VectorXd xk1(4);
 
     double x = _msgTruckLocalPosition.point.x;
     double y = _msgTruckLocalPosition.point.y;
     double theta = atan2(y,x)*180/PI;
     double v = sqrt(pow(_msgTruckVelocity.point.x,2) + pow(_msgTruckVelocity.point.y,2));
-    double omega = 0;
+    // double omega = 0;
     
-    xk1 << x, y, theta, v, omega;
+    xk1 << x, y, theta, v;// omega;
     
     _ekf.SetXhatInitialPoint(xk1);
     _truckEstmState = _ekf.Update(xk1);
