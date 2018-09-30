@@ -129,7 +129,7 @@ class Truck:
                 self.time += Truck.TimeStep
                 # self.logger.debug("Simulation: send the truck data")            
 
-        elif self.simPathNumber == 2:
+        elif self.simPathNumber == 2: 
             if self.time > 180:
                 self.time = 0
                 print("Out of time!! Timer reset as 0!!")

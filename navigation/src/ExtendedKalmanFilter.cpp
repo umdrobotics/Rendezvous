@@ -8,7 +8,7 @@
 using namespace std;
 using namespace Eigen;
 
-// constructor
+// constructor 
 ExtendedKalmanFilter::ExtendedKalmanFilter()
 {
 
@@ -115,7 +115,7 @@ VectorXd ExtendedKalmanFilter::SystemModel(VectorXd xk, double dt){
     double dv = v;
     // double domega = omega;				// rads/s
 
-    xk1 << dx, dy, dtheta, dv;//, domega;
+    xk1 << dx, dy,dv, dtheta ;//, domega;
     return xk1;
 
 }
@@ -212,8 +212,8 @@ Vector4d ExtendedKalmanFilter::StateTransformer(VectorXd xk){
 
     double x = xk(0);
     double y = xk(1);
-    double theta = xk(2);
-    double v = xk(3);
+    double theta = xk(3);
+    double v = xk(2);
     // double omega = xk(4);
 
     double px = x;

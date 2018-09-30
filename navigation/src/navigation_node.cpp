@@ -79,7 +79,7 @@ using namespace Eigen;
 #define KI (0.03)
 #define DT (0.08)
 
-#define EKF_DEBUG
+//~ #define EKF_DEBUG
 
 DJIDrone* _ptrDrone;
 
@@ -1299,7 +1299,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     double v = sqrt(pow(_msgTruckVelocity.point.x,2) + pow(_msgTruckVelocity.point.y,2));
     // double omega = 0;
     
-    xk1 << x, y, theta, v;// omega;
+    xk1 << x, y, v, theta;// omega;
     
     _ekf.SetXhatInitialPoint(xk1);
     _truckEstmState = _ekf.Update(xk1);
@@ -1323,27 +1323,27 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
 
 }
 
-void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
-{
-
-    DJIDrone& drone = *_ptrDrone;
-    // Record GPS position
-
-    // Calculate the distance from truck to drone
-    float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
-    float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
-
-
-    // Calculate the truck local location
-    // drone.local_position.x means northing
-    // drone.local_position.y means easting
-    _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
-    _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
-    _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
-    _msgRealTruckLocalPosition.point.z = 0;
-
-
-}
+//~ void realTruckPositionCallback(const geometry_msgs::PointStamped msgTruckPosition)
+//~ {
+//~ 
+    //~ DJIDrone& drone = *_ptrDrone;
+    //~ // Record GPS position
+//~ 
+    //~ // Calculate the distance from truck to drone
+    //~ float truckDistance_x = (msgTruckPosition.point.x - drone.global_position.latitude)/0.0000089354;
+    //~ float truckDistance_y = (msgTruckPosition.point.y - drone.global_position.longitude)/0.0000121249;
+//~ 
+//~ 
+    //~ // Calculate the truck local location
+    //~ // drone.local_position.x means northing
+    //~ // drone.local_position.y means easting
+    //~ _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
+    //~ _msgRealTruckLocalPosition.point.x = drone.local_position.x + truckDistance_x;
+    //~ _msgRealTruckLocalPosition.point.y = drone.local_position.y + truckDistance_y;
+    //~ _msgRealTruckLocalPosition.point.z = 0;
+//~ 
+//~ 
+//~ }
 
 
 
@@ -2146,7 +2146,7 @@ int main(int argc, char **argv)
     // Log files
     InitializeLogFiles(mpc_q, mpc_kiPos, mpc_kiVec);
     
-
+  
     // Ultrasonic
     _msgUltraSonic.ranges.resize(1);
     _msgUltraSonic.intensities.resize(1);
@@ -2159,7 +2159,7 @@ int main(int argc, char **argv)
     ros::Subscriber sub3 = nh.subscribe("/usb_cam/tag_detections", numMessagesToBuffer, tagDetectionCallback);
     // ros::Subscriber sub4 = nh.subscribe("/LQR_K", numMessagesToBuffer, lqrGainCallback);
     ros::Subscriber sub5 = nh.subscribe("/truck/location_GPS", numMessagesToBuffer, truckPositionCallback);
-    ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
+    //~ ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
     ros::Subscriber sub7 = nh.subscribe("/truck/velocity", numMessagesToBuffer, truckVelocityCallback);
     ros::Subscriber sub8 = nh.subscribe("/truck/start_simulation", numMessagesToBuffer, startSimCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
@@ -2172,7 +2172,7 @@ int main(int argc, char **argv)
     _FusedTargetLocalPositionPub = nh.advertise<geometry_msgs::PointStamped>("/navigation/fused_target_local_position", 10);
 
     // main control loop = 20 Hz
-    double dTimeStepSec = 0.05;
+    double dTimeStepSec = 0.025;
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
 
 
