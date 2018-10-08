@@ -4,8 +4,8 @@
  * government, commercial, or other organizational use.
  * File: rt_nonfinite.cpp
  *
- * MATLAB Coder version            : 4.0
- * C/C++ source code generated on  : 02-Sep-2018 11:08:41
+ * MATLAB Coder version            : 3.4
+ * C/C++ source code generated on  : 08-Oct-2018 14:40:09
  */
 
 /*
@@ -14,8 +14,8 @@
  *      (Inf, NaN and -Inf).
  */
 #include "navigation/rt_nonfinite.h"
-#include <cmath>
-#include <limits>
+#include "navigation/rtGetNaN.h"
+#include "navigation/rtGetInf.h"
 
 real_T rtInf;
 real_T rtMinusInf;
@@ -31,13 +31,13 @@ real32_T rtNaNF;
  */
 void rt_InitInfAndNaN(size_t realSize)
 {
-  (void)realSize;
-  rtNaN = std::numeric_limits<real_T>::quiet_NaN();
-  rtNaNF = std::numeric_limits<real32_T>::quiet_NaN();
-  rtInf = std::numeric_limits<real_T>::infinity();
-  rtInfF = std::numeric_limits<real32_T>::infinity();
-  rtMinusInf = -std::numeric_limits<real_T>::infinity();
-  rtMinusInfF = -std::numeric_limits<real32_T>::infinity();
+  (void) (realSize);
+  rtNaN = rtGetNaN();
+  rtNaNF = rtGetNaNF();
+  rtInf = rtGetInf();
+  rtInfF = rtGetInfF();
+  rtMinusInf = rtGetMinusInf();
+  rtMinusInfF = rtGetMinusInfF();
 }
 
 /* Function: rtIsInf ==================================================
@@ -64,7 +64,17 @@ boolean_T rtIsInfF(real32_T value)
  */
 boolean_T rtIsNaN(real_T value)
 {
+
+#if defined(_MSC_VER) && (_MSC_VER <= 1200)
+
+  return _isnan(value)? TRUE:FALSE;
+
+#else
+
   return (value!=value)? 1U:0U;
+
+#endif
+
 }
 
 /* Function: rtIsNaNF =================================================
@@ -73,7 +83,17 @@ boolean_T rtIsNaN(real_T value)
  */
 boolean_T rtIsNaNF(real32_T value)
 {
+
+#if defined(_MSC_VER) && (_MSC_VER <= 1200)
+
+  return _isnan((real_T)value)? true:false;
+
+#else
+
   return (value!=value)? 1U:0U;
+
+#endif
+
 }
 
 /*

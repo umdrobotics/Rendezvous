@@ -4,8 +4,8 @@
 // government, commercial, or other organizational use.
 // File: solveQP_terminate.cpp
 //
-// MATLAB Coder version            : 4.0
-// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+// MATLAB Coder version            : 3.4
+// C/C++ source code generated on  : 08-Oct-2018 14:40:09
 //
 
 // Include Files

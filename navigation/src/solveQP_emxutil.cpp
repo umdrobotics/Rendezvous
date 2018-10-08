@@ -4,13 +4,11 @@
 // government, commercial, or other organizational use.
 // File: solveQP_emxutil.cpp
 //
-// MATLAB Coder version            : 4.0
-// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+// MATLAB Coder version            : 3.4
+// C/C++ source code generated on  : 08-Oct-2018 14:40:09
 //
 
 // Include Files
-#include <stdlib.h>
-#include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/solveQP_emxutil.h"
@@ -94,7 +92,7 @@ void emxInit_real_T(emxArray_real_T **pEmxArray, int numDimensions)
   emxArray = *pEmxArray;
   emxArray->data = (double *)NULL;
   emxArray->numDimensions = numDimensions;
-  emxArray->size = (int *)malloc(sizeof(int) * numDimensions);
+  emxArray->size = (int *)malloc((unsigned int)(sizeof(int) * numDimensions));
   emxArray->allocatedSize = 0;
   emxArray->canFreeData = true;
   for (i = 0; i < numDimensions; i++) {
@@ -115,7 +113,7 @@ void emxInit_real_T1(emxArray_real_T **pEmxArray, int numDimensions)
   emxArray = *pEmxArray;
   emxArray->data = (double *)NULL;
   emxArray->numDimensions = numDimensions;
-  emxArray->size = (int *)malloc(sizeof(int) * numDimensions);
+  emxArray->size = (int *)malloc((unsigned int)(sizeof(int) * numDimensions));
   emxArray->allocatedSize = 0;
   emxArray->canFreeData = true;
   for (i = 0; i < numDimensions; i++) {

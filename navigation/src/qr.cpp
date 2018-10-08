@@ -4,12 +4,11 @@
 // government, commercial, or other organizational use.
 // File: qr.cpp
 //
-// MATLAB Coder version            : 4.0
-// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+// MATLAB Coder version            : 3.4
+// C/C++ source code generated on  : 08-Oct-2018 14:40:09
 //
 
 // Include Files
-#include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/qr.h"
@@ -54,25 +53,25 @@ void qr(const double A_data[], const int A_size[2], double Q_data[], int Q_size
   R_size[0] = A_size[0];
   R_size[1] = A_size[1];
   if (A_size[0] > A_size[1]) {
-    for (i = 0; i < n; i++) {
-      for (b_i = 0; b_i < m; b_i++) {
+    for (i = 0; i + 1 <= n; i++) {
+      for (b_i = 0; b_i + 1 <= m; b_i++) {
         Q_data[b_i + Q_size[0] * i] = A_data[b_i + A_size[0] * i];
       }
     }
 
-    for (i = A_size[1]; i < m; i++) {
+    for (i = A_size[1]; i + 1 <= m; i++) {
       for (b_i = 1; b_i <= m; b_i++) {
         Q_data[(b_i + Q_size[0] * i) - 1] = 0.0;
       }
     }
 
     xgeqrf(Q_data, Q_size, tau_data, tau_size);
-    for (i = 0; i < n; i++) {
-      for (b_i = 0; b_i < i + 1; b_i++) {
+    for (i = 0; i + 1 <= n; i++) {
+      for (b_i = 0; b_i + 1 <= i + 1; b_i++) {
         R_data[b_i + R_size[0] * i] = Q_data[b_i + Q_size[0] * i];
       }
 
-      for (b_i = i + 1; b_i < m; b_i++) {
+      for (b_i = i + 1; b_i + 1 <= m; b_i++) {
         R_data[b_i + R_size[0] * i] = 0.0;
       }
     }
@@ -141,7 +140,7 @@ void qr(const double A_data[], const int A_size[2], double Q_data[], int Q_size
           }
 
           i = (iaii + m) - b_i;
-          for (n = iaii; n < i; n++) {
+          for (n = iaii; n + 1 <= i; n++) {
             Q_data[n] *= -tau_data[itau];
           }
         }
@@ -163,18 +162,18 @@ void qr(const double A_data[], const int A_size[2], double Q_data[], int Q_size
     }
 
     xgeqrf(b_A_data, b_A_size, tau_data, tau_size);
-    for (i = 0; i < m; i++) {
-      for (b_i = 0; b_i < i + 1; b_i++) {
+    for (i = 0; i + 1 <= m; i++) {
+      for (b_i = 0; b_i + 1 <= i + 1; b_i++) {
         R_data[b_i + R_size[0] * i] = b_A_data[b_i + b_A_size[0] * i];
       }
 
-      for (b_i = i + 1; b_i < m; b_i++) {
+      for (b_i = i + 1; b_i + 1 <= m; b_i++) {
         R_data[b_i + R_size[0] * i] = 0.0;
       }
     }
 
-    for (i = A_size[0]; i < n; i++) {
-      for (b_i = 0; b_i < m; b_i++) {
+    for (i = A_size[0]; i + 1 <= n; i++) {
+      for (b_i = 0; b_i + 1 <= m; b_i++) {
         R_data[b_i + R_size[0] * i] = b_A_data[b_i + b_A_size[0] * i];
       }
     }
@@ -243,7 +242,7 @@ void qr(const double A_data[], const int A_size[2], double Q_data[], int Q_size
           }
 
           i = (iaii + m) - b_i;
-          for (n = iaii; n < i; n++) {
+          for (n = iaii; n + 1 <= i; n++) {
             b_A_data[n] *= -tau_data[itau];
           }
         }
@@ -257,8 +256,8 @@ void qr(const double A_data[], const int A_size[2], double Q_data[], int Q_size
       }
     }
 
-    for (i = 0; i < m; i++) {
-      for (b_i = 0; b_i < m; b_i++) {
+    for (i = 0; i + 1 <= m; i++) {
+      for (b_i = 0; b_i + 1 <= m; b_i++) {
         Q_data[b_i + Q_size[0] * i] = b_A_data[b_i + b_A_size[0] * i];
       }
     }

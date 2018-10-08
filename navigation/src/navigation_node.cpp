@@ -2044,7 +2044,7 @@ int main(int argc, char **argv)
     _FusedTargetLocalPositionPub = nh.advertise<geometry_msgs::PointStamped>("/navigation/fused_target_local_position", 10);
 
     // main control loop = 20 Hz
-    double dTimeStepSec = 0.025;
+    double dTimeStepSec = 0.05;
     ros::Timer timer = nh.createTimer(ros::Duration(dTimeStepSec), timerCallback);
 
 

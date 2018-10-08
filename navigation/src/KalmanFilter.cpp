@@ -15,7 +15,7 @@ KalmanFilter::KalmanFilter()
     float sigma_ay = 0.1;
 
     float dt = 0.1;
-    float dpt = 0.025; // for prediction
+    float dpt = 0.05; // for prediction
 
     // Initialize system matrixes
     A_ <<   1, 0, dt, 0,

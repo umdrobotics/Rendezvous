@@ -4,14 +4,12 @@
 // government, commercial, or other organizational use.
 // File: xgeqrf.cpp
 //
-// MATLAB Coder version            : 4.0
-// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+// MATLAB Coder version            : 3.4
+// C/C++ source code generated on  : 08-Oct-2018 14:40:09
 //
 
 // Include Files
-#include <cmath>
 #include "navigation/rt_nonfinite.h"
-#include <string.h>
 #include "navigation/solveQP.h"
 #include "navigation/xgeqrf.h"
 #include "navigation/xger.h"
@@ -110,7 +108,7 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
               lastc = i_i + mmi;
               do {
                 knt++;
-                for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
+                for (coltop = i_i + 1; coltop + 1 <= lastc + 1; coltop++) {
                   A_data[coltop] *= 9.9792015476736E+291;
                 }
 
@@ -126,7 +124,7 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
               d1 = (xnorm - atmp) / xnorm;
               atmp = 1.0 / (atmp - xnorm);
               lastc = i_i + mmi;
-              for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
+              for (coltop = i_i + 1; coltop + 1 <= lastc + 1; coltop++) {
                 A_data[coltop] *= atmp;
               }
 
@@ -139,7 +137,7 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
               d1 = (xnorm - A_data[i_i]) / xnorm;
               atmp = 1.0 / (A_data[i_i] - xnorm);
               lastc = i_i + mmi;
-              for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
+              for (coltop = i_i + 1; coltop + 1 <= lastc + 1; coltop++) {
                 A_data[coltop] *= atmp;
               }
 

@@ -4,13 +4,11 @@
 // government, commercial, or other organizational use.
 // File: mpower.cpp
 //
-// MATLAB Coder version            : 4.0
-// C/C++ source code generated on  : 02-Sep-2018 11:08:41
+// MATLAB Coder version            : 3.4
+// C/C++ source code generated on  : 08-Oct-2018 14:40:09
 //
 
 // Include Files
-#include <cmath>
-#include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/mpower.h"
@@ -41,7 +39,7 @@ void mpower(const double a[16], double b, double c[16])
   int i2;
   double aBuffer[16];
   if (b == b) {
-    if (std::abs(b) <= 2.147483647E+9) {
+    if (2.147483647E+9 >= std::abs(b)) {
       memcpy(&b_a[0], &a[0], sizeof(double) << 4);
       e = std::abs(b);
       b_n = (int)std::abs(b);
