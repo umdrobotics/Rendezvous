@@ -36,11 +36,13 @@ class KalmanFilter {
         // Setters and getters
         void SetXhatInitialPoint(Vector4d xk);
         void SetPredHorizon(int nPred);
+        void SetAMatrix(double dt);
 
         // Core functions
         void Initialize();
-        Vector4d Update(Vector4d xk);
-        Vector4d PredictWOObservation();
+        Vector4d UpdateWithGPSMeasurements(Vector4d output, double dt);
+        Vector4d UpdateWithCameraMeasurements(Vector2d output, double dt);
+        Vector4d PredictWOObservation(double dt);
         VectorXd Predict(Vector4d xk);
 
 
@@ -49,12 +51,14 @@ class KalmanFilter {
     private: // members
 
         Matrix4d A_;
-        Matrix4d Ap_;
+        // Matrix4d Ap_;
         int B_;
-        Matrix4d C_;
+        Matrix4d Cg_;
+        Matrix2d Ca_;
 
         Matrix4d Q_;
-        Matrix4d R_;
+        Matrix4d Rg_;
+        Matrix2d Ra_;
         Matrix4d P_;
 
 

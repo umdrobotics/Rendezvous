@@ -139,12 +139,12 @@ bool _bIsFirstTimeReachRoll = true;
 #ifdef EKF_DEBUG
 	// Extended Kalman Filter
 	ExtendedKalmanFilter _ekf;
-	VectorXd _truckEstmState(4);
+	VectorXd _targetEstState(4);
 	bool _IsGPSUpdated = false;
 #else 
 	// Kalman Filter
 	KalmanFilter _kf;
-	Vector4d _truckEstmState;
+	Vector4d _targetEstState;
 	bool _IsGPSUpdated = false;
 #endif
 
@@ -166,9 +166,9 @@ std::ofstream _ofsKalmanFilterLog;
 
 // GPS & Camera data funsion
 std::queue <dji_sdk::Gimbal> _queMsgGimbal;
-std::deque <geometry_msgs::PointStamped> _queMsgTruckLocalPosition;
-std::deque <geometry_msgs::PointStamped> _queMsgTargetLocalPosition;
-geometry_msgs::PointStamped _msgFusedTargetLocalPosition;
+// std::deque <geometry_msgs::PointStamped> _queMsgTruckLocalPosition;
+// std::deque <geometry_msgs::PointStamped> _queMsgTargetLocalPosition;
+// geometry_msgs::PointStamped _msgFusedTargetLocalPosition;
 
 // Sensor data
 sensor_msgs::LaserScan _msgUltraSonic;
@@ -182,6 +182,7 @@ geometry_msgs::PointStamped _msgTruckLocalPosition;
 geometry_msgs::PointStamped _msgTruckGPSPosition;
 geometry_msgs::PointStamped _msgRealTruckLocalPosition;
 geometry_msgs::PointStamped _msgTruckVelocity;
+geometry_msgs::PointStamped _msgFusedTargetPosition;
 
 geometry_msgs::PointStamped _msgDesiredAttitudeDeg;
 
@@ -549,17 +550,19 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 #ifdef EKF_DEBUG
     _ekf.SetPredHorizon(nPred + P);
     if(!_IsGPSUpdated){
-        _truckEstmState = _ekf.PredictWOObservation();
+        _targetEstState = _ekf.PredictWOObservation();
     }
     _IsGPSUpdated = false;
-    VectorXd truckPred = _ekf.Predict(_truckEstmState);
+    VectorXd truckPred = _ekf.Predict(_targetEstState);
 #else
     _kf.SetPredHorizon(nPred + P);
-    if(!_IsGPSUpdated){
-        _truckEstmState = _kf.PredictWOObservation();
+    ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
+    if(timeElapsed.toSec() > 0.001){
+        // Time elapsed > 0.001 s, update; O.W. no need to update
+        _targetEstState = _kf.PredictWOObservation();
     }
-    _IsGPSUpdated = false;
-    VectorXd truckPred = _kf.Predict(_truckEstmState);
+    // _IsGPSUpdated = false;
+    VectorXd truckPred = _kf.Predict(_targetEstState);
 #endif
     VectorXd desiredState = truckPred.tail(P*nx);
     
@@ -658,7 +661,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 							<< _msgRealTruckLocalPosition.point.x << ","
 							<< _msgRealTruckLocalPosition.point.y << ","
 							<< _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-							<< _truckEstmState.transpose() << ","  // truck estimated position & velocity
+							<< _targetEstState.transpose() << ","  // truck estimated position & velocity
 							//~ << truckPred.segment((nPred+1)*nx,4).transpose() 
 							<< std::endl;  
 							
@@ -1005,12 +1008,15 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     //~ }
     //~ _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
     
-// Update estimate by kalman filter
-	Vector2d truckState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
-	_kf.SetXhatInitialPoint(truckState);
-	_truckEstmState = _kf.Update(truckState);
-	_IsGPSUpdated = true;
+    // Update estimate by kalman filter
+	Vector2d targetState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
+    ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
+    _targetEstState = _kf.UpdateWithCameraMeasurements(targetState, timeElapsed.toSec());
 
+    _msgFusedTargetPosition.header.stamp = ros::Time::now();
+    _msgFusedTargetPosition.point.x = _targetEstState(0);
+    _msgFusedTargetPosition.point.y = _targetEstState(1);
+    _msgFusedTargetPosition.point.z = 0;
  
 
     // Logging
@@ -1174,7 +1180,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     
     
     // Update estimate by kalman filter
-	Vector4d truckState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
+	Vector4d targetState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
 #ifdef EKF_DEBUG
     VectorXd xk1(4);
 
@@ -1187,13 +1193,25 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     xk1 << x, y, v, theta;// omega;
     
     _ekf.SetXhatInitialPoint(xk1);
-    _truckEstmState = _ekf.Update(xk1);
+    _targetEstState = _ekf.Update(xk1);
 #else
-	_kf.SetXhatInitialPoint(truckState);
-	_truckEstmState = _kf.Update(truckState);
+	_kf.SetXhatInitialPoint(targetState);
+
+    if (!_kf.IsXhatInitialized_){ 
+        _kf.IsXhatInitialized_ = true;
+    }
+    else{
+        ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
+        _targetEstState = _kf.UpdateWithGPSMeasurements(targetState, timeElapsed.toSec());
+    }
+
+    _msgFusedTargetPosition.header.stamp = ros::Time::now();
+    _msgFusedTargetPosition.point.x = _targetEstState(0);
+    _msgFusedTargetPosition.point.y = _targetEstState(1);
+    _msgFusedTargetPosition.point.z = 0;
 #endif
 	
-	_IsGPSUpdated = true;
+	// _IsGPSUpdated = true;
 			//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             //~ << ros::Time::now().toSec() << ","							
                             //~ << _msgTruckLocalPosition.point.x << ","
@@ -1204,7 +1222,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
 							//~ << _msgRealTruckLocalPosition.point.x << ","
 							//~ << _msgRealTruckLocalPosition.point.y << ","
 							//~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-							//~ << _truckEstmState.transpose() << std::endl;   
+							//~ << _targetEstState.transpose() << std::endl;   
 
 }
 
@@ -1268,8 +1286,8 @@ void RunTargetSearch()
         //~ _SearchCenter_x = _msgFusedTargetLocalPosition.point.x;
         //~ _SearchCenter_y = _msgFusedTargetLocalPosition.point.y;
         
-        _StartX = _msgFusedTargetLocalPosition.point.x - 5;
-        _StartY = _msgFusedTargetLocalPosition.point.y;
+        // _StartX = _msgFusedTargetLocalPosition.point.x - 5;
+        // _StartY = _msgFusedTargetLocalPosition.point.y;
 
         _FlyingRadius = initialRadius;
         _Phi = 2;

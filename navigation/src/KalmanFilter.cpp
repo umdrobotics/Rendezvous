@@ -14,31 +14,26 @@ KalmanFilter::KalmanFilter()
     double sigma_ax = 0.1; // cause max acceleration = 1.5 m/s2
     double sigma_ay = 0.1;
 
-    double dgt = 0.1;  // for GPS
-    double dat = 0.033;	// for Apriltag
-    double dpt = 0.025; // for prediction
+    double dt = 0.1;  // for GPS
+    // double dpt = 0.025; // for prediction
 
     // Initialize system matrixes
-    Aa_ <<  1, 0, dat, 0,
-            0, 1, 0, dat,
-            0, 0, 1, 0,
-            0, 0, 0, 1;
-    
-    Ag_ <<  1, 0, dgt, 0,
-            0, 1, 0, dgt,
+    A_ <<  1, 0, dt, 0,
+            0, 1, 0, dt,
             0, 0, 1, 0,
             0, 0, 0, 1;
             
-    Ap_ <<  1, 0, dpt, 0,
-            0, 1, 0, dpt,
-            0, 0, 1, 0,
-            0, 0, 0, 1;    // for prediction
+    // Ap_ <<  1, 0, dpt, 0,
+    //         0, 1, 0, dpt,
+    //         0, 0, 1, 0,
+    //         0, 0, 0, 1;    // for prediction
      
     // B_ = Eigen::MatrixXd(4,2);
     B_ = 0 ;
 
     Cg_ = MatrixXd::Identity(4, 4);
-    Ca_ = MatrixXd::Identity(2, 2);
+    Ca_ <<  1, 0, 0, 0,
+            0, 1, 0, 0,
 
     // Initialize uncertainty and noise
     Q_ <<   pow(dt,4.0)/4*pow(sigma_ax,2.0), 0, pow(dt,3.0)/2*pow(sigma_ax,2.0), 0,
@@ -81,59 +76,94 @@ void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
 	if (!IsXhatInitialized_){
 
         xhat_ = xk;
-        Pg_ = MatrixXd::Identity(4, 4);
-        Pa_ = MatrixXd::Identity(2, 2);
+        P_ = MatrixXd::Identity(4, 4);
         
-        xEstmWO_ = xhat_;
+        xEstWO_ = xhat_;
         
-		IsXhatInitialized_ = true;
+		// IsXhatInitialized_ = true;
 	}
 }
 
+void KalmanFilter::SetAMatrix(double dt){
+    A_ <<   1, 0, dt, 0,
+            0, 1, 0, dt,
+            0, 0, 1, 0,
+            0, 0, 0, 1;
+}
 
-Vector4d KalmanFilter::UpdateForGPS(Vector4d xk)
+
+Vector4d KalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double dt)
 {
     
-    Vector4d output = xk;
+    SetAMatrix(dt);
 
     // Predict
-    Vector4d xpred = Ag_ * xhat_ ;              // local var, prediction for time k
-    Matrix4d ppred = Ag_ * P_ * Ag_.transpose() + Q_; // local var, prediction for time k
+    Vector4d xpred = A_ * xhat_ ;              // local var, prediction for time k
+    Matrix4d ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
 
     // Compute Kalman Gain
-    Vector4d innovation = output - C_ * xpred;
-    Matrix4d S = C_ * ppred * C_.transpose() + R_;
-    MatrixXd K = ppred * C_.transpose() * S.inverse();
+    Vector4d innovation = output - Cg_ * xpred;
+    Matrix4d S = Cg_ * ppred * Cg_.transpose() + Rg_;
+    MatrixXd K = ppred * Cg_.transpose() * S.inverse();
 
     // Update estimate
     xhat_ = xpred + K * innovation;
-    P_ = ppred - K * C_ * ppred;
+    P_ = ppred - K * Cg_ * ppred;
     
     
-    xEstmWO_ = xhat_;
+    xEstWO_ = xhat_;
 
     return xhat_;
 
 }
 
 
-Vector4d KalmanFilter::PredictWOObservation(){
+Vector4d KalmanFilter::UpdateWithCameraMeasurements(Vector2d output, double dt)
+{
+    
+    SetAMatrix(dt);
+
+    // Predict
+    Vector4d xpred = A_ * xhat_ ;              // local var, prediction for time k
+    Matrix4d ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
+
+    // Compute Kalman Gain
+    Vector4d innovation = output - Ca_ * xpred;
+    Matrix4d S = Ca_ * ppred * Ca_.transpose() + Ra_;
+    MatrixXd K = ppred * Ca_.transpose() * S.inverse();
+
+    // Update estimate
+    xhat_ = xpred + K * innovation;
+    P_ = ppred - K * Ca_ * ppred;
+    
+    
+    xEstWO_ = xhat_;
+
+    return xhat_;
+
+}
+
+
+Vector4d KalmanFilter::PredictWOObservation(double dt){
+
+	SetAMatrix(dt);
+	xEstWO_ = A_ * xEstWO_;
 	
-	xEstmWO_ = Ap_ * xEstmWO_;
-	
-	return xEstmWO_;
+	return xEstWO_;
 }
 
 
 VectorXd KalmanFilter::Predict(Vector4d xk)
 {
-	
+	double dt = 0.025;
+    SetAMatrix(dt);
+
 	xPred_ = xk;
 	XP_.segment(0, nx_) = xPred_;
 	
     for(int i = 1; i < nPred_; i++){
 
-        xPred_ = Ap_ * xPred_;
+        xPred_ = A_ * xPred_;
         // pPred_ = Ap_ * P_ * Ap_.transpose() + Q_;
 
         XP_.segment(i*nx_, nx_) = xPred_;
