@@ -63,7 +63,7 @@ using namespace Eigen;
 #define ANGLE_VELOCITY (0.8)  //  rad/s
 // common parameters
 #define SEARCH_ALTITUDE (3.0)
-#define HEIGHT_ERROR (0.2)  // tolerable height error
+#define HEIGHT_ERROR (0.15)  // tolerable height error
 #define SEARCH_TIME (360.0)
 // Gimbal searching 
 #define YAW_RANGE (80.0) //degrees
@@ -695,7 +695,7 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
 		drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
 	}
 	else{
-		setpoint_yaw = 90;
+		setpoint_yaw = 0;
 	    drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
 	}
 
@@ -1106,6 +1106,8 @@ void truckVelocityCallback(const geometry_msgs::PointStamped msgTruckVelocity)
     _msgTruckVelocity.point.x = msgTruckVelocity.point.x;
     _msgTruckVelocity.point.y = msgTruckVelocity.point.y;
     _msgTruckVelocity.point.z = msgTruckVelocity.point.z;
+    
+    
 
 }
 
@@ -1560,6 +1562,7 @@ void RunAutonomousLanding2()
         desired_position.x = _msgTruckLocalPosition.point.x;
         desired_position.y = _msgTruckLocalPosition.point.y;;
         desired_position.z = bIsStartLanding ? -0.1 : drone_z;
+        
 	    float desired_yaw = 0;
         if (_bIsLocalLocationControlEnable)
         {	RunLocalPositionControl(desired_position, desired_yaw);}
@@ -1581,7 +1584,8 @@ void RunAutonomousLanding2()
         desired_position.z = bIsClose ? -0.1 : drone_z;
         ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
         //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTargetDistance.point.y, _msgTargetDistance.point.x));
-        float desired_yaw = 90;
+        float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x))
+        //~ float desired_yaw = 0;
         if (_bIsLocalLocationControlEnable)
         {	RunLocalPositionControl(desired_position, desired_yaw);}
         else
@@ -1630,7 +1634,14 @@ void RunAutonomousLanding2()
 void GoToTruckGPSLocation()
 {
     DJIDrone& drone = *_ptrDrone;
-
+    
+    if( _bIsTargetFound ){
+        //~ _SearchCenter_x = 0;
+        //~ _SearchCenter_y = 0;
+        ROS_INFO("Found target in go to truck state!!");
+        //~ _nNavigationTask = 98;
+        return;
+    }
 
     // Go to 1m away from the target
     float delta_x = _msgTruckDistance.point.x / sqrt( _msgTruckDistance.point.x*_msgTruckDistance.point.x
