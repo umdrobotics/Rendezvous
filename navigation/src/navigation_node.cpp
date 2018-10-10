@@ -1664,14 +1664,8 @@ void GoToTruckGPSLocation()
     //~ RunLocalPositionControl(desired_position, desired_yaw);
     //~ RunAttitudeControl(desired_position, desired_yaw);
     
-    if (bIsClose && _bIsLocalLocationControlEnable ){
-		RunLocalPositionControl(desired_position, desired_yaw);
-	}
-	else{
-		
-		RunAttitudeControl(desired_position, desired_yaw);
-		
-	}
+    if (bIsClose && _bIsLocalLocationControlEnable ){      RunLocalPositionControl(desired_position, desired_yaw); }
+	else{                                                  RunAttitudeControl(desired_position, desired_yaw);      }
 
     // Calculate yaw angle
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
