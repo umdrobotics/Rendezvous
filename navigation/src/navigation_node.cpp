@@ -1625,10 +1625,12 @@ void RunAutonomousLanding2()
         desired_position.z = bIsClose ? -0.1 : drone_z;
         ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
         
+        
         float desired_yaw = 0;
 		if (_bIsYawControlEnable){	desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));	}
 		
 		if (_bIsLocalLocationControlEnable)
+
         {	RunLocalPositionControl(desired_position, desired_yaw);}
         else
         {	RunAttitudeControl(desired_position, desired_yaw);}
@@ -1681,7 +1683,9 @@ void RunAutonomousLanding2()
                      << drone.velocity.vz << ","
                      << roll << ","
                      << pitch << ","
-                     << yaw << std::endl;                                // drone local position
+                     << yaw << ","
+                     << _msgTruckVelocity.point.x<< ","
+                     << _msgTruckVelocity.point.y<< std::endl;                                // drone local position
 
 }
 
