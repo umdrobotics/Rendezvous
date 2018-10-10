@@ -560,7 +560,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
     if(timeElapsed.toSec() > 0.001){
         // Time elapsed > 0.001 s, update; O.W. no need to update
-        _targetEstState = _kf.PredictWOObservation();
+        _targetEstState = _kf.PredictWOObservation(timeElapsed.toSec());
     }
     // _IsGPSUpdated = false;
     VectorXd truckPred = _kf.Predict(_targetEstState);
@@ -656,13 +656,13 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << ros::Time::now().toSec() << ","							
                             << _msgTruckLocalPosition.point.x << ","
                             << _msgTruckLocalPosition.point.y << ","
-                            << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
+                            << _msgTruckLocalPosition.point.z << ","  		// truck local position, mey be noisy
                             << _msgTruckVelocity.point.x << ","
 							<< _msgTruckVelocity.point.y << ","
-							<< _msgRealTruckLocalPosition.point.x << ","
-							<< _msgRealTruckLocalPosition.point.y << ","
-							<< _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-							<< _targetEstState.transpose() << ","  // truck estimated position & velocity
+							<< _msgFusedTargetPosition.point.x << ","
+                            << _msgFusedTargetPosition.point.y << ","
+                            << _msgFusedTargetPosition.point.z << ","  		// fused target local position
+							<< _targetEstState.transpose() << ","  			// truck estimated position & velocity
 							//~ << truckPred.segment((nPred+1)*nx,4).transpose() 
 							<< std::endl;  
 							

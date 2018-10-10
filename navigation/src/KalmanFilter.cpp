@@ -17,11 +17,11 @@ KalmanFilter::KalmanFilter()
     double dt = 0.1;  // for GPS
     // double dpt = 0.025; // for prediction
 
-    // Initialize system matrixes
-    A_ <<  1, 0, dt, 0,
-            0, 1, 0, dt,
-            0, 0, 1, 0,
-            0, 0, 0, 1;
+    //~ // Initialize system matrixes
+    //~ A_ <<  1, 0, dt, 0,
+            //~ 0, 1, 0, dt,
+            //~ 0, 0, 1, 0,
+            //~ 0, 0, 0, 1;
             
     // Ap_ <<  1, 0, dpt, 0,
     //         0, 1, 0, dpt,
@@ -32,8 +32,9 @@ KalmanFilter::KalmanFilter()
     B_ = 0 ;
 
     Cg_ = MatrixXd::Identity(4, 4);
+    Ca_ = Eigen::MatrixXd(2, 4);
     Ca_ <<  1, 0, 0, 0,
-            0, 1, 0, 0,
+            0, 1, 0, 0;
 
     // Initialize uncertainty and noise
     Q_ <<   pow(dt,4.0)/4*pow(sigma_ax,2.0), 0, pow(dt,3.0)/2*pow(sigma_ax,2.0), 0,
@@ -49,7 +50,7 @@ KalmanFilter::KalmanFilter()
     Ra_ <<  0.1, 0,
             0, 0.1;
 
-    nx_ = A_.cols();
+    nx_ = 4;
 
 }
 
@@ -84,22 +85,26 @@ void KalmanFilter::SetXhatInitialPoint(Vector4d xk){
 	}
 }
 
-void KalmanFilter::SetAMatrix(double dt){
-    A_ <<   1, 0, dt, 0,
+Matrix4d KalmanFilter::SetAMatrix(double dt){
+	
+	Matrix4d A;
+    A <<    1, 0, dt, 0,
             0, 1, 0, dt,
             0, 0, 1, 0,
             0, 0, 0, 1;
+            
+    return A;
 }
 
 
 Vector4d KalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double dt)
 {
     
-    SetAMatrix(dt);
+    Matrix4d A = SetAMatrix(dt);
 
     // Predict
-    Vector4d xpred = A_ * xhat_ ;              // local var, prediction for time k
-    Matrix4d ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
+    Vector4d xpred = A * xhat_ ;              // local var, prediction for time k
+    Matrix4d ppred = A * P_ * A.transpose() + Q_; // local var, prediction for time k
 
     // Compute Kalman Gain
     Vector4d innovation = output - Cg_ * xpred;
@@ -121,15 +126,15 @@ Vector4d KalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double dt)
 Vector4d KalmanFilter::UpdateWithCameraMeasurements(Vector2d output, double dt)
 {
     
-    SetAMatrix(dt);
+    Matrix4d A = SetAMatrix(dt);
 
     // Predict
-    Vector4d xpred = A_ * xhat_ ;              // local var, prediction for time k
-    Matrix4d ppred = A_ * P_ * A_.transpose() + Q_; // local var, prediction for time k
+    Vector4d xpred = A * xhat_ ;              // local var, prediction for time k
+    Matrix4d ppred = A * P_ * A.transpose() + Q_; // local var, prediction for time k
 
     // Compute Kalman Gain
-    Vector4d innovation = output - Ca_ * xpred;
-    Matrix4d S = Ca_ * ppred * Ca_.transpose() + Ra_;
+    Vector2d innovation = output - Ca_ * xpred;
+    Matrix2d S = Ca_ * ppred * Ca_.transpose() + Ra_;
     MatrixXd K = ppred * Ca_.transpose() * S.inverse();
 
     // Update estimate
@@ -146,8 +151,8 @@ Vector4d KalmanFilter::UpdateWithCameraMeasurements(Vector2d output, double dt)
 
 Vector4d KalmanFilter::PredictWOObservation(double dt){
 
-	SetAMatrix(dt);
-	xEstWO_ = A_ * xEstWO_;
+	Matrix4d A = SetAMatrix(dt);
+	xEstWO_ = A * xEstWO_;
 	
 	return xEstWO_;
 }
@@ -156,14 +161,14 @@ Vector4d KalmanFilter::PredictWOObservation(double dt){
 VectorXd KalmanFilter::Predict(Vector4d xk)
 {
 	double dt = 0.025;
-    SetAMatrix(dt);
+    Matrix4d A = SetAMatrix(dt);
 
 	xPred_ = xk;
 	XP_.segment(0, nx_) = xPred_;
 	
     for(int i = 1; i < nPred_; i++){
 
-        xPred_ = A_ * xPred_;
+        xPred_ = A * xPred_;
         // pPred_ = Ap_ * P_ * Ap_.transpose() + Q_;
 
         XP_.segment(i*nx_, nx_) = xPred_;

@@ -23,7 +23,7 @@ class KalmanFilter {
         Matrix4d pPred_;
 
         VectorXd XP_;
-        Vector4d xEstmWO_;
+        Vector4d xEstWO_;
 
 
         
@@ -36,7 +36,7 @@ class KalmanFilter {
         // Setters and getters
         void SetXhatInitialPoint(Vector4d xk);
         void SetPredHorizon(int nPred);
-        void SetAMatrix(double dt);
+        Matrix4d SetAMatrix(double dt);
 
         // Core functions
         void Initialize();
@@ -50,11 +50,11 @@ class KalmanFilter {
 
     private: // members
 
-        Matrix4d A_;
+        //~ Matrix4d A_;
         // Matrix4d Ap_;
         int B_;
         Matrix4d Cg_;
-        Matrix2d Ca_;
+        MatrixXd Ca_;
 
         Matrix4d Q_;
         Matrix4d Rg_;
