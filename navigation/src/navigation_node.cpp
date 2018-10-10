@@ -121,6 +121,7 @@ bool _bIsTestInitiated = false;
 float _GPSCircleRatio = 1;
 float _limitRadius = 1;
 bool _IsOnTruckTop = false;
+bool _bIsLandingInitiated = false;
 
 
 // MPC controller
@@ -145,7 +146,7 @@ bool _bIsFirstTimeReachRoll = true;
 	// Kalman Filter
 	KalmanFilter _kf;
 	Vector4d _targetEstState;
-	bool _IsGPSUpdated = false;
+	// bool _IsGPSUpdated = false;
 #endif
 
 
@@ -1741,20 +1742,21 @@ void RunAutonomousLanding3(){
 
     ROS_INFO("IsOnTruckTop?:%d, IsTargetFound?:%d", _IsOnTruckTop, _bIsTargetFound);
 
-    if(_bIsTargetFound){
-        _bIsSearchInitiated = false;
-        RunAutonomousLanding2();
-        return;
-    }
-
-    if(!_IsOnTruckTop){
+    if(!_IsOnTruckTop && !_bIsLandingInitiated){
         GoToTruckGPSLocation();
         return;
     }
-    else{
-        RunTargetSearch();
+    else {
+        RunAutonomousLanding2();
+        _bIsLandingInitiated = true;
         return;
     }
+
+    // if(_bIsTargetFound){
+    //     _bIsSearchInitiated = false;
+        
+    //     return;
+    // }
 
 }
 
@@ -1765,7 +1767,7 @@ void timerCallback(const ros::TimerEvent&)
 
     // we need to run this functioin regardless of the navigation menu.
     RunTimeCriticalTasks();
-    RunSensorFusing();
+    // RunSensorFusing();
 
 
     if (_nNavigationTask < 21 || _nNavigationTask > 90)
@@ -1947,6 +1949,7 @@ void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
 
             // Reset search center
             _bIsSearchInitiated = false;
+            _bIsLandingInitiated = false;
             //~ ROS_INFO_STREAM("Search center reinitialized.");
 
             // Go back to Truck GPS location. RunAutonomousLanding3
