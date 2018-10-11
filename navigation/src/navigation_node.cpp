@@ -57,7 +57,7 @@ using namespace Eigen;
 // Searching path parameters
 // Cont sin path
 #define OMEGA (3.1415926)
-#define HEIGHT (2.0)
+#define HEIGHT (3.0)
 #define SPEED (0.5)
 // spiral path
 #define LINE_VELOCITY (0.3)
@@ -72,8 +72,8 @@ using namespace Eigen;
 
 
 // PD controller parameters in Landing
-#define KP (1.0)   // set 0.7 for real flight test
-#define KD (0.0)   // set 0.05 for real flight test
+#define KP (0.7)   // set 0.7 for real flight test
+#define KD (0.05)   // set 0.05 for real flight test
 
 
 // LQR integrator
@@ -90,7 +90,7 @@ bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = false;
 bool _bIsMPCEnable = true; 
 bool _bIsLQREnable = false;
-bool _bIsSimulation = true;
+bool _bIsSimulation = false;
 bool _bIsYawControlEnableSearch = false;
 bool _bIsLocalLocationControlEnable = false;
 bool _bIsStartSim = false;
@@ -578,7 +578,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 	VectorXd um = MatrixXd::Zero(10,1);
     um = RunConstraintedMPC(xk, desiredState);
     Vector2d uk = um.head(2);
-    std::cout << "Um: " << um.transpose() << endl;
+    //~ std::cout << "Um: " << um.transpose() << endl;
     
     
     
@@ -620,7 +620,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     {
         droll = _bIsIntegralEnable? (-uk(1) - mpc_kiPos*_sumPosErrY - mpc_kiVec*_sumVecErrY): -uk(1);
     }
-    std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_kiPos << endl;
+    
 
     // Saturate desired pitch and roll angle to -30deg or 30deg
     float maxAngle = 35.0; 
@@ -632,7 +632,17 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                              : droll < -maxAngle ? -maxAngle
                                                  : droll;
 	
+    // Print out data
+    ROS_INFO("IsOnTruckTop?:%d, _bIsLandingInitiated?:%d", _IsOnTruckTop, _bIsLandingInitiated);
+    std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_kiPos << endl;
+    std::cout << "truckx,y;targetx,y;fusedx,y:  " << _msgTruckLocalPosition.point.x << ", " << _msgTruckLocalPosition.point.y << ", " 
+                << _msgTargetLocalPosition.point.x << ", " << _msgTargetLocalPosition.point.y << ", "
+                << _msgFusedTargetPosition.point.x << "," << _msgFusedTargetPosition.point.y << endl;
+    std::cout << "dronex,y,z; vx,vy: " << drone.local_position.x << "," << drone.local_position.y << "," << _msgUltraSonic.ranges[0] << "," << drone.velocity.vx << "," << drone.velocity.vy << std::endl;
     ROS_INFO(" error_px, error_py, dpitch, droll: %f, %f, %f, %f, %f, %f", distance_x, distance_y, dpitch, droll, -uk(0), -uk(1));
+    
+    
+    // log data 
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
     float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
@@ -1623,7 +1633,7 @@ void RunAutonomousLanding2()
         desired_position.x = _msgTargetLocalPosition.point.x;
         desired_position.y = _msgTargetLocalPosition.point.y;
         desired_position.z = bIsClose ? -0.1 : drone_z;
-        ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
+        //~ ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
         
         
         float desired_yaw = 0;
@@ -1645,7 +1655,7 @@ void RunAutonomousLanding2()
         desired_position.y = _msgFusedTargetPosition.point.y;
         if (_bIsKeepLanding) {	desired_position.z = -0.1;	}
         else {					desired_position.z = bIsClose ? -0.1 : SEARCH_ALTITUDE;	}
-        ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
+        //~ ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
         
         
         float desired_yaw = 0;
@@ -1700,7 +1710,7 @@ void GoToTruckGPSLocation()
     if( _bIsTargetFound ){
         //~ _SearchCenter_x = 0;
         //~ _SearchCenter_y = 0;
-        ROS_INFO("Found target in go to truck state!!");
+        ROS_INFO("Found target in approaching state!!");
         //~ _nNavigationTask = 98;
         return;
     }
@@ -1770,14 +1780,14 @@ void GoToTruckGPSLocation()
 
 
 	// searching target with gimbal sweep
-	if (horiDistance < 6)
+	if (horiDistance < 6 && !_bIsTargetFound)
 	{
 		float pitch_angle = -45;
 		float yaw_angle = YAW_RANGE*sin(((float)_SearchGimbalPhi/(RATIO_GIMBAL*40))*6.28);
 		geometry_msgs::PointStamped msgDesiredAngleDeg;
 		msgDesiredAngleDeg.point.x = 0;
 		msgDesiredAngleDeg.point.y = pitch_angle;
-		msgDesiredAngleDeg.point.z = yaw_angle;
+		msgDesiredAngleDeg.point.z = _bIsMovingYaw ? yaw_angle : 0;
 		//~ ROS_INFO("Ptich = %f , Yaw: %f.", pitch_angle, yaw_angle);
 		_GimbalAnglePub.publish(msgDesiredAngleDeg);
 		_SearchGimbalPhi = _SearchGimbalPhi + 1;
@@ -1827,7 +1837,7 @@ void GoToTruckGPSLocation()
 
 void RunAutonomousLanding3(){
 
-    ROS_INFO("IsOnTruckTop?:%d, IsTargetFound?:%d", _IsOnTruckTop, _bIsTargetFound);
+    //~ ROS_INFO("IsOnTruckTop?:%d, _bIsLandingInitiated?:%d", _IsOnTruckTop, _bIsLandingInitiated);
 
     if(!_IsOnTruckTop && !_bIsLandingInitiated){
         GoToTruckGPSLocation();
