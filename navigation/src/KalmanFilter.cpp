@@ -11,9 +11,26 @@ using namespace Eigen;
 // constructor
 KalmanFilter::KalmanFilter()
 {
-    double sigma_ax = 0.1; // cause max acceleration = 1.5 m/s2
-    double sigma_ay = 0.1;
+    sigma_ax_ = 0.1; // cause max acceleration = 1.5 m/s2
+    sigma_ay_ = 0.1;
+    sigma_GPSpx_ = 0.3;
+    sigma_GPSpy_ = 0.3;
+    sigma_GPSvx_ = 0.18; 
+    sigma_GPSvy_ = 0.18;  
+    sigma_Apriltagpx_ = 0.1; 
+    sigma_Apriltagpy_ = 0.1;  
 
+}
+
+// destructor   
+KalmanFilter::~KalmanFilter()
+{
+
+}
+
+// 
+void KalmanFilter::Initialize()
+{
     double dt = 0.1;  // for GPS
     // double dpt = 0.025; // for prediction
 
@@ -37,32 +54,20 @@ KalmanFilter::KalmanFilter()
             0, 1, 0, 0;
 
     // Initialize uncertainty and noise
-    Q_ <<   pow(dt,4.0)/4*pow(sigma_ax,2.0), 0, pow(dt,3.0)/2*pow(sigma_ax,2.0), 0,
-            0, pow(dt,4.0)/4*pow(sigma_ay,2.0), 0, pow(dt,3.0)/2*pow(sigma_ay,2.0),
-            pow(dt,3.0)/2*pow(sigma_ax,2.0), 0, pow(dt,2.0)*pow(sigma_ax,2.0), 0,
-            0, pow(dt,3.0)/2*pow(sigma_ay,2.0), 0, pow(dt,2.0)*pow(sigma_ay,2.0);
+    Q_ <<   pow(dt,4.0)/4*pow(sigma_ax_,2.0), 0, pow(dt,3.0)/2*pow(sigma_ax_,2.0), 0,
+            0, pow(dt,4.0)/4*pow(sigma_ay_,2.0), 0, pow(dt,3.0)/2*pow(sigma_ay_,2.0),
+            pow(dt,3.0)/2*pow(sigma_ax_,2.0), 0, pow(dt,2.0)*pow(sigma_ax_,2.0), 0,
+            0, pow(dt,3.0)/2*pow(sigma_ay_,2.0), 0, pow(dt,2.0)*pow(sigma_ay_,2.0);
 
-    Rg_ <<  0.3, 0, 0, 0,
-            0, 0.3, 0, 0,
-            0, 0, 0.18, 0,
-            0, 0, 0, 0.18;    // noise, sigma = 0.5
+    Rg_ <<  sigma_GPSpx_, 0, 0, 0,
+            0, sigma_GPSpy_, 0, 0,
+            0, 0, sigma_GPSvx_, 0,
+            0, 0, 0, sigma_GPSvy_;    // noise, sigma = 0.5
             
-    Ra_ <<  0.1, 0,
-            0, 0.1;
+    Ra_ <<  sigma_Apriltagpx_, 0,
+            0, sigma_Apriltagpy_;
 
     nx_ = 4;
-
-}
-
-// destructor   
-KalmanFilter::~KalmanFilter()
-{
-
-}
-
-// 
-void KalmanFilter::Initialize()
-{
 
 }
 

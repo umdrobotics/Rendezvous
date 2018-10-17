@@ -86,15 +86,17 @@ int _nNavigationTask = 0;
 bool _bIsDroneLandingPrinted = false;
 
 // Switches
+bool _bIsSimulation = false;
 bool _bIsIntegralEnable = true;
 bool _bIsYawControlEnable = false;
+bool _bIsYawControlAlwaysAlign = true;
+bool _bIsYawControlEnableSearch = false;
 bool _bIsMPCEnable = true; 
 bool _bIsLQREnable = false;
-bool _bIsSimulation = false;
-bool _bIsYawControlEnableSearch = false;
 bool _bIsLocalLocationControlEnable = false;
-bool _bIsStartSim = false;
 bool _bIsKeepLanding = true;
+bool _bIsStartSim = false;
+bool _bIsLock = false; 
 
 // Target tracking boolean flags 
 bool _bIsTargetTrackingRunning = false;
@@ -105,6 +107,7 @@ int _counter = 0;
 // Searching path parameters(spiral)
 bool _bIsSearchInitiated = false;
 bool _bIsMovingYaw = false;
+
 //~ float _SearchCenter_x = 0;
 //~ float _SearchCenter_y = 0;
 float _FlyingRadius = 0;
@@ -165,7 +168,7 @@ std::ofstream _ofsGoToTruckLog;
 std::ofstream _ofsAutonomousLandingLog;
 std::ofstream _ofsSearchingRangeLog;
 std::ofstream _ofsMPCControllerLog;
-std::ofstream _ofsKalmanFilterLog;
+//~ std::ofstream _ofsKalmanFilterLog;
 
 
 // GPS & Camera data funsion
@@ -301,9 +304,9 @@ float LocalPositionControlAltitudeHelper(float desired, float current_position)
 
 			else{
 		
-				float error = desired - _msgUltraSonic.ranges[0];
-				desired = desired + error;
-				float setpoint_z = PDController(desired, current_position) + current_position;
+				//~ float error = desired - _msgUltraSonic.ranges[0];
+				//~ desired = desired + error;
+				float setpoint_z = PDController(desired, _msgUltraSonic.ranges[0]) + current_position;
 				return setpoint_z;
 			}
 		}
@@ -1059,10 +1062,18 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
     _targetEstState = _kf.UpdateWithCameraMeasurements(targetState, timeElapsed.toSec());
 
-    _msgFusedTargetPosition.header.stamp = ros::Time::now();
-    _msgFusedTargetPosition.point.x = _targetEstState(0);
-    _msgFusedTargetPosition.point.y = _targetEstState(1);
-    _msgFusedTargetPosition.point.z = 0;
+    if(_bIsLock){   
+        return; 
+    }
+    else{
+        _bIsLock = true;
+        _msgFusedTargetPosition.header.stamp = ros::Time::now();
+        _msgFusedTargetPosition.point.x = _targetEstState(0);
+        _msgFusedTargetPosition.point.y = _targetEstState(1);
+        _msgFusedTargetPosition.point.z = 0;
+        _bIsLock = false;
+    }
+    
  
 
     // Logging
@@ -1254,10 +1265,18 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
         _targetEstState = _kf.UpdateWithGPSMeasurements(targetState, timeElapsed.toSec());
     }
 
-    _msgFusedTargetPosition.header.stamp = ros::Time::now();
-    _msgFusedTargetPosition.point.x = _targetEstState(0);
-    _msgFusedTargetPosition.point.y = _targetEstState(1);
-    _msgFusedTargetPosition.point.z = 0;
+
+    if(_bIsLock){   
+        return; 
+    }
+    else{
+        _bIsLock = true;
+        _msgFusedTargetPosition.header.stamp = ros::Time::now();
+        _msgFusedTargetPosition.point.x = _targetEstState(0);
+        _msgFusedTargetPosition.point.y = _targetEstState(1);
+        _msgFusedTargetPosition.point.z = 0;
+        _bIsLock = false;
+    }
     
 #endif
 	
@@ -1768,8 +1787,17 @@ void GoToTruckGPSLocation()
     desired_position.z = SEARCH_ALTITUDE;  
     
 #endif
+
+
     float desired_yaw = 0;
-    if (_bIsYawControlEnable){	desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckDistance.point.y, _msgTruckDistance.point.x));	}
+    if (_bIsYawControlEnable){	
+        if (_bIsYawControlAlwaysAlign){
+            desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));
+        }
+        else{
+            desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckDistance.point.y, _msgTruckDistance.point.x));
+        }	
+    }
     RunAttitudeControl(desired_position, desired_yaw);   
 
     // Calculate yaw angle
@@ -2115,10 +2143,43 @@ void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
     
     // Log about KalmanFilter
-    ss.str("");
-    ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
-    _ofsKalmanFilterLog.open(ss.str());
-    ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
+    //~ ss.str("");
+    //~ ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
+    //~ _ofsKalmanFilterLog.open(ss.str());
+    //~ ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
+}
+
+void LoadNodeSettings(ros::NodeHandle nh){
+    
+    // Load switches settings
+    bool bIsSwitchDefault = true;
+    nh.getParam("/NavigationSwitches/defaultSetting", bIsSwitchDefault);
+    if(!bIsSwitchDefault){
+        // if not default, then redefine the settings.        
+        nh.getParam("/NavigationSwitches/bIsSimulation", _bIsSimulation);
+        nh.getParam("/NavigationSwitches/bIsIntegralEnable", _bIsIntegralEnable);
+        nh.getParam("/NavigationSwitches/bIsYawControlEnable", _bIsYawControlEnable);
+        nh.getParam("/NavigationSwitches/bIsYawControlAlwaysAlign", _bIsYawControlAlwaysAlign);
+        nh.getParam("/NavigationSwitches/bIsYawControlEnableSearch", _bIsYawControlEnableSearch);
+        nh.getParam("/NavigationSwitches/bIsMPCEnable", _bIsMPCEnable);
+        nh.getParam("/NavigationSwitches/bIsLQREnable", _bIsLQREnable);
+        nh.getParam("/NavigationSwitches/bIsKeepLanding", _bIsKeepLanding);
+    }
+    
+    bool bIsKFSettingDefault = true;
+    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsSwitchDefault);
+    if(!bIsSwitchDefault){
+        // if not default, then redefine the settings.        
+        nh.getParam("/KalmanFilterParameters/sigma_ax", _kf.sigma_ax_);
+        nh.getParam("/KalmanFilterParameters/sigma_ay", _kf.sigma_ax_);
+        nh.getParam("/KalmanFilterParameters/sigma_GPSpx", _kf.sigma_GPSpx_);
+        nh.getParam("/KalmanFilterParameters/sigma_GPSpy", _kf.sigma_GPSpy_);
+        nh.getParam("/KalmanFilterParameters/sigma_GPSvx", _kf.sigma_GPSvx_);
+        nh.getParam("/KalmanFilterParameters/sigma_GPSvy", _kf.sigma_GPSvy_);
+        nh.getParam("/KalmanFilterParameters/sigma_Apriltagpx", _kf.sigma_Apriltagpx_);
+        nh.getParam("/KalmanFilterParameters/sigma_Apriltagpy", _kf.sigma_Apriltagpy_);
+    }
+    
 }
 
 int main(int argc, char **argv)
@@ -2139,6 +2200,9 @@ int main(int argc, char **argv)
     _mpc.Initialize(mpc_q, mpc_kiPos, mpc_kiVec);
     
     solveQP_initialize();
+    
+    LoadNodeSettings(nh);
+    _kf.Initialize();
     
     
 

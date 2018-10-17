@@ -10,6 +10,15 @@ using namespace Eigen;
 class KalmanFilter {
 
     public: // methods
+    
+        double sigma_ax_; 
+        double sigma_ay_;
+        double sigma_GPSpx_;
+        double sigma_GPSpy_;
+        double sigma_GPSvx_; 
+        double sigma_GPSvy_;  
+        double sigma_Apriltagpx_; 
+        double sigma_Apriltagpy_;      
 
         int nx_;
         int nPred_;
