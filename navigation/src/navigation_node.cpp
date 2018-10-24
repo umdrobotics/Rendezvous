@@ -145,15 +145,15 @@ bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
 
 #ifdef EKF_DEBUG
-	// Extended Kalman Filter
-	ExtendedKalmanFilter _ekf;
-	VectorXd _targetEstState(4);
-	bool _IsGPSUpdated = false;
+  // Extended Kalman Filter
+  ExtendedKalmanFilter _ekf;
+  VectorXd _targetEstState(4);
+  bool _IsGPSUpdated = false;
 #else 
-	// Kalman Filter
-	KalmanFilter _kf;
-	Vector4d _targetEstState;
-	// bool _IsGPSUpdated = false;
+  // Kalman Filter
+  KalmanFilter _kf;
+  Vector4d _targetEstState;
+  // bool _IsGPSUpdated = false;
 #endif
 
 
@@ -191,6 +191,7 @@ geometry_msgs::PointStamped _msgTruckGPSPosition;
 geometry_msgs::PointStamped _msgRealTruckLocalPosition;
 geometry_msgs::PointStamped _msgTruckVelocity;
 geometry_msgs::PointStamped _msgFusedTargetPosition;
+geometry_msgs::PointStamped _msgFusedTargetVelocity;
 
 geometry_msgs::PointStamped _msgDesiredAttitudeDeg;
 
@@ -282,49 +283,49 @@ float LocalPositionControlHelper(float desired, float current_position)
 float LocalPositionControlAltitudeHelper(float desired, float current_position)
 {
 
-	DJIDrone& drone = *_ptrDrone;
-	if (_bIsSimulation)
-	{   
-		if ( desired > (current_position - HEIGHT_ERROR) && desired < (current_position + HEIGHT_ERROR) ){
-			return current_position;
-		}
+    DJIDrone& drone = *_ptrDrone;
+    if (_bIsSimulation)
+    {     
+      if ( desired > (current_position - HEIGHT_ERROR) && desired < (current_position + HEIGHT_ERROR) ){
+      return current_position;
+    }
 
-		else{
-			float setpoint_z = PDController(desired, current_position) + current_position;
-			return setpoint_z;
-		}
-		
+    else{
+      float setpoint_z = PDController(desired, current_position) + current_position;
+      return setpoint_z;
+    }
+    
     }
     else
     {
-		if ((_msgUltraSonic.ranges[0] > 0) && (int)_msgUltraSonic.intensities[0])
-		{
-			if ( desired > (_msgUltraSonic.ranges[0] - HEIGHT_ERROR) && desired < (_msgUltraSonic.ranges[0] + HEIGHT_ERROR) ){
-			    return current_position;
-			}
+    if ((_msgUltraSonic.ranges[0] > 0) && (int)_msgUltraSonic.intensities[0])
+    {
+      if ( desired > (_msgUltraSonic.ranges[0] - HEIGHT_ERROR) && desired < (_msgUltraSonic.ranges[0] + HEIGHT_ERROR) ){
+          return current_position;
+      }
 
-			else{
-		
-				//~ float error = desired - _msgUltraSonic.ranges[0];
-				//~ desired = desired + error;
-				float setpoint_z = PDController(desired, _msgUltraSonic.ranges[0]) + current_position;
-				return setpoint_z;
-			}
-		}
-		else
-		{
-			if ( desired > (current_position - HEIGHT_ERROR) && desired < (current_position + HEIGHT_ERROR) ){
-				return current_position;
-			}
+      else{
+    
+        //~ float error = desired - _msgUltraSonic.ranges[0];
+        //~ desired = desired + error;
+        float setpoint_z = PDController(desired, _msgUltraSonic.ranges[0]) + current_position;
+        return setpoint_z;
+      }
+    }
+    else
+    {
+      if ( desired > (current_position - HEIGHT_ERROR) && desired < (current_position + HEIGHT_ERROR) ){
+        return current_position;
+      }
 
-			else{
-				float setpoint_z = PDController(desired, current_position) + current_position;
-				return setpoint_z;
-			}
-			
-			std::cout << "Ultrasonic of guidance is invalid!! " << std::endl;
-		}
-	}
+      else{
+        float setpoint_z = PDController(desired, current_position) + current_position;
+        return setpoint_z;
+      }
+      
+      std::cout << "Ultrasonic of guidance is invalid!! " << std::endl;
+    }
+  }
 }
 
 
@@ -340,7 +341,7 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
     float current_yaw_deg = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
 
     float yaw_error_deg = desired_yaw_deg - current_yaw_deg;
-	float abs_yaw_error_deg = abs(yaw_error_deg);
+    float abs_yaw_error_deg = abs(yaw_error_deg);
     float setpoint_yaw = (abs_yaw_error_deg < 3) ? desired_yaw_deg
                                              : (abs_yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
                                              : current_yaw_deg + yaw_error_deg * 0.2;
@@ -367,24 +368,24 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
 //~ 
     //~ if((error_position_x >= 0 && _lastPosErrX >= 0) || (error_position_x < 0 && _lastPosErrX < 0))
     //~ {
-		//~ _integral_x += (_lqrGain[0]*error_position_x * DT + _lqrGain[2]*error_velocity_x * DT);
-		//~ 
+    //~ _integral_x += (_lqrGain[0]*error_position_x * DT + _lqrGain[2]*error_velocity_x * DT);
+    //~ 
     //~ }
     //~ else
     //~ {
-		//~ _integral_x = 0;
-	//~ }
-	//~ 
-	//~ if((error_position_y >= 0 && _lastPosErrY >= 0) || (error_position_y < 0 && _lastPosErrY < 0))
+    //~ _integral_x = 0;
+  //~ }
+  //~ 
+  //~ if((error_position_y >= 0 && _lastPosErrY >= 0) || (error_position_y < 0 && _lastPosErrY < 0))
     //~ {
-		//~ _integral_y += (_lqrGain[5]*error_position_y * DT + _lqrGain[7]*error_velocity_y * DT);
-		//~ 
+    //~ _integral_y += (_lqrGain[5]*error_position_y * DT + _lqrGain[7]*error_velocity_y * DT);
+    //~ 
     //~ }
     //~ else
     //~ {
-		//~ _integral_y = 0;
-	//~ }
-		//~ 
+    //~ _integral_y = 0;
+  //~ }
+    //~ 
     //~ double Iout_pitch = _bIsIntegralEnable ? (KI * _integral_x) : 0;
     //~ double Iout_roll = _bIsIntegralEnable ? (KI * _integral_y) : 0;
 //~ 
@@ -414,6 +415,7 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
 
 float IntegratorCalculationPos(float stateError, float lastStateError, float sumError)
 {
+
 	float limition = 35;
 	if((stateError >= 0 && lastStateError >= 0) || (stateError <= 0 && lastStateError <= 0)){	
 		if ((sumError < limition) && (sumError > -limition)){
@@ -433,35 +435,36 @@ float IntegratorCalculationPos(float stateError, float lastStateError, float sum
         }
 
 	return sumError;
+
 }
 
 float IntegratorCalculationVec(float stateError, float lastStateError, float sumError)
 {
-	float limition = 30;
-	if((stateError >= 0 && lastStateError >= 0) || (stateError <= 0 && lastStateError <= 0)){	
-		if ((sumError < limition) && (sumError > -limition)){
-			sumError += stateError*DT;}
-		else{
-				if (sumError < 0){
-					sumError = -limition;}
-				else{
-					sumError = limition;}
-			}			
+    float limition = 30;
+    if((stateError >= 0 && lastStateError >= 0) || (stateError <= 0 && lastStateError <= 0)){  
+      if ((sumError < limition) && (sumError > -limition)){
+        sumError += stateError*DT;}
+      else{
+        if (sumError < 0){
+          sumError = -limition;}
+        else{
+          sumError = limition;}
+      }      
     }
     else{
-		//~ if (_bIsFirstTimeReachPitch){
-			//~ _sumPosErrX = 0;
-			//~ _mpc.Dp_ = MatrixXd::Zero(_mpc.nx_,1);
-			//~ _bIsFirstTimeReachPitch = false;
-			//~ }
-		//~ else{
-		//~ sumError += lastStateError*DT;
-		sumError = 0;}
-	//~ }
-	return sumError;
+    //~ if (_bIsFirstTimeReachPitch){
+      //~ _sumPosErrX = 0;
+      //~ _mpc.Dp_ = MatrixXd::Zero(_mpc.nx_,1);
+      //~ _bIsFirstTimeReachPitch = false;
+      //~ }
+    //~ else{
+    //~ sumError += lastStateError*DT;
+    sumError = 0;}
+    //~ }
+    return sumError;
 }
 
-	
+  
 /* Function Definitions */
 static void argInit_4x1_real_T(double result[4], Vector4d xk)
 {
@@ -505,11 +508,11 @@ static double argInit_real_T()
 }
 
 VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
-	
-	// Optimal control input
+  
+  // Optimal control input
     double xkarray[4];
     emxArray_real_T *rp;
-    double x_data[10];		// control input
+    double x_data[10];    // control input
     int x_size[1];
     
     /* Initialize function 'solveQP' input arguments. */
@@ -536,7 +539,7 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     return um;
     
 }
-	
+  
 
 float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {
@@ -546,20 +549,20 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     int P = _mpc.P_;
     int nx = _mpc.nx_;
     float mpc_kiPos = _mpc.kiPos_;
-	float mpc_kiVec = _mpc.kiVec_;
-	
+    float mpc_kiVec = _mpc.kiVec_;
+  
     // list current state & desired state, and prepare mpc
     Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
-    Vector4d targetState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y); 
-    // This area!!! still use truck velocity !!!!!!!!!!!!!!!!!!
+    Vector4d targetState(desired_position.x, desired_position.y, _msgFusedTargetVelocity.point.x, _msgFusedTargetVelocity.point.y);
+
     Vector4d stateError = xk - targetState;
     _mpc.SetXpInitialPoint(xk);
     
     
     // predict the target position and velocity here, KF
     // First decide now we use prediction or estimation, based whether there exists observations or not
-    int nPred = 2; 
 #ifdef EKF_DEBUG
+    int nPred = 2; 
     _ekf.SetPredHorizon(nPred + P);
     if(!_IsGPSUpdated){
         _targetEstState = _ekf.PredictWOObservation();
@@ -567,23 +570,23 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     _IsGPSUpdated = false;
     VectorXd truckPred = _ekf.Predict(_targetEstState);
 #else
-    _kf.SetPredHorizon(nPred + P);
+    _kf.SetPredHorizon(_kf.nPred_ + P);
     ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
     if(timeElapsed.toSec() > 0.001){
         // Time elapsed > 0.001 s, update; O.W. no need to update
         _targetEstState = _kf.PredictWOObservation(timeElapsed.toSec());
     }
     // _IsGPSUpdated = false;
-    VectorXd truckPred = _kf.Predict(_targetEstState);
-    
-    
+
+    VectorXd truckPred = _kf.Predict(_targetEstState, _kf.nPred_ + P);
+
 #endif
     VectorXd desiredState = truckPred.tail(P*nx);
     
       
 
-	// Get optimal control input series
-	VectorXd um = MatrixXd::Zero(10,1);
+    // Get optimal control input series
+    VectorXd um = MatrixXd::Zero(10,1);
     um = RunConstraintedMPC(xk, desiredState);
     Vector2d uk = um.head(2);
     //~ std::cout << "Um: " << um.transpose() << endl;
@@ -639,7 +642,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     droll = droll > maxAngle ? maxAngle
                              : droll < -maxAngle ? -maxAngle
                                                  : droll;
-	
+  
     // Print out data
     ROS_INFO("IsOnTruckTop?:%d, _bIsLandingInitiated?:%d", _IsOnTruckTop, _bIsLandingInitiated);
     std::cout << "SumPosX, SumPosY, q, ki:  " << _sumPosErrX << ", " << _sumPosErrY << ", " << _mpc.q_ << ", " << mpc_kiPos << endl;
@@ -659,19 +662,22 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     _ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             << ros::Time::now().toSec() << ","
                             <<  _msgUltraSonic.ranges[0] << ","
-                            << (int)_msgUltraSonic.intensities[0] << "," 	// ultrasonic
+                            << (int)_msgUltraSonic.intensities[0] << ","   // ultrasonic
                             << _msgTruckLocalPosition.point.x << ","
                             << _msgTruckLocalPosition.point.y << ","
                             << _msgTruckLocalPosition.point.z << "," 
                             << _msgTruckVelocity.point.x << ","
-							<< _msgTruckVelocity.point.y << "," 			// truck local position
+                            << _msgTruckVelocity.point.y << ","       // truck local position
                             << _msgTargetLocalPosition.point.x << ","
                             << _msgTargetLocalPosition.point.y << ","
-                            << _msgTargetLocalPosition.point.z << ","   	// target local position
+                            << _msgTargetLocalPosition.point.z << ","     // target local position
                             << _msgFusedTargetPosition.point.x << ","
                             << _msgFusedTargetPosition.point.y << ","
-                            << _msgFusedTargetPosition.point.z << ","  		// fused target local position
-							//~ << _targetEstState.transpose() << ","  			// truck estimated position & velocity
+                            << _msgFusedTargetPosition.point.z << ","      // fused target local position
+                            << _msgFusedTargetVelocity.point.x << ","
+                            << _msgFusedTargetVelocity.point.y << ","
+                            << _msgFusedTargetVelocity.point.z << ","      // fused target local position                            
+                            //~ << _targetEstState.transpose() << ","        // truck estimated position & velocity
                             << drone.local_position.x << ","
                             << drone.local_position.y << ","
                             << drone.local_position.z << ","
@@ -688,36 +694,36 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << -uk(0) << ","
                             << -uk(1) << ","
                             << std::endl;                            
-	
-	//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            //~ << ros::Time::now().toSec() << ","							
+  
+  //~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            //~ << ros::Time::now().toSec() << ","              
                             //~ << _msgTruckLocalPosition.point.x << ","
                             //~ << _msgTruckLocalPosition.point.y << ","
-                            //~ << _msgTruckLocalPosition.point.z << ","  		// truck local position, mey be noisy
+                            //~ << _msgTruckLocalPosition.point.z << ","      // truck local position, mey be noisy
                             //~ << _msgTruckVelocity.point.x << ","
-							//~ << _msgTruckVelocity.point.y << ","
-							//~ << _msgTargetLocalPosition.point.x << ","
+              //~ << _msgTruckVelocity.point.y << ","
+              //~ << _msgTargetLocalPosition.point.x << ","
                             //~ << _msgTargetLocalPosition.point.y << ","
                             //~ << _msgTargetLocalPosition.point.z << ","   // target local position
-							//~ << _msgFusedTargetPosition.point.x << ","
+              //~ << _msgFusedTargetPosition.point.x << ","
                             //~ << _msgFusedTargetPosition.point.y << ","
-                            //~ << _msgFusedTargetPosition.point.z << ","  		// fused target local position
-							//~ << _targetEstState.transpose() << ","  			// truck estimated position & velocity
-							//~ << truckPred.segment((nPred+1)*nx,4).transpose() 
-							//~ << std::endl;  
-							
-							
+                            //~ << _msgFusedTargetPosition.point.z << ","      // fused target local position
+              //~ << _targetEstState.transpose() << ","        // truck estimated position & velocity
+              //~ << truckPred.segment((nPred+1)*nx,4).transpose() 
+              //~ << std::endl;  
+              
+              
 }
 
 
 float YawControlHelper(float desired_yaw_deg){
-	
-	DJIDrone& drone = *_ptrDrone;
-	
-	dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+  
+  DJIDrone& drone = *_ptrDrone;
+  
+  dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float current_yaw_deg = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
     float yaw_error_deg = desired_yaw_deg - current_yaw_deg;
-	float abs_yaw_error_deg = abs(yaw_error_deg);
+  float abs_yaw_error_deg = abs(yaw_error_deg);
     float setpoint_yaw = (abs_yaw_error_deg < 3) ? desired_yaw_deg
                                              : (abs_yaw_error_deg < 10) ? current_yaw_deg + yaw_error_deg * 0.3
                                              : current_yaw_deg + yaw_error_deg * 0.2;
@@ -730,8 +736,8 @@ float YawControlHelper(float desired_yaw_deg){
 void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw_deg){
 
     DJIDrone& drone = *_ptrDrone;
-	
-	// compute desired roll and pitch
+  
+  // compute desired roll and pitch
     float setAnglePitch = 0;
     float setAngleRoll  = 0;
     AttitudeControlHelper2(desired_position, setAnglePitch, setAngleRoll); 
@@ -741,16 +747,16 @@ void RunAttitudeControl(geometry_msgs::Point desired_position, float desired_yaw
     
     // compute desired yaw
     float setpoint_yaw = YawControlHelper(desired_yaw_deg);
-	
+  
     // Notice: negative pitch angle means going to North; positive pitch means South.
     drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
     //~ if (_bIsYawControlEnable){
-		//~ drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
-	//~ }
-	//~ else{
-		//~ setpoint_yaw = 0;
-	    //~ drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
-	//~ }
+    //~ drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
+  //~ }
+  //~ else{
+    //~ setpoint_yaw = 0;
+      //~ drone.attitude_control(0x10, setAngleRoll, -setAnglePitch, setpoint_z, setpoint_yaw);
+  //~ }
 
     // Just record the system input.
     _msgDesiredAttitudeDeg.point.x = setAngleRoll;
@@ -856,26 +862,26 @@ void TemporaryTest(void)
     //~ desired_position.x = 0;
     //~ desired_position.y = 0;
     //~ desired_position.z = 3;
-	//~ float start = 0;
-	//~ if (_counter < 300)
-	//~ {
-		//~ RunAttitudeControl(desired_position, 0);
-		//~ drone.attitude_control(0x10, 0, 0, 3, 0);
-		//~ ROS_INFO("turning to clockwise!!");
-		//~ }
-	//~ else
-	//~ {
-		//~ RunAttitudeControl(desired_position, 179);
-		//~ drone.attitude_control(0x10, 0, 0, 3, 179);
-		//~ ROS_INFO("turning to counterclockwise!!");
-		//~ start = 1;
-		//~ }	
-		//~ 
-	//~ _counter += 1; 
-	//~ dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+  //~ float start = 0;
+  //~ if (_counter < 300)
+  //~ {
+    //~ RunAttitudeControl(desired_position, 0);
+    //~ drone.attitude_control(0x10, 0, 0, 3, 0);
+    //~ ROS_INFO("turning to clockwise!!");
+    //~ }
+  //~ else
+  //~ {
+    //~ RunAttitudeControl(desired_position, 179);
+    //~ drone.attitude_control(0x10, 0, 0, 3, 179);
+    //~ ROS_INFO("turning to counterclockwise!!");
+    //~ start = 1;
+    //~ }  
+    //~ 
+  //~ _counter += 1; 
+  //~ dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     //~ float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
     //~ ROS_INFO("Current yaw: %f", yaw);
-	    //~ _ofsGoToTruckLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+      //~ _ofsGoToTruckLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                       //~ << ros::Time::now().toSec() << ","
                       //~ << start << ","
                       //~ << yaw  << std::endl; 
@@ -1036,7 +1042,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     msgDesiredAngleDeg.point.z = drone.gimbal.yaw + yawDeg;
 
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
-	ROS_INFO("Publish desired gimbal angle!! ");
+    ROS_INFO("Publish desired gimbal angle!! ");
     tag.pose.pose.position.y *= -1;
 
 
@@ -1063,7 +1069,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     //~ _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
     
     // Update estimate by kalman filter
-	Vector2d targetState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
+    Vector2d targetState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
     ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
     _targetEstState = _kf.UpdateWithCameraMeasurements(targetState, timeElapsed.toSec());
 
@@ -1076,6 +1082,10 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         _msgFusedTargetPosition.point.x = _targetEstState(0);
         _msgFusedTargetPosition.point.y = _targetEstState(1);
         _msgFusedTargetPosition.point.z = 0;
+
+        _msgFusedTargetVelocity.point.x = _targetEstState(2);
+        _msgFusedTargetVelocity.point.y = _targetEstState(3);
+        _msgFusedTargetVelocity.point.z = 0;
         _bIsLock = false;
     }
     
@@ -1174,16 +1184,16 @@ void truckVelocityCallback(const geometry_msgs::PointStamped msgTruckVelocity)
 
 void startSimCallback(const geometry_msgs::PointStamped msgStartSim)
 {
-	
-	_nNavigationTask = msgStartSim.point.x;
-	_bIsStartSim = true;
-	
+  
+  _nNavigationTask = msgStartSim.point.x;
+  _bIsStartSim = true;
+  
 }
 
 void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
 {
-	
-	// drone.local_position.x means northing
+  
+  // drone.local_position.x means northing
     // drone.local_position.y means easting
     
     DJIDrone& drone = *_ptrDrone;
@@ -1203,16 +1213,16 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     
     if (_bIsSimulation)
     {
-		double realtruckDistance_x = (msgTruckPosition.pose.orientation.x - drone.global_position.latitude)/0.0000089354;
-		double realtruckDistance_y = (msgTruckPosition.pose.orientation.y - drone.global_position.longitude)/0.0000121249;
+    double realtruckDistance_x = (msgTruckPosition.pose.orientation.x - drone.global_position.latitude)/0.0000089354;
+    double realtruckDistance_y = (msgTruckPosition.pose.orientation.y - drone.global_position.longitude)/0.0000121249;
     
-		// Calculate the real truck local location
-		_msgRealTruckLocalPosition.header.stamp = ros::Time::now();
-		_msgRealTruckLocalPosition.point.x = drone.local_position.x + realtruckDistance_x;
-		_msgRealTruckLocalPosition.point.y = drone.local_position.y + realtruckDistance_y;
-		_msgRealTruckLocalPosition.point.z = 0;
-	}
-	
+    // Calculate the real truck local location
+    _msgRealTruckLocalPosition.header.stamp = ros::Time::now();
+    _msgRealTruckLocalPosition.point.x = drone.local_position.x + realtruckDistance_x;
+    _msgRealTruckLocalPosition.point.y = drone.local_position.y + realtruckDistance_y;
+    _msgRealTruckLocalPosition.point.z = 0;
+  }
+  
     // Record GPS position
     _msgTruckGPSPosition.point.x = msgTruckPosition.pose.position.x;
     _msgTruckGPSPosition.point.y = msgTruckPosition.pose.position.y;
@@ -1235,7 +1245,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
         //~ _queMsgTruckLocalPosition.pop_front();
     //~ }
     //~ _queMsgTruckLocalPosition.push_back(_msgTruckLocalPosition);
-	//~ 
+  //~ 
     //~ // If target not found, sensor fuse at 10hz.
     //~ if( !_bIsTargetFound ){
         //~ RunSensorFusing();
@@ -1244,7 +1254,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     
     
     // Update estimate by kalman filter
-	Vector4d targetState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
+  Vector4d targetState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
 #ifdef EKF_DEBUG
     VectorXd xk1(4);
 
@@ -1259,7 +1269,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     _ekf.SetXhatInitialPoint(xk1);
     _targetEstState = _ekf.Update(xk1);
 #else
-	_kf.SetXhatInitialPoint(targetState);
+  _kf.SetXhatInitialPoint(targetState);
 
     if (!_kf.IsXhatInitialized_){ 
         _kf.IsXhatInitialized_ = true;
@@ -1280,23 +1290,27 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
         _msgFusedTargetPosition.point.x = _targetEstState(0);
         _msgFusedTargetPosition.point.y = _targetEstState(1);
         _msgFusedTargetPosition.point.z = 0;
+
+        _msgFusedTargetVelocity.point.x = _targetEstState(2);
+        _msgFusedTargetVelocity.point.y = _targetEstState(3);
+        _msgFusedTargetVelocity.point.z = 0;
         _bIsLock = false;
     }
     
 #endif
-	
-	// _IsGPSUpdated = true;
-			//~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            //~ << ros::Time::now().toSec() << ","							
+  
+  // _IsGPSUpdated = true;
+      //~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            //~ << ros::Time::now().toSec() << ","              
                             //~ << _msgTruckLocalPosition.point.x << ","
                             //~ << _msgTruckLocalPosition.point.y << ","
                             //~ << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
                             //~ << _msgTruckVelocity.point.x << ","
-							//~ << _msgTruckVelocity.point.y << ","
-							//~ << _msgRealTruckLocalPosition.point.x << ","
-							//~ << _msgRealTruckLocalPosition.point.y << ","
-							//~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-							//~ << _targetEstState.transpose() << std::endl;   
+              //~ << _msgTruckVelocity.point.y << ","
+              //~ << _msgRealTruckLocalPosition.point.x << ","
+              //~ << _msgRealTruckLocalPosition.point.y << ","
+              //~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
+              //~ << _targetEstState.transpose() << std::endl;   
 
 }
 
@@ -1386,8 +1400,9 @@ void RunTargetSearch()
             // float y_distance = y - drone.local_position.y;
             // _FlyingRadius = sqrt((x - _SearchCenter_x)*(x - _SearchCenter_x) + (y - _SearchCenter_y)*(y - _SearchCenter_y));
             
-            _FlyingRadius = sqrt((drone.local_position.x - _msgTruckLocalPosition.point.x)*(drone.local_position.x - _msgTruckLocalPosition.point.x) + (drone.local_position.y - _msgTruckLocalPosition.point.y)*(drone.local_position.y - _msgTruckLocalPosition.point.y));
-			// const speed sin path searching
+            _FlyingRadius = sqrt((drone.local_position.x - _msgTruckLocalPosition.point.x)*(drone.local_position.x - _msgTruckLocalPosition.point.x) 
+              + (drone.local_position.y - _msgTruckLocalPosition.point.y)*(drone.local_position.y - _msgTruckLocalPosition.point.y));
+      // const speed sin path searching
             float xdot = SPEED * cos(_Theta);
             _StartX = _StartX + xdot*0.025;
             float y = _StartY + HEIGHT * sin(OMEGA*_StartX); 
@@ -1590,21 +1605,21 @@ void RunAutonomousLanding2()
 {
 
     DJIDrone& drone = *_ptrDrone;
-	
-	bool bIsDroneLanded = false;
-	if(_bIsSimulation){	bIsDroneLanded = drone.local_position.z < 0.1;	}
-	else{				bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.3) && (int)_msgUltraSonic.intensities[0];}
+  
+    bool bIsDroneLanded = false;
+    if(_bIsSimulation){  bIsDroneLanded = drone.local_position.z < 0.1;  }
+    else{        bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.3) && (int)_msgUltraSonic.intensities[0];}
     
     if (bIsDroneLanded)
     {
-        if (!_bIsDroneLandingPrinted)
-        {
-            ROS_INFO("The drone has landed!");
-            _bIsDroneLandingPrinted = true;
-            _bIsTestInitiated = false;
-        }
-        drone.landing(); 
-        return;
+      if (!_bIsDroneLandingPrinted)
+      {
+          ROS_INFO("The drone has landed!");
+          _bIsDroneLandingPrinted = true;
+          _bIsTestInitiated = false;
+      }
+      drone.landing(); 
+      return;
     }
 
     float drone_x = drone.local_position.x;
@@ -1615,42 +1630,42 @@ void RunAutonomousLanding2()
     
     if (_bIsSimulation)
     {    
-		horiDistance = sqrt(pow((_msgTruckLocalPosition.point.x - drone_x),2) + pow((_msgTruckLocalPosition.point.y - drone_y),2));
-        bool bIsClose = horiDistance < limitRadius;
-        bool bIsStartLanding = false;
-        if (bIsClose)
-        {
-			_counter = _counter + 1;
-		}
-        if ((_counter > 160) && (bIsClose)) //240
-        {
-			bIsStartLanding = true;
-			ROS_INFO("The drone has landed!*********************************************************");
-		}
-        // bool bIsClose = true;
+      horiDistance = sqrt(pow((_msgTruckLocalPosition.point.x - drone_x),2) + pow((_msgTruckLocalPosition.point.y - drone_y),2));
+      bool bIsClose = horiDistance < limitRadius;
+      bool bIsStartLanding = false;
+      if (bIsClose)
+      {
+        _counter = _counter + 1;
+      }
+      if ((_counter > 160) && (bIsClose)) //240
+      {
+        bIsStartLanding = true;
+        ROS_INFO("The drone has landed!*********************************************************");
+      }
+      // bool bIsClose = true;
 
-        // float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
-    
-        geometry_msgs::Point desired_position;
-        desired_position.x = _msgTruckLocalPosition.point.x;
-        desired_position.y = _msgTruckLocalPosition.point.y;;
-        desired_position.z = bIsStartLanding ? -0.1 : drone_z;
-        
-	    float desired_yaw = 0;
-	    if (_bIsYawControlEnable){	desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));	}
-        if (_bIsLocalLocationControlEnable)
-        {	RunLocalPositionControl(desired_position, desired_yaw);}
-        else
-        {   RunAttitudeControl(desired_position, desired_yaw);}
-        //~ RunLocalPositionControl(desired_position, desired_yaw);
-        //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckLocalPosition.point.y, _msgTruckLocalPosition.point.x));
+      // float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
+  
+      geometry_msgs::Point desired_position;
+      desired_position.x = _msgTruckLocalPosition.point.x;
+      desired_position.y = _msgTruckLocalPosition.point.y;;
+      desired_position.z = bIsStartLanding ? -0.1 : drone_z;
+      
+      float desired_yaw = 0;
+      if (_bIsYawControlEnable){  desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));  }
+      if (_bIsLocalLocationControlEnable)
+      {   RunLocalPositionControl(desired_position, desired_yaw);}
+      else
+      {   RunAttitudeControl(desired_position, desired_yaw);}
+      //~ RunLocalPositionControl(desired_position, desired_yaw);
+      //~ float desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckLocalPosition.point.y, _msgTruckLocalPosition.point.x));
     }
     else
     {
-		
+    
 #ifndef FUSE_DEBUG
-		
-		horiDistance = sqrt(pow((_msgTargetLocalPosition.point.x - drone_x),2) + pow((_msgTargetLocalPosition.point.y - drone_y),2));
+    
+        horiDistance = sqrt(pow((_msgTargetLocalPosition.point.x - drone_x),2) + pow((_msgTargetLocalPosition.point.y - drone_y),2));
         bool bIsClose = horiDistance < limitRadius;
         
         geometry_msgs::Point desired_position;
@@ -1661,29 +1676,28 @@ void RunAutonomousLanding2()
         
         
         float desired_yaw = 0;
-		if (_bIsYawControlEnable){	desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));	}
-		
-		if (_bIsLocalLocationControlEnable)
-
-        {	RunLocalPositionControl(desired_position, desired_yaw);}
+        if (_bIsYawControlEnable){  desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));  }
+    
+        if (_bIsLocalLocationControlEnable)
+        {  RunLocalPositionControl(desired_position, desired_yaw);}
         else
-        {	RunAttitudeControl(desired_position, desired_yaw);}
-		
+        {  RunAttitudeControl(desired_position, desired_yaw);}
+    
 #else 
-		
-		horiDistance = sqrt(pow((_msgFusedTargetPosition.point.x - drone_x),2) + pow((_msgFusedTargetPosition.point.y - drone_y),2));
+    
+        horiDistance = sqrt(pow((_msgFusedTargetPosition.point.x - drone_x),2) + pow((_msgFusedTargetPosition.point.y - drone_y),2));
         bool bIsClose = horiDistance < limitRadius;
         
         geometry_msgs::Point desired_position;
         desired_position.x = _msgFusedTargetPosition.point.x;
         desired_position.y = _msgFusedTargetPosition.point.y;
-        if (_bIsKeepLanding) {	desired_position.z = -0.1;	}
-        else {					desired_position.z = bIsClose ? -0.1 : SEARCH_ALTITUDE;	}
+        if (_bIsKeepLanding) {  desired_position.z = -0.1;  }
+        else {          desired_position.z = bIsClose ? -0.1 : SEARCH_ALTITUDE;  }
         //~ ROS_INFO("desired_position: %f, %f, %f",desired_position.x, desired_position.y, desired_position.z);
         
         
         float desired_yaw = 0;
-		if (_bIsYawControlEnable){	desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));	}
+        if (_bIsYawControlEnable){  desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));  }
         RunAttitudeControl(desired_position, desired_yaw);   
 
         
@@ -1706,7 +1720,10 @@ void RunAutonomousLanding2()
                      << _msgTargetLocalPosition.point.z << ","   // target local position
                      << _msgFusedTargetPosition.point.x << ","
                      << _msgFusedTargetPosition.point.y << ","
-                     << _msgFusedTargetPosition.point.z << ","                     
+                     << _msgFusedTargetPosition.point.z << ","  
+                     << _msgFusedTargetVelocity.point.x << ","
+                     << _msgFusedTargetVelocity.point.y << ","
+                     << _msgFusedTargetVelocity.point.z << ","                    
                      << drone.global_position.latitude << ","
                      << drone.global_position.longitude << ","
                      << drone.local_position.x << ","
@@ -1753,7 +1770,7 @@ void GoToTruckGPSLocation()
     float drone_y = drone.local_position.y;
     float drone_z = drone.local_position.z;
 
-	float horiDistance = sqrt(pow((_msgTruckLocalPosition.point.x - drone_x), 2) + pow((_msgTruckLocalPosition.point.y - drone_y), 2));
+    float horiDistance = sqrt(pow((_msgTruckLocalPosition.point.x - drone_x), 2) + pow((_msgTruckLocalPosition.point.y - drone_y), 2));
     // bool bIsClose = distance_square < limitRadius_square;
     //~ bool bIsClose = true;
     bool bIsClose = horiDistance < 3;
@@ -1767,41 +1784,33 @@ void GoToTruckGPSLocation()
 
 #else
 
-    // Go to 1m away from the target
-    float delta_x = _msgTruckDistance.point.x / sqrt( _msgTruckDistance.point.x*_msgTruckDistance.point.x
-                          + _msgTruckDistance.point.y*_msgTruckDistance.point.y ) * _GPSCircleRatio;
-    float delta_y = _msgTruckDistance.point.y / sqrt( _msgTruckDistance.point.x*_msgTruckDistance.point.x
-                          + _msgTruckDistance.point.y*_msgTruckDistance.point.y ) * _GPSCircleRatio;
-
-
-    // Now the destination is 1m away from the target
-    float target_x = _msgFusedTargetPosition.point.x - delta_x;
-    float target_y = _msgFusedTargetPosition.point.y - delta_y;
+    float target_x = _msgFusedTargetPosition.point.x;
+    float target_y = _msgFusedTargetPosition.point.y;
     float drone_x = drone.local_position.x;
     float drone_y = drone.local_position.y;
     float drone_z = drone.local_position.z;
-    float horiDistance = sqrt(pow((_msgFusedTargetPosition.point.x - drone_x), 2) + pow((_msgFusedTargetPosition.point.y - drone_y), 2));
+    float horiDistance = sqrt(pow((target_x - drone_x), 2) + pow((target_y - drone_y), 2));
     
     // bool bIsClose = horiDistance < limitRadius_square;
     _IsOnTruckTop = horiDistance < _limitRadius; // Hard coded, define if < 0.7 m2, then means on the top
 
     // Calculate desired postion and yaw; then send commands
     geometry_msgs::Point desired_position;
-    desired_position.x = _IsOnTruckTop ? _msgFusedTargetPosition.point.x : target_x;
-    desired_position.y = _IsOnTruckTop ? _msgFusedTargetPosition.point.y : target_y;
+    desired_position.x = target_x;
+    desired_position.y = target_y;
     desired_position.z = SEARCH_ALTITUDE;  
     
 #endif
 
 
     float desired_yaw = 0;
-    if (_bIsYawControlEnable){	
+    if (_bIsYawControlEnable){  
         if (_bIsYawControlAlwaysAlign){
             desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));
         }
         else{
             desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckDistance.point.y, _msgTruckDistance.point.x));
-        }	
+        }  
     }
     RunAttitudeControl(desired_position, desired_yaw);   
 
@@ -1812,20 +1821,20 @@ void GoToTruckGPSLocation()
     float roll = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
 
 
-	// searching target with gimbal sweep
-	if (horiDistance < 6 && !_bIsTargetFound)
-	{
-		float pitch_angle = -45;
-		float yaw_angle = YAW_RANGE*sin(((float)_SearchGimbalPhi/(RATIO_GIMBAL*40))*6.28);
-		geometry_msgs::PointStamped msgDesiredAngleDeg;
-		msgDesiredAngleDeg.point.x = 0;
-		msgDesiredAngleDeg.point.y = pitch_angle;
-		msgDesiredAngleDeg.point.z = _bIsMovingYaw ? yaw_angle : 0;
-		//~ ROS_INFO("Ptich = %f , Yaw: %f.", pitch_angle, yaw_angle);
-		_GimbalAnglePub.publish(msgDesiredAngleDeg);
-		_SearchGimbalPhi = _SearchGimbalPhi + 1;
-		if (_SearchGimbalPhi > RATIO_GIMBAL*40){
-			_SearchGimbalPhi = 0;
+  // searching target with gimbal sweep
+  if (horiDistance < 6 && !_bIsTargetFound)
+  {
+    float pitch_angle = -45;
+    float yaw_angle = YAW_RANGE*sin(((float)_SearchGimbalPhi/(RATIO_GIMBAL*40))*6.28);
+    geometry_msgs::PointStamped msgDesiredAngleDeg;
+    msgDesiredAngleDeg.point.x = 0;
+    msgDesiredAngleDeg.point.y = pitch_angle;
+    msgDesiredAngleDeg.point.z = _bIsMovingYaw ? yaw_angle : 0;
+    //~ ROS_INFO("Ptich = %f , Yaw: %f.", pitch_angle, yaw_angle);
+    _GimbalAnglePub.publish(msgDesiredAngleDeg);
+    _SearchGimbalPhi = _SearchGimbalPhi + 1;
+    if (_SearchGimbalPhi > RATIO_GIMBAL*40){
+      _SearchGimbalPhi = 0;
         }
     }   
     // Print out data
@@ -1854,6 +1863,9 @@ void GoToTruckGPSLocation()
                      << _msgFusedTargetPosition.point.x << ","
                      << _msgFusedTargetPosition.point.y << ","
                      << _msgFusedTargetPosition.point.z << ","
+                     << _msgFusedTargetVelocity.point.x << ","
+                     << _msgFusedTargetVelocity.point.y << ","
+                     << _msgFusedTargetVelocity.point.z << ","
                      << drone.global_position.latitude << ","
                      << drone.global_position.longitude << ","
                      << drone.local_position.x << ","
@@ -1956,14 +1968,14 @@ void timerCallback(const ros::TimerEvent&)
             break;
     }
 
-	//~ std::cout << std::setprecision(std::numeric_limits<double>::max_digits10) << ros::Time::now().toSec() << std::endl;
+  //~ std::cout << std::setprecision(std::numeric_limits<double>::max_digits10) << ros::Time::now().toSec() << std::endl;
 }
 
 void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
 {
-	if (!_bIsStartSim)
-	{_nNavigationTask = msgNavigationTask.data;}
-	
+  if (!_bIsStartSim)
+  {_nNavigationTask = msgNavigationTask.data;}
+  
     DJIDrone& drone = *_ptrDrone;
 
     switch (_nNavigationTask)
@@ -2127,13 +2139,13 @@ void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
     ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME  << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos  << ".log";
     _ofsGoToTruckLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsGoToTruckLog, "Failed to open file %s", ss.str().c_str());
-    _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
+    _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
 
     ss.str("");
     ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME   << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos << ".log";
     _ofsAutonomousLandingLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
-    _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z),DroneGPS(latitude,longtitude),DroneLocation(x,y,z), DroneVelocity(x,y,z), DroneDesiredAttitude, DroneAttitude" << std::endl;
+    _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
 
     ss.str("");
     ss << DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME << currentDateTime() << ".log";
@@ -2172,8 +2184,8 @@ void LoadNodeSettings(ros::NodeHandle nh){
     }
     
     bool bIsKFSettingDefault = true;
-    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsSwitchDefault);
-    if(!bIsSwitchDefault){
+    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsKFSettingDefault);
+    if(!bIsKFSettingDefault){
         // if not default, then redefine the settings.        
         nh.getParam("/KalmanFilterParameters/sigma_ax", _kf.sigma_ax_);
         nh.getParam("/KalmanFilterParameters/sigma_ay", _kf.sigma_ax_);
@@ -2183,6 +2195,21 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/KalmanFilterParameters/sigma_GPSvy", _kf.sigma_GPSvy_);
         nh.getParam("/KalmanFilterParameters/sigma_Apriltagpx", _kf.sigma_Apriltagpx_);
         nh.getParam("/KalmanFilterParameters/sigma_Apriltagpy", _kf.sigma_Apriltagpy_);
+        nh.getParam("/KalmanFilterParameters/nPred", _kf.nPred_);
+    }
+
+    bool bIsMPCSettingDefault = true;
+    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsMPCSettingDefault);
+    if(!bIsMPCSettingDefault){
+        // if not default, then redefine the settings.        
+        nh.getParam("/KalmanFilterParameters/P", _mpc.P_);
+        nh.getParam("/KalmanFilterParameters/M", _mpc.M_);
+        nh.getParam("/KalmanFilterParameters/q", _mpc.q_);
+        nh.getParam("/KalmanFilterParameters/kiPos", _mpc.kiPos_);
+        nh.getParam("/KalmanFilterParameters/kiVec", _mpc.kiVec_);
+        nh.getParam("/KalmanFilterParameters/Qk", _mpc.Qk_);
+        nh.getParam("/KalmanFilterParameters/Qf", _mpc.Qf_);
+        nh.getParam("/KalmanFilterParameters/Qb", _mpc.Qb_);
     }
     
 }

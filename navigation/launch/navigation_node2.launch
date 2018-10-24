@@ -22,6 +22,17 @@
         <param name="sigma_Apriltagpy" type="double" value="0.1"/>
         <param name="nPred" type="int" value="2"/>
     </group>
+    <group ns="MPCControllerParameters">
+        <param name="defaultSetting" type="bool" value="true"/>
+        <param name="P" type="double" value="12"/>
+        <param name="M" type="double" value="5"/>
+        <param name="q" type="double" value="0.99"/>
+        <param name="kiPos" type="double" value="0.1"/>
+        <param name="kiVec" type="double" value="0"/>
+        <param name="Qk" type="double" value="7"/>
+        <param name="Qf" type="double" value="10"/>
+        <param name="Qb" type="double" value="1.15"/>
+    </group>
     <node name="navigation_node" pkg="navigation" type="navigation_node" output="screen" cwd="node">
     </node>
 </launch>
