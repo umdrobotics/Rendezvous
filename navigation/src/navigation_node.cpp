@@ -2177,8 +2177,8 @@ void LoadNodeSettings(ros::NodeHandle nh){
     }
     
     bool bIsKFSettingDefault = true;
-    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsSwitchDefault);
-    if(!bIsSwitchDefault){
+    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsKFSettingDefault);
+    if(!bIsKFSettingDefault){
         // if not default, then redefine the settings.        
         nh.getParam("/KalmanFilterParameters/sigma_ax", _kf.sigma_ax_);
         nh.getParam("/KalmanFilterParameters/sigma_ay", _kf.sigma_ax_);
@@ -2189,6 +2189,20 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/KalmanFilterParameters/sigma_Apriltagpx", _kf.sigma_Apriltagpx_);
         nh.getParam("/KalmanFilterParameters/sigma_Apriltagpy", _kf.sigma_Apriltagpy_);
         nh.getParam("/KalmanFilterParameters/nPred", _kf.nPred_);
+    }
+
+    bool bIsMPCSettingDefault = true;
+    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsMPCSettingDefault);
+    if(!bIsMPCSettingDefault){
+        // if not default, then redefine the settings.        
+        nh.getParam("/KalmanFilterParameters/P", _mpc.P_);
+        nh.getParam("/KalmanFilterParameters/M", _mpc.M_);
+        nh.getParam("/KalmanFilterParameters/q", _mpc.q_);
+        nh.getParam("/KalmanFilterParameters/kiPos", _mpc.kiPos_);
+        nh.getParam("/KalmanFilterParameters/kiVec", _mpc.kiVec_);
+        nh.getParam("/KalmanFilterParameters/Qk", _mpc.Qk_);
+        nh.getParam("/KalmanFilterParameters/Qf", _mpc.Qf_);
+        nh.getParam("/KalmanFilterParameters/Qb", _mpc.Qb_);
     }
     
 }

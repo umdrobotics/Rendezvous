@@ -23,9 +23,10 @@ class MPCController {
         MatrixXd K_;
         
     
-        int P_, M_;
+        double P_, M_;
         int nx_, nu_;
-        float q_, kiPos_, kiVec_;
+        double q_, kiPos_, kiVec_;
+        double Qk_, Qf_, Qb_;
         
         bool IsXpInitialized_;
                 
