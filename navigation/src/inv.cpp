@@ -1,31 +1,26 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: inv.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * inv.cpp
+ *
+ * Code generation for function 'inv'
+ *
+ */
 
-// Include Files
+/* Include files */
+#include <cmath>
+#include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/inv.h"
 
-// Function Declarations
+/* Function Declarations */
 static void invNxN(const double x_data[], const int x_size[2], double y_data[],
                    int y_size[2]);
 
-// Function Definitions
-
-//
-// Arguments    : const double x_data[]
-//                const int x_size[2]
-//                double y_data[]
-//                int y_size[2]
-// Return Type  : void
-//
+/* Function Definitions */
 static void invNxN(const double x_data[], const int x_size[2], double y_data[],
                    int y_size[2])
 {
@@ -84,7 +79,7 @@ static void invNxN(const double x_data[], const int x_size[2], double y_data[],
       u1 = yk;
     }
 
-    for (j = 0; j + 1 <= u1; j++) {
+    for (j = 0; j < u1; j++) {
       mmj = n - j;
       c = j * (n + 1);
       if (mmj < 1) {
@@ -120,7 +115,7 @@ static void invNxN(const double x_data[], const int x_size[2], double y_data[],
         }
 
         i3 = c + mmj;
-        for (jy = c + 1; jy + 1 <= i3; jy++) {
+        for (jy = c + 1; jy < i3; jy++) {
           b_x_data[jy] /= b_x_data[c];
         }
       }
@@ -133,7 +128,7 @@ static void invNxN(const double x_data[], const int x_size[2], double y_data[],
         if (b_x_data[jy] != 0.0) {
           ix = c + 1;
           i3 = mmj + jA;
-          for (ijA = jA; ijA + 1 < i3; ijA++) {
+          for (ijA = jA; ijA < i3 - 1; ijA++) {
             b_x_data[ijA] += b_x_data[ix] * -smax;
             ix++;
           }
@@ -164,12 +159,12 @@ static void invNxN(const double x_data[], const int x_size[2], double y_data[],
     }
   }
 
-  for (k = 0; k + 1 <= n; k++) {
+  for (k = 0; k < n; k++) {
     c = p_data[k] - 1;
     y_data[k + y_size[0] * (p_data[k] - 1)] = 1.0;
-    for (j = k; j + 1 <= n; j++) {
+    for (j = k; j < n; j++) {
       if (y_data[j + y_size[0] * c] != 0.0) {
-        for (jy = j + 1; jy + 1 <= n; jy++) {
+        for (jy = j + 1; jy < n; jy++) {
           y_data[jy + y_size[0] * c] -= y_data[j + y_size[0] * c] * b_x_data[jy
             + x_size[0] * j];
         }
@@ -194,11 +189,6 @@ static void invNxN(const double x_data[], const int x_size[2], double y_data[],
   }
 }
 
-//
-// Arguments    : double x_data[]
-//                int x_size[2]
-// Return Type  : void
-//
 void inv(double x_data[], int x_size[2])
 {
   int b_x_size[2];
@@ -217,8 +207,4 @@ void inv(double x_data[], int x_size[2])
   }
 }
 
-//
-// File trailer for inv.cpp
-//
-// [EOF]
-//
+/* End of code generation (inv.cpp) */

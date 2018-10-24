@@ -1,24 +1,21 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: norm.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * norm.cpp
+ *
+ * Code generation for function 'norm'
+ *
+ */
 
-// Include Files
+/* Include files */
+#include <cmath>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/norm.h"
 
-// Function Definitions
-
-//
-// Arguments    : const double x_data[]
-// Return Type  : double
-//
+/* Function Definitions */
 double norm(const double x_data[])
 {
   double y;
@@ -43,8 +40,4 @@ double norm(const double x_data[])
   return scale * std::sqrt(y);
 }
 
-//
-// File trailer for norm.cpp
-//
-// [EOF]
-//
+/* End of code generation (norm.cpp) */

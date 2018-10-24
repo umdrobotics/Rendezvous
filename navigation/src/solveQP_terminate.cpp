@@ -1,31 +1,23 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: solveQP_terminate.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * solveQP_terminate.cpp
+ *
+ * Code generation for function 'solveQP_terminate'
+ *
+ */
 
-// Include Files
+/* Include files */
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/solveQP_terminate.h"
 
-// Function Definitions
-
-//
-// Arguments    : void
-// Return Type  : void
-//
+/* Function Definitions */
 void solveQP_terminate()
 {
-  // (no terminate code required)
+  /* (no terminate code required) */
 }
 
-//
-// File trailer for solveQP_terminate.cpp
-//
-// [EOF]
-//
+/* End of code generation (solveQP_terminate.cpp) */

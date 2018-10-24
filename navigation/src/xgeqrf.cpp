@@ -1,31 +1,28 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: xgeqrf.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * xgeqrf.cpp
+ *
+ * Code generation for function 'xgeqrf'
+ *
+ */
 
-// Include Files
+/* Include files */
+#include <cmath>
 #include "navigation/rt_nonfinite.h"
+#include <string.h>
 #include "navigation/solveQP.h"
 #include "navigation/xgeqrf.h"
 #include "navigation/xger.h"
 #include "navigation/xgemv.h"
 #include "navigation/xnrm2.h"
 
-// Function Declarations
+/* Function Declarations */
 static double rt_hypotd_snf(double u0, double u1);
 
-// Function Definitions
-
-//
-// Arguments    : double u0
-//                double u1
-// Return Type  : double
-//
+/* Function Definitions */
 static double rt_hypotd_snf(double u0, double u1)
 {
   double y;
@@ -48,13 +45,6 @@ static double rt_hypotd_snf(double u0, double u1)
   return y;
 }
 
-//
-// Arguments    : double A_data[]
-//                int A_size[2]
-//                double tau_data[]
-//                int tau_size[1]
-// Return Type  : void
-//
 void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
 {
   int m;
@@ -108,7 +98,7 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
               lastc = i_i + mmi;
               do {
                 knt++;
-                for (coltop = i_i + 1; coltop + 1 <= lastc + 1; coltop++) {
+                for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
                   A_data[coltop] *= 9.9792015476736E+291;
                 }
 
@@ -124,7 +114,7 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
               d1 = (xnorm - atmp) / xnorm;
               atmp = 1.0 / (atmp - xnorm);
               lastc = i_i + mmi;
-              for (coltop = i_i + 1; coltop + 1 <= lastc + 1; coltop++) {
+              for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
                 A_data[coltop] *= atmp;
               }
 
@@ -137,7 +127,7 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
               d1 = (xnorm - A_data[i_i]) / xnorm;
               atmp = 1.0 / (A_data[i_i] - xnorm);
               lastc = i_i + mmi;
-              for (coltop = i_i + 1; coltop + 1 <= lastc + 1; coltop++) {
+              for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
                 A_data[coltop] *= atmp;
               }
 
@@ -204,8 +194,4 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
   }
 }
 
-//
-// File trailer for xgeqrf.cpp
-//
-// [EOF]
-//
+/* End of code generation (xgeqrf.cpp) */

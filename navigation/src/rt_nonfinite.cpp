@@ -2,10 +2,11 @@
  * Academic License - for use in teaching, academic research, and meeting
  * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
- * File: rt_nonfinite.cpp
  *
- * MATLAB Coder version            : 3.4
- * C/C++ source code generated on  : 08-Oct-2018 14:40:09
+ * rt_nonfinite.cpp
+ *
+ * Code generation for function 'solveQP'
+ *
  */
 
 /*
@@ -14,8 +15,8 @@
  *      (Inf, NaN and -Inf).
  */
 #include "navigation/rt_nonfinite.h"
-#include "navigation/rtGetNaN.h"
-#include "navigation/rtGetInf.h"
+#include <cmath>
+#include <limits>
 
 real_T rtInf;
 real_T rtMinusInf;
@@ -31,13 +32,13 @@ real32_T rtNaNF;
  */
 void rt_InitInfAndNaN(size_t realSize)
 {
-  (void) (realSize);
-  rtNaN = rtGetNaN();
-  rtNaNF = rtGetNaNF();
-  rtInf = rtGetInf();
-  rtInfF = rtGetInfF();
-  rtMinusInf = rtGetMinusInf();
-  rtMinusInfF = rtGetMinusInfF();
+  (void)realSize;
+  rtNaN = std::numeric_limits<real_T>::quiet_NaN();
+  rtNaNF = std::numeric_limits<real32_T>::quiet_NaN();
+  rtInf = std::numeric_limits<real_T>::infinity();
+  rtInfF = std::numeric_limits<real32_T>::infinity();
+  rtMinusInf = -std::numeric_limits<real_T>::infinity();
+  rtMinusInfF = -std::numeric_limits<real32_T>::infinity();
 }
 
 /* Function: rtIsInf ==================================================
@@ -64,17 +65,7 @@ boolean_T rtIsInfF(real32_T value)
  */
 boolean_T rtIsNaN(real_T value)
 {
-
-#if defined(_MSC_VER) && (_MSC_VER <= 1200)
-
-  return _isnan(value)? TRUE:FALSE;
-
-#else
-
   return (value!=value)? 1U:0U;
-
-#endif
-
 }
 
 /* Function: rtIsNaNF =================================================
@@ -83,21 +74,7 @@ boolean_T rtIsNaN(real_T value)
  */
 boolean_T rtIsNaNF(real32_T value)
 {
-
-#if defined(_MSC_VER) && (_MSC_VER <= 1200)
-
-  return _isnan((real_T)value)? true:false;
-
-#else
-
   return (value!=value)? 1U:0U;
-
-#endif
-
 }
 
-/*
- * File trailer for rt_nonfinite.cpp
- *
- * [EOF]
- */
+/* End of code generation (rt_nonfinite.cpp) */

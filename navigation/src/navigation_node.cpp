@@ -97,6 +97,7 @@ bool _bIsLocalLocationControlEnable = false;
 bool _bIsKeepLanding = true;
 bool _bIsStartSim = false;
 bool _bIsLock = false; 
+bool _bIsClearIntegratorError = true;
 
 // Target tracking boolean flags 
 bool _bIsTargetTrackingRunning = false;
@@ -413,7 +414,7 @@ void RunLocalPositionControl(geometry_msgs::Point desired_position, float desire
 
 float IntegratorCalculationPos(float stateError, float lastStateError, float sumError)
 {
-	float limition = 95;
+	float limition = 35;
 	if((stateError >= 0 && lastStateError >= 0) || (stateError <= 0 && lastStateError <= 0)){	
 		if ((sumError < limition) && (sumError > -limition)){
 			sumError += stateError*DT;}
@@ -425,15 +426,12 @@ float IntegratorCalculationPos(float stateError, float lastStateError, float sum
 			}			
     }
     else{
-		//~ if (_bIsFirstTimeReachPitch){
-			//~ _sumPosErrX = 0;
-			//~ _mpc.Dp_ = MatrixXd::Zero(_mpc.nx_,1);
-			//~ _bIsFirstTimeReachPitch = false;
-			//~ }
-		//~ else{
-		sumError += stateError*DT;}
-		//~ sumError = 0;}
-	//~ }
+        if (_bIsClearIntegratorError)
+            {sumError = 0;}
+        else
+            {sumError += stateError*DT;}
+        }
+
 	return sumError;
 }
 
@@ -526,10 +524,14 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     
     emxDestroyArray_real_T(rp); 
     
+    
+    
     VectorXd um = MatrixXd::Zero(10,1);
     for( int i = 0; i<10 ;i++){
         um(i) = x_data[i];
     } 
+    
+    std::cout << um.transpose() << std::endl;
     
     return um;
     
@@ -548,7 +550,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 	
     // list current state & desired state, and prepare mpc
     Vector4d xk(drone.local_position.x, drone.local_position.y, drone.velocity.vx, drone.velocity.vy);
-    Vector4d targetState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
+    Vector4d targetState(desired_position.x, desired_position.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y); 
+    // This area!!! still use truck velocity !!!!!!!!!!!!!!!!!!
     Vector4d stateError = xk - targetState;
     _mpc.SetXpInitialPoint(xk);
     
@@ -572,6 +575,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     }
     // _IsGPSUpdated = false;
     VectorXd truckPred = _kf.Predict(_targetEstState);
+    
+    
 #endif
     VectorXd desiredState = truckPred.tail(P*nx);
     
@@ -600,7 +605,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 
     if (abs(distance_x) < 20)
     {
-        _sumPosErrX = IntegratorCalculationPos(stateError(0)*1.65, _lastPosErrX, _sumPosErrX);
+        _sumPosErrX = IntegratorCalculationPos(stateError(0)*0.85, _lastPosErrX, _sumPosErrX);
         _sumVecErrX = IntegratorCalculationVec(stateError(2), _lastVecErrX, _sumVecErrX);
         _lastPosErrX = stateError(0);
         _lastVecErrX = stateError(2);
@@ -613,7 +618,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     if (abs(distance_y) < 20)
     {
-        _sumPosErrY = IntegratorCalculationPos(stateError(1)*1.65, _lastPosErrY, _sumPosErrY);
+        _sumPosErrY = IntegratorCalculationPos(stateError(1)*0.85, _lastPosErrY, _sumPosErrY);
         _sumVecErrY = IntegratorCalculationVec(stateError(3), _lastVecErrY, _sumVecErrY);
         _lastPosErrY = stateError(1);
         _lastVecErrY = stateError(3);

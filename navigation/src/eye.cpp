@@ -1,24 +1,21 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: eye.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * eye.cpp
+ *
+ * Code generation for function 'eye'
+ *
+ */
 
-// Include Files
+/* Include files */
+#include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/eye.h"
 
-// Function Definitions
-
-//
-// Arguments    : double I[16]
-// Return Type  : void
-//
+/* Function Definitions */
 void eye(double I[16])
 {
   int k;
@@ -28,8 +25,4 @@ void eye(double I[16])
   }
 }
 
-//
-// File trailer for eye.cpp
-//
-// [EOF]
-//
+/* End of code generation (eye.cpp) */

@@ -1,26 +1,21 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: xnrm2.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * xnrm2.cpp
+ *
+ * Code generation for function 'xnrm2'
+ *
+ */
 
-// Include Files
+/* Include files */
+#include <cmath>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/xnrm2.h"
 
-// Function Definitions
-
-//
-// Arguments    : int n
-//                const double x_data[]
-//                int ix0
-// Return Type  : double
-//
+/* Function Definitions */
 double xnrm2(int n, const double x_data[], int ix0)
 {
   double y;
@@ -55,8 +50,4 @@ double xnrm2(int n, const double x_data[], int ix0)
   return y;
 }
 
-//
-// File trailer for xnrm2.cpp
-//
-// [EOF]
-//
+/* End of code generation (xnrm2.cpp) */

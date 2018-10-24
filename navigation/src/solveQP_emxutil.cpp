@@ -1,25 +1,22 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: solveQP_emxutil.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * solveQP_emxutil.cpp
+ *
+ * Code generation for function 'solveQP_emxutil'
+ *
+ */
 
-// Include Files
+/* Include files */
+#include <stdlib.h>
+#include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/solveQP_emxutil.h"
 
-// Function Definitions
-
-//
-// Arguments    : emxArray_real_T *emxArray
-//                int oldNumel
-// Return Type  : void
-//
+/* Function Definitions */
 void emxEnsureCapacity_real_T(emxArray_real_T *emxArray, int oldNumel)
 {
   int newNumel;
@@ -62,10 +59,6 @@ void emxEnsureCapacity_real_T(emxArray_real_T *emxArray, int oldNumel)
   }
 }
 
-//
-// Arguments    : emxArray_real_T **pEmxArray
-// Return Type  : void
-//
 void emxFree_real_T(emxArray_real_T **pEmxArray)
 {
   if (*pEmxArray != (emxArray_real_T *)NULL) {
@@ -79,11 +72,6 @@ void emxFree_real_T(emxArray_real_T **pEmxArray)
   }
 }
 
-//
-// Arguments    : emxArray_real_T **pEmxArray
-//                int numDimensions
-// Return Type  : void
-//
 void emxInit_real_T(emxArray_real_T **pEmxArray, int numDimensions)
 {
   emxArray_real_T *emxArray;
@@ -92,7 +80,7 @@ void emxInit_real_T(emxArray_real_T **pEmxArray, int numDimensions)
   emxArray = *pEmxArray;
   emxArray->data = (double *)NULL;
   emxArray->numDimensions = numDimensions;
-  emxArray->size = (int *)malloc((unsigned int)(sizeof(int) * numDimensions));
+  emxArray->size = (int *)malloc(sizeof(int) * numDimensions);
   emxArray->allocatedSize = 0;
   emxArray->canFreeData = true;
   for (i = 0; i < numDimensions; i++) {
@@ -100,11 +88,6 @@ void emxInit_real_T(emxArray_real_T **pEmxArray, int numDimensions)
   }
 }
 
-//
-// Arguments    : emxArray_real_T **pEmxArray
-//                int numDimensions
-// Return Type  : void
-//
 void emxInit_real_T1(emxArray_real_T **pEmxArray, int numDimensions)
 {
   emxArray_real_T *emxArray;
@@ -113,7 +96,7 @@ void emxInit_real_T1(emxArray_real_T **pEmxArray, int numDimensions)
   emxArray = *pEmxArray;
   emxArray->data = (double *)NULL;
   emxArray->numDimensions = numDimensions;
-  emxArray->size = (int *)malloc((unsigned int)(sizeof(int) * numDimensions));
+  emxArray->size = (int *)malloc(sizeof(int) * numDimensions);
   emxArray->allocatedSize = 0;
   emxArray->canFreeData = true;
   for (i = 0; i < numDimensions; i++) {
@@ -121,8 +104,4 @@ void emxInit_real_T1(emxArray_real_T **pEmxArray, int numDimensions)
   }
 }
 
-//
-// File trailer for solveQP_emxutil.cpp
-//
-// [EOF]
-//
+/* End of code generation (solveQP_emxutil.cpp) */

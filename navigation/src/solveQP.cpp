@@ -1,14 +1,17 @@
-//
-// Academic License - for use in teaching, academic research, and meeting
-// course requirements at degree granting institutions only.  Not for
-// government, commercial, or other organizational use.
-// File: solveQP.cpp
-//
-// MATLAB Coder version            : 3.4
-// C/C++ source code generated on  : 08-Oct-2018 14:40:09
-//
+/*
+ * Academic License - for use in teaching, academic research, and meeting
+ * course requirements at degree granting institutions only.  Not for
+ * government, commercial, or other organizational use.
+ *
+ * solveQP.cpp
+ *
+ * Code generation for function 'solveQP'
+ *
+ */
 
-// Include Files
+/* Include files */
+#include <cmath>
+#include <string.h>
 #include "navigation/rt_nonfinite.h"
 #include "navigation/solveQP.h"
 #include "navigation/mpcqpsolver.h"
@@ -17,28 +20,7 @@
 #include "navigation/mpower.h"
 #include "navigation/eye.h"
 
-// Function Definitions
-
-//
-// H = [1 -1; -1 2];
-//      f = [-2; -6];
-//      A = [1 1; -1 2; 2 1];
-//      b = [2; 2; 3];
-//      lb = [0; 0];
-//      [L,p] = chol(H,'lower');
-//      Linv = inv(L);
-//      opt = mpcqpsolverOptions;
-//      iA0 = false(size(b));
-//      Aeq = [];
-//      beq = zeros(0,1);
-//  %     [x,fval,exitflag,output,lambda] = quadprog(H,f,A,b,[],[],lb);
-//      [x,status] = mpcqpsolver(Linv,f,A,b,Aeq,beq,iA0,opt);
-// Arguments    : const double xk[4]
-//                const emxArray_real_T *rp
-//                double x_data[]
-//                int x_size[1]
-// Return Type  : void
-//
+/* Function Definitions */
 void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
              x_size[1])
 {
@@ -209,24 +191,12 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
   double Bpj[40];
   double b_Ap0[16];
   int loop_ub;
-  
-  
-  //~ static const double b[16] = { 1.0, 0.0, 0.0009, -0.0011, 0.0, 1.0, 0.0008,
-    //~ -0.0009, 0.0498, -0.0002, 0.9895, -0.0064, 0.0001, 0.0495, 0.0038, 0.9792 };
-//~ 
-  //~ double Bpi[8];
-  //~ static const double B[8] = { 0.0003, -0.0001, -0.0035, 0.0132, -0.0006, 0.0004,
-    //~ -0.0051, -0.0049 };
-    
-    
   static const double b[16] = { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.025,
     0.0, 0.9994, 0.0, 0.0, 0.025, 0.0, 0.9994 };
 
   double Bpi[8];
   static const double B[8] = { -0.0031, 0.0, -0.2451, 0.0, 0.0, -0.0031, 0.0,
     -0.2451 };
-    
-    
 
   double G[680];
   static const signed char iv0[100] = { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
@@ -253,7 +223,7 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
   double R[100];
   double b_Bp[480];
   boolean_T exitg1;
-  double Linv_data[100];
+  double L_data[100];
   static const double b_R[100] = { 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0,
     0.0, 0.0, 0.0, 0.0, 0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
@@ -267,7 +237,7 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
 
   int ix;
   int iy;
-  int Linv_size[2];
+  int L_size[2];
   double c;
   emxArray_real_T *b_rp;
   double b_xk[48];
@@ -275,20 +245,42 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
   double d_xk[10];
   double e_xk[10];
 
-  //  rp = repmat([100,100,0,0]', P ,1);
-  //  xk = [0,0,0,0]';
+  /*      H = [1 -1; -1 2]; */
+  /*      f = [-2; -6]; */
+  /*      A = [1 1; -1 2; 2 1]; */
+  /*      b = [2; 2; 3]; */
+  /*      lb = [0; 0]; */
+  /*      [L,p] = chol(H,'lower'); */
+  /*      Linv = inv(L); */
+  /*      opt = mpcqpsolverOptions; */
+  /*      iA0 = false(size(b)); */
+  /*      Aeq = []; */
+  /*      beq = zeros(0,1); */
+  /*  %     [x,fval,exitflag,output,lambda] = quadprog(H,f,A,b,[],[],lb); */
+  /*      [x,status] = mpcqpsolver(Linv,f,A,b,Aeq,beq,iA0,opt); */
+  /*  A = [1    0   0.0498  0.0001;   */
+  /*       0    1   -0.0002   0.0495; */
+  /*       0.0009    0.0008   0.9895   0.0038; */
+  /*       -0.0011    -0.0009   -0.0064   0.9792 ]; */
+  /*   */
+  /*  B = [0.0003     -0.0006; */
+  /*       -0.0001    0.0004; */
+  /*       -0.0035    -0.0051; */
+  /*       0.0132     -0.0049]; */
+  /*  rp = repmat([100,100,0,0]', P ,1); */
+  /*  xk = [0,0,0,0]'; */
   memcpy(&Q[0], &dv0[0], 2304U * sizeof(double));
   for (jj = 0; jj < 7; jj++) {
-    Q[(((1 + jj) << 2) + 48 * (((1 + jj) << 2) - 1)) - 1] = 10.0;
     Q[((1 + jj) << 2) + 48 * ((1 + jj) << 2)] = 10.0;
+    Q[(((1 + jj) << 2) + 48 * (((1 + jj) << 2) + 1)) + 1] = 10.0;
   }
 
-  for (jj = 0; jj < 8; jj++) {
-    Q[(((5 + jj) << 2) + 48 * (((5 + jj) << 2) - 1)) - 1] = 1.15;
+  for (jj = 0; jj < 7; jj++) {
     Q[((5 + jj) << 2) + 48 * ((5 + jj) << 2)] = 1.15;
+    Q[(((5 + jj) << 2) + 48 * (((5 + jj) << 2) + 1)) + 1] = 1.15;
   }
 
-  //  Build Ap
+  /*  Build Ap */
   memset(&Ap[0], 0, 192U * sizeof(double));
   eye(Ap0);
   for (jj = 0; jj < 12; jj++) {
@@ -311,7 +303,7 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
     }
   }
 
-  //  Build Bp
+  /*  Build Bp */
   memset(&Bp[0], 0, 480U * sizeof(double));
   for (jj = 0; jj < 12; jj++) {
     memset(&Bpj[0], 0, 40U * sizeof(double));
@@ -369,7 +361,7 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
       }
     }
 
-    //                  disp(Bp);
+    /*                  disp(Bp); */
   }
 
   memset(&Cv[0], 0, 1152U * sizeof(signed char));
@@ -451,18 +443,18 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
     S[i0] = -S[i0];
   }
 
-  //  G = eye(2*M, 2*M);
-  //  G = [G ; -eye(2*M, 2*M)];
-  //  G = -G;
-  //  S = ones(4*M,1)*20;
-  //  S = -S;
-  //  G = Cv*Bp;
-  //  G = [G ; -Cv*Bp];
-  //
-  //  S = ones(2*P,1)*17 - Cv*Ap*xk;
-  //  S = [S; ones(2*P,1)*17 + Cv*Ap*xk];
-  //  ub = ones(2*M,1)*20;
-  //  lb = ones(2*M,1)*(-20);
+  /*  G = eye(2*M, 2*M); */
+  /*  G = [G ; -eye(2*M, 2*M)]; */
+  /*  G = -G; */
+  /*  S = ones(4*M,1)*20; */
+  /*  S = -S; */
+  /*  G = Cv*Bp; */
+  /*  G = [G ; -Cv*Bp]; */
+  /*   */
+  /*  S = ones(2*P,1)*17 - Cv*Ap*xk; */
+  /*  S = [S; ones(2*P,1)*17 + Cv*Ap*xk]; */
+  /*  ub = ones(2*M,1)*20; */
+  /*  lb = ones(2*M,1)*(-20); */
   for (i0 = 0; i0 < 10; i0++) {
     for (i1 = 0; i1 < 48; i1++) {
       b_Bp[i0 + 10 * i1] = 0.0;
@@ -523,14 +515,13 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
         }
 
         ajj = 1.0 / ajj;
-        memcpy(&Linv_data[0], &A_data[0], 100U * sizeof(double));
+        memcpy(&L_data[0], &A_data[0], 100U * sizeof(double));
         i0 = jj - j;
-        for (jmax = jj + 1; jmax + 1 <= i0 + 11; jmax++) {
-          Linv_data[jmax] *= ajj;
+        for (jmax = jj + 1; jmax < i0 + 11; jmax++) {
+          L_data[jmax] *= ajj;
         }
 
-        memcpy(&A_data[0], &Linv_data[0], (unsigned int)(100 * (int)sizeof
-                (double)));
+        memcpy(&A_data[0], &L_data[0], (unsigned int)(100 * (int)sizeof(double)));
       }
 
       j++;
@@ -541,16 +532,16 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
     }
   }
 
-  memcpy(&Linv_data[0], &A_data[0], 100U * sizeof(double));
+  memcpy(&L_data[0], &A_data[0], 100U * sizeof(double));
   if (info == 0) {
     jmax = 10;
   } else {
     jmax = info - 1;
   }
 
-  for (j = 1; j + 1 <= jmax; j++) {
+  for (j = 1; j < jmax; j++) {
     for (jj = 1; jj <= j; jj++) {
-      Linv_data[(jj + 10 * j) - 1] = 0.0;
+      L_data[(jj + 10 * j) - 1] = 0.0;
     }
   }
 
@@ -563,22 +554,22 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
 
   for (i0 = 0; i0 < jmax; i0++) {
     for (i1 = 0; i1 < loop_ub; i1++) {
-      R[i1 + loop_ub * i0] = Linv_data[i1 + 10 * i0];
+      R[i1 + loop_ub * i0] = L_data[i1 + 10 * i0];
     }
   }
 
-  Linv_size[0] = loop_ub;
-  Linv_size[1] = jmax;
+  L_size[0] = loop_ub;
+  L_size[1] = jmax;
   for (i0 = 0; i0 < jmax; i0++) {
     for (i1 = 0; i1 < loop_ub; i1++) {
-      Linv_data[i1 + loop_ub * i0] = R[i1 + loop_ub * i0];
+      L_data[i1 + loop_ub * i0] = R[i1 + loop_ub * i0];
     }
   }
 
   emxInit_real_T(&b_rp, 2);
-  inv(Linv_data, Linv_size);
 
-  //      [x,fval,exitflag,output,lambda] = quadprog(H,f,A,b,[],[],lb);
+  /*      [x,fval,exitflag,output,lambda] = quadprog(H,f,A,b,[],[],lb); */
+  inv(L_data, L_size);
   i0 = b_rp->size[0] * b_rp->size[1];
   b_rp->size[0] = 1;
   b_rp->size[1] = rp->size[0];
@@ -614,11 +605,7 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
     d_xk[i0] = e_xk[i0];
   }
 
-  mpcqpsolver(Linv_data, Linv_size, d_xk, G, S, x_data, x_size, &ajj);
+  mpcqpsolver(L_data, L_size, d_xk, G, S, x_data, x_size, &ajj);
 }
 
-//
-// File trailer for solveQP.cpp
-//
-// [EOF]
-//
+/* End of code generation (solveQP.cpp) */
