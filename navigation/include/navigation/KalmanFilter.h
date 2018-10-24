@@ -44,7 +44,7 @@ class KalmanFilter {
         
         // Setters and getters
         void SetXhatInitialPoint(Vector4d xk);
-        void SetPredHorizon(int nPred);
+        void SetPredHorizon(int num);
         Matrix4d SetAMatrix(double dt);
 
         // Core functions
@@ -52,7 +52,7 @@ class KalmanFilter {
         Vector4d UpdateWithGPSMeasurements(Vector4d output, double dt);
         Vector4d UpdateWithCameraMeasurements(Vector2d output, double dt);
         Vector4d PredictWOObservation(double dt);
-        VectorXd Predict(Vector4d xk);
+        VectorXd Predict(Vector4d xk, int num);
 
 
 

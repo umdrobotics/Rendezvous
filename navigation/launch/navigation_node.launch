@@ -20,6 +20,7 @@
         <param name="sigma_GPSvy" type="double" value="0.18"/>
         <param name="sigma_Apriltagpx" type="double" value="0.1"/>
         <param name="sigma_Apriltagpy" type="double" value="0.1"/>
+        <param name="nPred" type="int" value="2"/>
     </group>
     <node name="navigation_node" pkg="navigation" type="navigation_node" output="screen" cwd="node">
     </node>

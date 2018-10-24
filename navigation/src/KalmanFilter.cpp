@@ -71,10 +71,9 @@ void KalmanFilter::Initialize()
 
 }
 
-void KalmanFilter::SetPredHorizon(int nPred){
+void KalmanFilter::SetPredHorizon(int num){
     
-    nPred_ = nPred;
-    XP_ = MatrixXd::Zero(nx_*nPred_,1);
+    XP_ = MatrixXd::Zero(nx_*num,1);
     
 }    
 
@@ -163,7 +162,7 @@ Vector4d KalmanFilter::PredictWOObservation(double dt){
 }
 
 
-VectorXd KalmanFilter::Predict(Vector4d xk)
+VectorXd KalmanFilter::Predict(Vector4d xk, int num)
 {
 	double dt = 0.025;
     Matrix4d A = SetAMatrix(dt);
@@ -171,7 +170,7 @@ VectorXd KalmanFilter::Predict(Vector4d xk)
 	xPred_ = xk;
 	XP_.segment(0, nx_) = xPred_;
 	
-    for(int i = 1; i < nPred_; i++){
+    for(int i = 1; i < num; i++){
 
         xPred_ = A * xPred_;
         // pPred_ = Ap_ * P_ * Ap_.transpose() + Q_;
