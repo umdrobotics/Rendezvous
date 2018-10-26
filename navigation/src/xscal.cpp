@@ -3,21 +3,26 @@
  * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
  *
- * solveQP_initialize.cpp
+ * xscal.cpp
  *
- * Code generation for function 'solveQP_initialize'
+ * Code generation for function 'xscal'
  *
  */
 
 /* Include files */
 #include "rt_nonfinite.h"
 #include "solveQP.h"
-#include "solveQP_initialize.h"
+#include "xscal.h"
 
 /* Function Definitions */
-void solveQP_initialize()
+void xscal(int n, double a, emxArray_real_T *x, int ix0)
 {
-  rt_InitInfAndNaN(8U);
+  int i10;
+  int k;
+  i10 = (ix0 + n) - 1;
+  for (k = ix0; k <= i10; k++) {
+    x->data[k - 1] *= a;
+  }
 }
 
-/* End of code generation (solveQP_initialize.cpp) */
+/* End of code generation (xscal.cpp) */

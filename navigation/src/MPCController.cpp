@@ -39,6 +39,12 @@ MPCController::MPCController()
 
 	P_ = 12; //12
     M_ = 5; //5
+    q_ = 0.99;
+    kiPos_ = 0.001;
+    kiVec_ = 0;
+    Qk_ = 7;
+    Qf_ = 10;
+    Qb_ = 1.5;
     
     //~ 
     nx_ = B_.rows();

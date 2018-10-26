@@ -12,239 +12,119 @@
 /* Include files */
 #include <cmath>
 #include <string.h>
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/mpcqpsolver.h"
-#include "navigation/solveQP_emxutil.h"
-#include "navigation/inv.h"
-#include "navigation/mpower.h"
-#include "navigation/eye.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "xscal.h"
+#include "solveQP_emxutil.h"
+#include "mpcqpsolver.h"
+#include "inv.h"
+#include "eye.h"
+#include "mpower.h"
 
 /* Function Definitions */
-void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
-             x_size[1])
+void solveQP(double P, double M, const double xk[4], const emxArray_real_T *rp,
+             double q, double k, double Qf, double Qb, emxArray_real_T *x)
 {
-  double Q[2304];
-  static const double dv0[2304] = { 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.99 };
-
-  int jj;
-  double Ap[192];
-  double Ap0[16];
+  emxArray_real_T *Q;
   int i0;
-  double Bp[480];
-  int jmax;
   int i1;
-  signed char Cv[1152];
-  double Bpj[40];
-  double b_Ap0[16];
   int loop_ub;
+  double a;
+  int i;
+  emxArray_real_T *Ap;
+  double temp;
+  double Ap0[16];
+  emxArray_real_T *Bp;
+  int iy;
+  double b_Ap0[16];
+  int i2;
+  double c;
+  int nmj;
+  int coffset;
   static const double b[16] = { 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.025,
     0.0, 0.9994, 0.0, 0.0, 0.025, 0.0, 0.9994 };
 
+  emxArray_real_T *Bpj;
+  emxArray_real_T *Linv;
+  emxArray_real_T *b_a;
   double Bpi[8];
   static const double B[8] = { -0.0031, 0.0, -0.2451, 0.0, 0.0, -0.0031, 0.0,
     -0.2451 };
 
-  double G[680];
-  static const signed char iv0[100] = { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 1 };
-
-  int j;
-  static const signed char iv1[100] = { -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1 };
-
-  short b_Cv[1152];
-  double S[68];
-  int info;
-  double b_b[8];
-  double ajj;
-  double c_Cv[96];
-  double d_Cv[96];
-  double A_data[100];
-  double R[100];
-  double b_Bp[480];
-  boolean_T exitg1;
-  double L_data[100];
-  static const double b_R[100] = { 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0, 0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0035000000000000027, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-    0.0035000000000000027 };
-
+  int jj;
+  int m;
+  int inner;
   int ix;
-  int iy;
-  int L_size[2];
-  double c;
-  emxArray_real_T *b_rp;
-  double b_xk[48];
-  double c_xk[48];
-  double d_xk[10];
-  double e_xk[10];
+  int n;
+  int j;
+  emxArray_real_T *r0;
+  int boffset;
+  int aoffset;
+  double b_b[8];
+  int b_k;
+  emxArray_real_T *H;
+  emxArray_real_T *y;
+  emxArray_real_T *b_y;
+  emxArray_real_T *c_a;
+  emxArray_real_T *G;
+  emxArray_real_T *c_y;
+  emxArray_real_T *S;
+  emxArray_int8_T *d_a;
+  emxArray_int32_T *r1;
+  emxArray_real_T *d_y;
+  emxArray_real_T *r2;
+  boolean_T exitg1;
+  unsigned int unnamed_idx_0;
+  emxArray_boolean_T *r3;
+  emxInit_real_T(&Q, 2);
 
+  /*  input */
+  /*  P = 12; */
+  /*  M = 5; */
+  /*  % rp = repmat([100,100,0,0]', P ,1); */
+  /*  % xk = [0,0,0,0]'; */
+  /*   */
+  /*  q = 0.99; */
+  eye(4.0 * P, Q);
+  i0 = Q->size[0] * Q->size[1];
+  i1 = Q->size[0] * Q->size[1];
+  emxEnsureCapacity_real_T(Q, i1);
+  loop_ub = i0 - 1;
+  for (i0 = 0; i0 <= loop_ub; i0++) {
+    Q->data[i0] *= q;
+  }
+
+  a = 0.35 * (1.0 - q);
+
+  /*   */
+  /*  k = 7; */
+  i0 = (int)(k - 1.0);
+  for (i = 0; i < i0; i++) {
+    i1 = 4 * (1 + i);
+    Q->data[i1 + Q->size[0] * i1] = Qf;
+
+    /* 10; */
+    Q->data[(i1 + Q->size[0] * (i1 + 1)) + 1] = Qf;
+
+    /* 10; */
+  }
+
+  i0 = (int)((P - 1.0) + (1.0 - k));
+  for (i = 0; i < i0; i++) {
+    temp = k + (double)i;
+    i1 = (int)(4.0 * temp + 1.0);
+    Q->data[(i1 + Q->size[0] * (i1 - 1)) - 1] = Qb;
+
+    /* 1.15; */
+    i1 = (int)(4.0 * temp + 2.0);
+    Q->data[(i1 + Q->size[0] * (i1 - 1)) - 1] = Qb;
+
+    /* 1.15; */
+  }
+
+  emxInit_real_T(&Ap, 2);
+
+  /*  */
   /*      H = [1 -1; -1 2]; */
   /*      f = [-2; -6]; */
   /*      A = [1 1; -1 2; 2 1]; */
@@ -267,180 +147,878 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
   /*       -0.0001    0.0004; */
   /*       -0.0035    -0.0051; */
   /*       0.0132     -0.0049]; */
-  /*  rp = repmat([100,100,0,0]', P ,1); */
-  /*  xk = [0,0,0,0]'; */
-  memcpy(&Q[0], &dv0[0], 2304U * sizeof(double));
-  for (jj = 0; jj < 7; jj++) {
-    Q[((1 + jj) << 2) + 48 * ((1 + jj) << 2)] = 10.0;
-    Q[(((1 + jj) << 2) + 48 * (((1 + jj) << 2) + 1)) + 1] = 10.0;
-  }
-
-  for (jj = 0; jj < 7; jj++) {
-    Q[((5 + jj) << 2) + 48 * ((5 + jj) << 2)] = 1.15;
-    Q[(((5 + jj) << 2) + 48 * (((5 + jj) << 2) + 1)) + 1] = 1.15;
-  }
-
   /*  Build Ap */
-  memset(&Ap[0], 0, 192U * sizeof(double));
-  eye(Ap0);
-  for (jj = 0; jj < 12; jj++) {
-    for (i0 = 0; i0 < 4; i0++) {
-      for (i1 = 0; i1 < 4; i1++) {
-        b_Ap0[i0 + (i1 << 2)] = 0.0;
-        for (loop_ub = 0; loop_ub < 4; loop_ub++) {
-          b_Ap0[i0 + (i1 << 2)] += Ap0[i0 + (loop_ub << 2)] * b[loop_ub + (i1 <<
-            2)];
-        }
+  i0 = Ap->size[0] * Ap->size[1];
+  i1 = (int)(4.0 * P);
+  Ap->size[0] = i1;
+  Ap->size[1] = 4;
+  emxEnsureCapacity_real_T(Ap, i0);
+  loop_ub = i1 << 2;
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    Ap->data[i0] = 0.0;
+  }
+
+  b_eye(Ap0);
+  i0 = (int)P;
+  for (i = 0; i < i0; i++) {
+    for (iy = 0; iy < 4; iy++) {
+      for (i2 = 0; i2 < 4; i2++) {
+        nmj = i2 << 2;
+        coffset = iy + nmj;
+        b_Ap0[coffset] = 0.0;
+        b_Ap0[coffset] = ((Ap0[iy] * b[nmj] + Ap0[iy + 4] * b[1 + nmj]) + Ap0[iy
+                          + 8] * b[2 + nmj]) + Ap0[iy + 12] * b[3 + nmj];
       }
     }
 
-    jmax = jj << 2;
-    for (i0 = 0; i0 < 4; i0++) {
-      for (i1 = 0; i1 < 4; i1++) {
-        Ap0[i1 + (i0 << 2)] = b_Ap0[i1 + (i0 << 2)];
-        Ap[(i1 + jmax) + 48 * i0] = Ap0[i1 + (i0 << 2)];
-      }
+    memcpy(&Ap0[0], &b_Ap0[0], sizeof(double) << 4);
+    c = ((1.0 + (double)i) - 1.0) * 4.0;
+    for (iy = 0; iy < 4; iy++) {
+      i2 = iy << 2;
+      Ap->data[(int)c + Ap->size[0] * iy] = Ap0[i2];
+      Ap->data[((int)c + Ap->size[0] * iy) + 1] = Ap0[1 + i2];
+      Ap->data[((int)c + Ap->size[0] * iy) + 2] = Ap0[2 + i2];
+      Ap->data[((int)c + Ap->size[0] * iy) + 3] = Ap0[3 + i2];
     }
   }
+
+  emxInit_real_T(&Bp, 2);
 
   /*  Build Bp */
-  memset(&Bp[0], 0, 480U * sizeof(double));
-  for (jj = 0; jj < 12; jj++) {
-    memset(&Bpj[0], 0, 40U * sizeof(double));
-    if (1 + jj < 5) {
+  iy = Bp->size[0] * Bp->size[1];
+  Bp->size[0] = i1;
+  i2 = (int)(2.0 * M);
+  Bp->size[1] = i2;
+  emxEnsureCapacity_real_T(Bp, iy);
+  loop_ub = i1 * i2;
+  for (iy = 0; iy < loop_ub; iy++) {
+    Bp->data[iy] = 0.0;
+  }
+
+  emxInit_real_T(&Bpj, 2);
+  for (i = 0; i < i0; i++) {
+    iy = Bpj->size[0] * Bpj->size[1];
+    Bpj->size[0] = 4;
+    Bpj->size[1] = i2;
+    emxEnsureCapacity_real_T(Bpj, iy);
+    loop_ub = i2 << 2;
+    for (iy = 0; iy < loop_ub; iy++) {
+      Bpj->data[iy] = 0.0;
+    }
+
+    if (1.0 + (double)i < M) {
       memcpy(&Bpi[0], &B[0], sizeof(double) << 3);
     } else {
-      mpower(b, (1.0 + (double)jj) - 5.0, Ap0);
-      for (i0 = 0; i0 < 4; i0++) {
-        for (i1 = 0; i1 < 2; i1++) {
-          Bpi[i0 + (i1 << 2)] = 0.0;
-          for (loop_ub = 0; loop_ub < 4; loop_ub++) {
-            Bpi[i0 + (i1 << 2)] += Ap0[i0 + (loop_ub << 2)] * B[loop_ub + (i1 <<
-              2)];
-          }
+      mpower(b, (1.0 + (double)i) - M, Ap0);
+      for (iy = 0; iy < 4; iy++) {
+        for (ix = 0; ix < 2; ix++) {
+          nmj = ix << 2;
+          coffset = iy + nmj;
+          Bpi[coffset] = 0.0;
+          Bpi[coffset] = ((Ap0[iy] * B[nmj] + Ap0[iy + 4] * B[1 + nmj]) + Ap0[iy
+                          + 8] * B[2 + nmj]) + Ap0[iy + 12] * B[3 + nmj];
         }
       }
     }
 
-    if (5 < 1 + jj) {
-      i0 = 4;
-    } else {
-      i0 = jj;
+    temp = 1.0 + (double)i;
+    if (M < temp) {
+      temp = M;
     }
 
-    i1 = (int)((1.0 + (-1.0 - ((double)i0 + 1.0))) / -1.0);
-    for (j = 0; j < i1; j++) {
-      jmax = (i0 - j) << 1;
-      for (loop_ub = 0; loop_ub < 2; loop_ub++) {
-        for (info = 0; info < 4; info++) {
-          Bpj[info + ((loop_ub + jmax) << 2)] = Bpi[info + (loop_ub << 2)];
+    iy = (int)((1.0 + (-1.0 - temp)) / -1.0);
+    for (j = 0; j < iy; j++) {
+      c = ((temp + -(double)j) - 1.0) * 2.0;
+      for (ix = 0; ix < 2; ix++) {
+        boffset = ix << 2;
+        nmj = ((int)(c + (1.0 + (double)ix)) - 1) << 2;
+        Bpj->data[nmj] = Bpi[boffset];
+        Bpj->data[1 + nmj] = Bpi[1 + boffset];
+        Bpj->data[2 + nmj] = Bpi[2 + boffset];
+        Bpj->data[3 + nmj] = Bpi[3 + boffset];
+      }
+
+      for (ix = 0; ix < 4; ix++) {
+        for (boffset = 0; boffset < 2; boffset++) {
+          nmj = boffset << 2;
+          coffset = ix + nmj;
+          b_b[coffset] = 0.0;
+          b_b[coffset] = ((b[ix] * Bpi[nmj] + b[ix + 4] * Bpi[1 + nmj]) + b[ix +
+                          8] * Bpi[2 + nmj]) + b[ix + 12] * Bpi[3 + nmj];
         }
       }
 
-      for (loop_ub = 0; loop_ub < 4; loop_ub++) {
-        for (info = 0; info < 2; info++) {
-          b_b[loop_ub + (info << 2)] = 0.0;
-          for (jmax = 0; jmax < 4; jmax++) {
-            b_b[loop_ub + (info << 2)] += b[loop_ub + (jmax << 2)] * Bpi[jmax +
-              (info << 2)];
-          }
-        }
-      }
-
-      for (loop_ub = 0; loop_ub < 2; loop_ub++) {
-        for (info = 0; info < 4; info++) {
-          Bpi[info + (loop_ub << 2)] = b_b[info + (loop_ub << 2)];
-        }
-      }
+      memcpy(&Bpi[0], &b_b[0], sizeof(double) << 3);
     }
 
-    jmax = jj << 2;
-    for (i0 = 0; i0 < 10; i0++) {
-      for (i1 = 0; i1 < 4; i1++) {
-        Bp[(i1 + jmax) + 48 * i0] = Bpj[i1 + (i0 << 2)];
-      }
+    c = ((1.0 + (double)i) - 1.0) * 4.0;
+    coffset = (int)(c + 1.0) - 1;
+    nmj = (int)c;
+    boffset = nmj + 1;
+    aoffset = nmj + 2;
+    nmj += 3;
+    loop_ub = Bpj->size[1];
+    for (iy = 0; iy < loop_ub; iy++) {
+      ix = iy << 2;
+      Bp->data[coffset + Bp->size[0] * iy] = Bpj->data[ix];
+      Bp->data[boffset + Bp->size[0] * iy] = Bpj->data[1 + ix];
+      Bp->data[aoffset + Bp->size[0] * iy] = Bpj->data[2 + ix];
+      Bp->data[nmj + Bp->size[0] * iy] = Bpj->data[3 + ix];
     }
 
     /*                  disp(Bp); */
   }
 
-  memset(&Cv[0], 0, 1152U * sizeof(signed char));
-  for (jj = 0; jj < 12; jj++) {
-    Cv[(jj << 1) + 24 * ((jj << 2) + 2)] = 1;
-    Cv[((jj << 1) + 24 * ((jj << 2) + 3)) + 1] = 1;
-  }
-
-  memset(&G[0], 0, 680U * sizeof(double));
-  for (i0 = 0; i0 < 10; i0++) {
-    for (i1 = 0; i1 < 10; i1++) {
-      G[i1 + 68 * i0] = iv0[i1 + 10 * i0];
-      G[(i1 + 68 * i0) + 10] = iv1[i1 + 10 * i0];
+  emxInit_real_T(&Linv, 2);
+  emxInit_real_T(&b_a, 2);
+  i0 = b_a->size[0] * b_a->size[1];
+  b_a->size[0] = Bp->size[1];
+  b_a->size[1] = Bp->size[0];
+  emxEnsureCapacity_real_T(b_a, i0);
+  loop_ub = Bp->size[0];
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    jj = Bp->size[1];
+    for (iy = 0; iy < jj; iy++) {
+      b_a->data[iy + b_a->size[0] * i0] = Bp->data[i0 + Bp->size[0] * iy];
     }
   }
 
-  for (i0 = 0; i0 < 24; i0++) {
-    for (i1 = 0; i1 < 10; i1++) {
-      G[(i0 + 68 * i1) + 20] = 0.0;
-      for (loop_ub = 0; loop_ub < 48; loop_ub++) {
-        G[(i0 + 68 * i1) + 20] += (double)Cv[i0 + 24 * loop_ub] * Bp[loop_ub +
-          48 * i1];
+  if ((b_a->size[1] == 1) || (Q->size[0] == 1)) {
+    i0 = Linv->size[0] * Linv->size[1];
+    Linv->size[0] = b_a->size[0];
+    Linv->size[1] = Q->size[1];
+    emxEnsureCapacity_real_T(Linv, i0);
+    loop_ub = b_a->size[0];
+    for (i0 = 0; i0 < loop_ub; i0++) {
+      jj = Q->size[1];
+      for (iy = 0; iy < jj; iy++) {
+        Linv->data[i0 + Linv->size[0] * iy] = 0.0;
+        boffset = b_a->size[1];
+        for (ix = 0; ix < boffset; ix++) {
+          Linv->data[i0 + Linv->size[0] * iy] += b_a->data[i0 + b_a->size[0] *
+            ix] * Q->data[ix + Q->size[0] * iy];
+        }
+      }
+    }
+  } else {
+    m = b_a->size[0];
+    inner = b_a->size[1];
+    n = Q->size[1];
+    i0 = Linv->size[0] * Linv->size[1];
+    Linv->size[0] = b_a->size[0];
+    Linv->size[1] = Q->size[1];
+    emxEnsureCapacity_real_T(Linv, i0);
+    for (j = 0; j < n; j++) {
+      coffset = j * m;
+      boffset = j * inner;
+      for (i = 0; i < m; i++) {
+        Linv->data[coffset + i] = 0.0;
+      }
+
+      for (b_k = 0; b_k < inner; b_k++) {
+        aoffset = b_k * m;
+        temp = Q->data[boffset + b_k];
+        for (i = 0; i < m; i++) {
+          i0 = coffset + i;
+          Linv->data[i0] += temp * b_a->data[aoffset + i];
+        }
       }
     }
   }
 
-  for (i0 = 0; i0 < 48; i0++) {
-    for (i1 = 0; i1 < 24; i1++) {
-      b_Cv[i1 + 24 * i0] = (short)-Cv[i1 + 24 * i0];
+  emxInit_real_T(&r0, 2);
+  if ((Linv->size[1] == 1) || (Bp->size[0] == 1)) {
+    i0 = r0->size[0] * r0->size[1];
+    r0->size[0] = Linv->size[0];
+    r0->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(r0, i0);
+    loop_ub = Linv->size[0];
+    for (i0 = 0; i0 < loop_ub; i0++) {
+      jj = Bp->size[1];
+      for (iy = 0; iy < jj; iy++) {
+        r0->data[i0 + r0->size[0] * iy] = 0.0;
+        boffset = Linv->size[1];
+        for (ix = 0; ix < boffset; ix++) {
+          r0->data[i0 + r0->size[0] * iy] += Linv->data[i0 + Linv->size[0] * ix]
+            * Bp->data[ix + Bp->size[0] * iy];
+        }
+      }
     }
-  }
+  } else {
+    m = Linv->size[0];
+    inner = Linv->size[1];
+    n = Bp->size[1];
+    i0 = r0->size[0] * r0->size[1];
+    r0->size[0] = Linv->size[0];
+    r0->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(r0, i0);
+    for (j = 0; j < n; j++) {
+      coffset = j * m;
+      boffset = j * inner;
+      for (i = 0; i < m; i++) {
+        r0->data[coffset + i] = 0.0;
+      }
 
-  for (i0 = 0; i0 < 24; i0++) {
-    for (i1 = 0; i1 < 10; i1++) {
-      G[(i0 + 68 * i1) + 44] = 0.0;
-      for (loop_ub = 0; loop_ub < 48; loop_ub++) {
-        G[(i0 + 68 * i1) + 44] += (double)b_Cv[i0 + 24 * loop_ub] * Bp[loop_ub +
-          48 * i1];
+      for (b_k = 0; b_k < inner; b_k++) {
+        aoffset = b_k * m;
+        temp = Bp->data[boffset + b_k];
+        for (i = 0; i < m; i++) {
+          i0 = coffset + i;
+          r0->data[i0] += temp * Linv->data[aoffset + i];
+        }
       }
     }
   }
 
-  for (i0 = 0; i0 < 680; i0++) {
-    G[i0] = -G[i0];
+  emxInit_real_T(&H, 2);
+  eye(2.0 * M, H);
+  i0 = H->size[0] * H->size[1];
+  iy = H->size[0] * H->size[1];
+  emxEnsureCapacity_real_T(H, iy);
+  loop_ub = i0 - 1;
+  for (i0 = 0; i0 <= loop_ub; i0++) {
+    H->data[i0] = a * H->data[i0] + r0->data[i0];
   }
 
-  memset(&S[0], 0, 68U * sizeof(double));
-  for (jj = 0; jj < 20; jj++) {
-    S[jj] = 20.0;
+  i0 = Bpj->size[0] * Bpj->size[1];
+  Bpj->size[0] = 4;
+  Bpj->size[1] = Ap->size[0];
+  emxEnsureCapacity_real_T(Bpj, i0);
+  loop_ub = Ap->size[0];
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    iy = i0 << 2;
+    Bpj->data[iy] = Ap->data[i0];
+    Bpj->data[1 + iy] = Ap->data[i0 + Ap->size[0]];
+    Bpj->data[2 + iy] = Ap->data[i0 + (Ap->size[0] << 1)];
+    Bpj->data[3 + iy] = Ap->data[i0 + Ap->size[0] * 3];
   }
 
-  for (i0 = 0; i0 < 24; i0++) {
-    ajj = 0.0;
-    for (i1 = 0; i1 < 4; i1++) {
-      c_Cv[i0 + 24 * i1] = 0.0;
-      for (loop_ub = 0; loop_ub < 48; loop_ub++) {
-        c_Cv[i0 + 24 * i1] += (double)Cv[i0 + 24 * loop_ub] * Ap[loop_ub + 48 *
-          i1];
+  emxInit_real_T(&y, 2);
+  n = Bpj->size[1];
+  i0 = y->size[0] * y->size[1];
+  y->size[0] = 1;
+  y->size[1] = Bpj->size[1];
+  emxEnsureCapacity_real_T(y, i0);
+  for (j = 0; j < n; j++) {
+    boffset = j << 2;
+    y->data[j] = 0.0;
+    y->data[j] += Bpj->data[boffset] * xk[0];
+    y->data[j] += Bpj->data[boffset + 1] * xk[1];
+    y->data[j] += Bpj->data[boffset + 2] * xk[2];
+    y->data[j] += Bpj->data[boffset + 3] * xk[3];
+  }
+
+  emxFree_real_T(&Bpj);
+  emxInit_real_T(&b_y, 2);
+  emxInit_real_T(&c_a, 2);
+  i0 = c_a->size[0] * c_a->size[1];
+  c_a->size[0] = 1;
+  c_a->size[1] = y->size[1];
+  emxEnsureCapacity_real_T(c_a, i0);
+  loop_ub = y->size[1];
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    c_a->data[i0] = y->data[i0] - rp->data[i0];
+  }
+
+  if ((c_a->size[1] == 1) || (Q->size[0] == 1)) {
+    i0 = b_y->size[0] * b_y->size[1];
+    b_y->size[0] = 1;
+    b_y->size[1] = Q->size[1];
+    emxEnsureCapacity_real_T(b_y, i0);
+    loop_ub = Q->size[1];
+    for (i0 = 0; i0 < loop_ub; i0++) {
+      b_y->data[i0] = 0.0;
+      jj = c_a->size[1];
+      for (iy = 0; iy < jj; iy++) {
+        b_y->data[i0] += c_a->data[iy] * Q->data[iy + Q->size[0] * i0];
+      }
+    }
+  } else {
+    inner = c_a->size[1];
+    n = Q->size[1];
+    i0 = b_y->size[0] * b_y->size[1];
+    b_y->size[0] = 1;
+    b_y->size[1] = Q->size[1];
+    emxEnsureCapacity_real_T(b_y, i0);
+    for (j = 0; j < n; j++) {
+      boffset = j * inner;
+      b_y->data[j] = 0.0;
+      for (b_k = 0; b_k < inner; b_k++) {
+        b_y->data[j] += Q->data[boffset + b_k] * c_a->data[b_k];
+      }
+    }
+  }
+
+  emxFree_real_T(&c_a);
+  if ((b_y->size[1] == 1) || (Bp->size[0] == 1)) {
+    i0 = y->size[0] * y->size[1];
+    y->size[0] = 1;
+    y->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(y, i0);
+    loop_ub = Bp->size[1];
+    for (i0 = 0; i0 < loop_ub; i0++) {
+      y->data[i0] = 0.0;
+      jj = b_y->size[1];
+      for (iy = 0; iy < jj; iy++) {
+        y->data[i0] += b_y->data[iy] * Bp->data[iy + Bp->size[0] * i0];
+      }
+    }
+  } else {
+    inner = b_y->size[1];
+    n = Bp->size[1];
+    i0 = y->size[0] * y->size[1];
+    y->size[0] = 1;
+    y->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(y, i0);
+    for (j = 0; j < n; j++) {
+      boffset = j * inner;
+      y->data[j] = 0.0;
+      for (b_k = 0; b_k < inner; b_k++) {
+        y->data[j] += Bp->data[boffset + b_k] * b_y->data[b_k];
+      }
+    }
+  }
+
+  emxFree_real_T(&b_y);
+  i0 = Q->size[0] * Q->size[1];
+  loop_ub = (int)(2.0 * P);
+  Q->size[0] = loop_ub;
+  Q->size[1] = i1;
+  emxEnsureCapacity_real_T(Q, i0);
+  jj = loop_ub * i1;
+  for (i0 = 0; i0 < jj; i0++) {
+    Q->data[i0] = 0.0;
+  }
+
+  i0 = (int)((P - 1.0) + 1.0);
+  for (i = 0; i < i0; i++) {
+    Q->data[(int)((unsigned int)i << 1) + Q->size[0] * (4 * i + 2)] = 1.0;
+    Q->data[(2 * i + Q->size[0] * (4 * i + 3)) + 1] = 1.0;
+  }
+
+  emxInit_real_T(&G, 2);
+  i0 = G->size[0] * G->size[1];
+  jj = (int)(4.0 * P + 4.0 * M);
+  G->size[0] = jj;
+  G->size[1] = i2;
+  emxEnsureCapacity_real_T(G, i0);
+  boffset = jj * i2;
+  for (i0 = 0; i0 < boffset; i0++) {
+    G->data[i0] = 0.0;
+  }
+
+  c_eye(2.0 * M, 2.0 * M, Linv);
+  boffset = Linv->size[1];
+  for (i0 = 0; i0 < boffset; i0++) {
+    nmj = Linv->size[0];
+    for (i1 = 0; i1 < nmj; i1++) {
+      G->data[i1 + G->size[0] * i0] = Linv->data[i1 + Linv->size[0] * i0];
+    }
+  }
+
+  c = 2.0 * M + 1.0;
+  if (c > 4.0 * M) {
+    i0 = 0;
+  } else {
+    i0 = (int)c - 1;
+  }
+
+  boffset = Linv->size[1];
+  for (i1 = 0; i1 < boffset; i1++) {
+    nmj = Linv->size[0];
+    for (iy = 0; iy < nmj; iy++) {
+      G->data[(i0 + iy) + G->size[0] * i1] = -Linv->data[iy + Linv->size[0] * i1];
+    }
+  }
+
+  emxInit_real_T(&c_y, 1);
+  c = 4.0 * M;
+  i0 = c_y->size[0];
+  boffset = (int)std::floor(2.0 * P - 1.0);
+  c_y->size[0] = boffset + 1;
+  emxEnsureCapacity_real_T(c_y, i0);
+  for (i0 = 0; i0 <= boffset; i0++) {
+    c_y->data[i0] = c + (1.0 + (double)i0);
+  }
+
+  if ((Q->size[1] == 1) || (Bp->size[0] == 1)) {
+    i0 = r0->size[0] * r0->size[1];
+    r0->size[0] = Q->size[0];
+    r0->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(r0, i0);
+    boffset = Q->size[0];
+    for (i0 = 0; i0 < boffset; i0++) {
+      nmj = Bp->size[1];
+      for (i1 = 0; i1 < nmj; i1++) {
+        r0->data[i0 + r0->size[0] * i1] = 0.0;
+        coffset = Q->size[1];
+        for (iy = 0; iy < coffset; iy++) {
+          r0->data[i0 + r0->size[0] * i1] += Q->data[i0 + Q->size[0] * iy] *
+            Bp->data[iy + Bp->size[0] * i1];
+        }
+      }
+    }
+  } else {
+    m = Q->size[0];
+    inner = Q->size[1];
+    n = Bp->size[1];
+    i0 = r0->size[0] * r0->size[1];
+    r0->size[0] = Q->size[0];
+    r0->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(r0, i0);
+    for (j = 0; j < n; j++) {
+      coffset = j * m;
+      boffset = j * inner;
+      for (i = 0; i < m; i++) {
+        r0->data[coffset + i] = 0.0;
       }
 
-      ajj += c_Cv[i0 + 24 * i1] * xk[i1];
-      d_Cv[i0 + 24 * i1] = 0.0;
-      for (loop_ub = 0; loop_ub < 48; loop_ub++) {
-        d_Cv[i0 + 24 * i1] += (double)Cv[i0 + 24 * loop_ub] * Ap[loop_ub + 48 *
-          i1];
+      for (b_k = 0; b_k < inner; b_k++) {
+        aoffset = b_k * m;
+        temp = Bp->data[boffset + b_k];
+        for (i = 0; i < m; i++) {
+          i0 = coffset + i;
+          r0->data[i0] += temp * (double)(signed char)Q->data[aoffset + i];
+        }
+      }
+    }
+  }
+
+  boffset = r0->size[1];
+  for (i0 = 0; i0 < boffset; i0++) {
+    nmj = r0->size[0];
+    for (i1 = 0; i1 < nmj; i1++) {
+      G->data[((int)c_y->data[i1] + G->size[0] * i0) - 1] = r0->data[i1 +
+        r0->size[0] * i0];
+    }
+  }
+
+  c = (2.0 * P + 4.0 * M) + 1.0;
+  if (c > 4.0 * P + 4.0 * M) {
+    i0 = 0;
+  } else {
+    i0 = (int)c - 1;
+  }
+
+  i1 = b_a->size[0] * b_a->size[1];
+  b_a->size[0] = Q->size[0];
+  b_a->size[1] = Q->size[1];
+  emxEnsureCapacity_real_T(b_a, i1);
+  boffset = Q->size[0] * Q->size[1];
+  for (i1 = 0; i1 < boffset; i1++) {
+    b_a->data[i1] = -Q->data[i1];
+  }
+
+  if ((b_a->size[1] == 1) || (Bp->size[0] == 1)) {
+    i1 = r0->size[0] * r0->size[1];
+    r0->size[0] = b_a->size[0];
+    r0->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(r0, i1);
+    boffset = b_a->size[0];
+    for (i1 = 0; i1 < boffset; i1++) {
+      nmj = Bp->size[1];
+      for (iy = 0; iy < nmj; iy++) {
+        r0->data[i1 + r0->size[0] * iy] = 0.0;
+        coffset = b_a->size[1];
+        for (i2 = 0; i2 < coffset; i2++) {
+          r0->data[i1 + r0->size[0] * iy] += b_a->data[i1 + b_a->size[0] * i2] *
+            Bp->data[i2 + Bp->size[0] * iy];
+        }
+      }
+    }
+  } else {
+    m = b_a->size[0];
+    inner = b_a->size[1];
+    n = Bp->size[1];
+    i1 = r0->size[0] * r0->size[1];
+    r0->size[0] = b_a->size[0];
+    r0->size[1] = Bp->size[1];
+    emxEnsureCapacity_real_T(r0, i1);
+    for (j = 0; j < n; j++) {
+      coffset = j * m;
+      boffset = j * inner;
+      for (i = 0; i < m; i++) {
+        r0->data[coffset + i] = 0.0;
+      }
+
+      for (b_k = 0; b_k < inner; b_k++) {
+        aoffset = b_k * m;
+        temp = Bp->data[boffset + b_k];
+        for (i = 0; i < m; i++) {
+          i1 = coffset + i;
+          r0->data[i1] += temp * (double)(signed char)b_a->data[aoffset + i];
+        }
+      }
+    }
+  }
+
+  emxFree_real_T(&b_a);
+  emxFree_real_T(&Bp);
+  boffset = r0->size[1];
+  for (i1 = 0; i1 < boffset; i1++) {
+    nmj = r0->size[0];
+    for (iy = 0; iy < nmj; iy++) {
+      G->data[(i0 + iy) + G->size[0] * i1] = r0->data[iy + r0->size[0] * i1];
+    }
+  }
+
+  emxFree_real_T(&r0);
+  i0 = G->size[0] * G->size[1];
+  i1 = G->size[0] * G->size[1];
+  emxEnsureCapacity_real_T(G, i1);
+  boffset = i0 - 1;
+  for (i0 = 0; i0 <= boffset; i0++) {
+    G->data[i0] = -G->data[i0];
+  }
+
+  emxInit_real_T(&S, 1);
+  i0 = S->size[0];
+  S->size[0] = jj;
+  emxEnsureCapacity_real_T(S, i0);
+  for (i0 = 0; i0 < jj; i0++) {
+    S->data[i0] = 0.0;
+  }
+
+  c = 4.0 * M;
+  if (1.0 > c) {
+    jj = 0;
+  } else {
+    jj = (int)c;
+  }
+
+  emxInit_int8_T(&d_a, 1);
+  i0 = d_a->size[0];
+  boffset = (int)(4.0 * M);
+  d_a->size[0] = boffset;
+  emxEnsureCapacity_int8_T(d_a, i0);
+  for (i0 = 0; i0 < boffset; i0++) {
+    d_a->data[i0] = 1;
+  }
+
+  emxInit_int32_T(&r1, 2);
+  i0 = r1->size[0] * r1->size[1];
+  r1->size[0] = 1;
+  r1->size[1] = jj;
+  emxEnsureCapacity_int32_T(r1, i0);
+  for (i0 = 0; i0 < jj; i0++) {
+    r1->data[i0] = i0;
+  }
+
+  jj = r1->size[0] * r1->size[1];
+  for (i0 = 0; i0 < jj; i0++) {
+    S->data[r1->data[i0]] = (signed char)(d_a->data[i0] * 20);
+  }
+
+  i0 = d_a->size[0];
+  d_a->size[0] = loop_ub;
+  emxEnsureCapacity_int8_T(d_a, i0);
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    d_a->data[i0] = 1;
+  }
+
+  emxInit_real_T(&d_y, 2);
+  if ((Q->size[1] == 1) || (Ap->size[0] == 1)) {
+    i0 = d_y->size[0] * d_y->size[1];
+    d_y->size[0] = Q->size[0];
+    d_y->size[1] = 4;
+    emxEnsureCapacity_real_T(d_y, i0);
+    jj = Q->size[0];
+    for (i0 = 0; i0 < jj; i0++) {
+      d_y->data[i0] = 0.0;
+      boffset = Q->size[1];
+      for (i1 = 0; i1 < boffset; i1++) {
+        d_y->data[i0] += Q->data[i0 + Q->size[0] * i1] * Ap->data[i1];
+      }
+
+      d_y->data[i0 + d_y->size[0]] = 0.0;
+      boffset = Q->size[1];
+      for (i1 = 0; i1 < boffset; i1++) {
+        d_y->data[i0 + d_y->size[0]] += Q->data[i0 + Q->size[0] * i1] * Ap->
+          data[i1 + Ap->size[0]];
+      }
+
+      d_y->data[i0 + (d_y->size[0] << 1)] = 0.0;
+      boffset = Q->size[1];
+      for (i1 = 0; i1 < boffset; i1++) {
+        d_y->data[i0 + (d_y->size[0] << 1)] += Q->data[i0 + Q->size[0] * i1] *
+          Ap->data[i1 + (Ap->size[0] << 1)];
+      }
+
+      d_y->data[i0 + d_y->size[0] * 3] = 0.0;
+      boffset = Q->size[1];
+      for (i1 = 0; i1 < boffset; i1++) {
+        d_y->data[i0 + d_y->size[0] * 3] += Q->data[i0 + Q->size[0] * i1] *
+          Ap->data[i1 + Ap->size[0] * 3];
+      }
+    }
+  } else {
+    m = Q->size[0];
+    inner = Q->size[1];
+    i0 = d_y->size[0] * d_y->size[1];
+    d_y->size[0] = Q->size[0];
+    d_y->size[1] = 4;
+    emxEnsureCapacity_real_T(d_y, i0);
+    for (i = 0; i < m; i++) {
+      d_y->data[i] = 0.0;
+    }
+
+    for (b_k = 0; b_k < inner; b_k++) {
+      nmj = b_k * m;
+      temp = Ap->data[b_k];
+      for (i = 0; i < m; i++) {
+        d_y->data[i] += temp * (double)(signed char)Q->data[nmj + i];
       }
     }
 
-    S[20 + i0] = 17.0 - ajj;
-    ajj = 0.0;
-    for (i1 = 0; i1 < 4; i1++) {
-      ajj += d_Cv[i0 + 24 * i1] * xk[i1];
+    for (i = 0; i < m; i++) {
+      d_y->data[m + i] = 0.0;
     }
 
-    S[44 + i0] = 17.0 + ajj;
+    for (b_k = 0; b_k < inner; b_k++) {
+      i0 = b_k * m;
+      temp = Ap->data[inner + b_k];
+      for (i = 0; i < m; i++) {
+        i1 = m + i;
+        d_y->data[i1] += temp * (double)(signed char)Q->data[i0 + i];
+      }
+    }
+
+    coffset = m << 1;
+    boffset = inner << 1;
+    for (i = 0; i < m; i++) {
+      d_y->data[coffset + i] = 0.0;
+    }
+
+    for (b_k = 0; b_k < inner; b_k++) {
+      i0 = b_k * m;
+      temp = Ap->data[boffset + b_k];
+      for (i = 0; i < m; i++) {
+        i1 = coffset + i;
+        d_y->data[i1] += temp * (double)(signed char)Q->data[i0 + i];
+      }
+    }
+
+    coffset = 3 * m;
+    boffset = 3 * inner;
+    for (i = 0; i < m; i++) {
+      d_y->data[coffset + i] = 0.0;
+    }
+
+    for (b_k = 0; b_k < inner; b_k++) {
+      i0 = b_k * m;
+      temp = Ap->data[boffset + b_k];
+      for (i = 0; i < m; i++) {
+        i1 = coffset + i;
+        d_y->data[i1] += temp * (double)(signed char)Q->data[i0 + i];
+      }
+    }
   }
 
-  for (i0 = 0; i0 < 68; i0++) {
-    S[i0] = -S[i0];
+  emxInit_real_T(&r2, 1);
+  m = d_y->size[0];
+  i0 = r2->size[0];
+  r2->size[0] = d_y->size[0];
+  emxEnsureCapacity_real_T(r2, i0);
+  for (i = 0; i < m; i++) {
+    r2->data[i] = 0.0;
+  }
+
+  for (i = 0; i < m; i++) {
+    r2->data[i] += xk[0] * d_y->data[i];
+  }
+
+  for (i = 0; i < m; i++) {
+    r2->data[i] += xk[1] * d_y->data[m + i];
+  }
+
+  aoffset = m << 1;
+  for (i = 0; i < m; i++) {
+    r2->data[i] += xk[2] * d_y->data[aoffset + i];
+  }
+
+  aoffset = 3 * m;
+  for (i = 0; i < m; i++) {
+    r2->data[i] += xk[3] * d_y->data[aoffset + i];
+  }
+
+  i0 = r1->size[0] * r1->size[1];
+  r1->size[0] = 1;
+  r1->size[1] = c_y->size[0];
+  emxEnsureCapacity_int32_T(r1, i0);
+  jj = c_y->size[0];
+  for (i0 = 0; i0 < jj; i0++) {
+    r1->data[i0] = (int)c_y->data[i0];
+  }
+
+  jj = r1->size[0] * r1->size[1];
+  for (i0 = 0; i0 < jj; i0++) {
+    S->data[r1->data[i0] - 1] = (double)d_a->data[i0] * 17.0 - r2->data[i0];
+  }
+
+  emxFree_real_T(&r2);
+  i0 = d_a->size[0];
+  d_a->size[0] = loop_ub;
+  emxEnsureCapacity_int8_T(d_a, i0);
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    d_a->data[i0] = 1;
+  }
+
+  if ((Q->size[1] == 1) || (Ap->size[0] == 1)) {
+    i0 = d_y->size[0] * d_y->size[1];
+    d_y->size[0] = Q->size[0];
+    d_y->size[1] = 4;
+    emxEnsureCapacity_real_T(d_y, i0);
+    loop_ub = Q->size[0];
+    for (i0 = 0; i0 < loop_ub; i0++) {
+      d_y->data[i0] = 0.0;
+      jj = Q->size[1];
+      for (i1 = 0; i1 < jj; i1++) {
+        d_y->data[i0] += Q->data[i0 + Q->size[0] * i1] * Ap->data[i1];
+      }
+
+      d_y->data[i0 + d_y->size[0]] = 0.0;
+      jj = Q->size[1];
+      for (i1 = 0; i1 < jj; i1++) {
+        d_y->data[i0 + d_y->size[0]] += Q->data[i0 + Q->size[0] * i1] * Ap->
+          data[i1 + Ap->size[0]];
+      }
+
+      d_y->data[i0 + (d_y->size[0] << 1)] = 0.0;
+      jj = Q->size[1];
+      for (i1 = 0; i1 < jj; i1++) {
+        d_y->data[i0 + (d_y->size[0] << 1)] += Q->data[i0 + Q->size[0] * i1] *
+          Ap->data[i1 + (Ap->size[0] << 1)];
+      }
+
+      d_y->data[i0 + d_y->size[0] * 3] = 0.0;
+      jj = Q->size[1];
+      for (i1 = 0; i1 < jj; i1++) {
+        d_y->data[i0 + d_y->size[0] * 3] += Q->data[i0 + Q->size[0] * i1] *
+          Ap->data[i1 + Ap->size[0] * 3];
+      }
+    }
+  } else {
+    m = Q->size[0];
+    inner = Q->size[1];
+    i0 = d_y->size[0] * d_y->size[1];
+    d_y->size[0] = Q->size[0];
+    d_y->size[1] = 4;
+    emxEnsureCapacity_real_T(d_y, i0);
+    for (i = 0; i < m; i++) {
+      d_y->data[i] = 0.0;
+    }
+
+    for (b_k = 0; b_k < inner; b_k++) {
+      nmj = b_k * m;
+      temp = Ap->data[b_k];
+      for (i = 0; i < m; i++) {
+        d_y->data[i] += temp * (double)(signed char)Q->data[nmj + i];
+      }
+    }
+
+    for (i = 0; i < m; i++) {
+      d_y->data[m + i] = 0.0;
+    }
+
+    for (b_k = 0; b_k < inner; b_k++) {
+      i0 = b_k * m;
+      temp = Ap->data[inner + b_k];
+      for (i = 0; i < m; i++) {
+        i1 = m + i;
+        d_y->data[i1] += temp * (double)(signed char)Q->data[i0 + i];
+      }
+    }
+
+    coffset = m << 1;
+    boffset = inner << 1;
+    for (i = 0; i < m; i++) {
+      d_y->data[coffset + i] = 0.0;
+    }
+
+    for (b_k = 0; b_k < inner; b_k++) {
+      i0 = b_k * m;
+      temp = Ap->data[boffset + b_k];
+      for (i = 0; i < m; i++) {
+        i1 = coffset + i;
+        d_y->data[i1] += temp * (double)(signed char)Q->data[i0 + i];
+      }
+    }
+
+    coffset = 3 * m;
+    boffset = 3 * inner;
+    for (i = 0; i < m; i++) {
+      d_y->data[coffset + i] = 0.0;
+    }
+
+    for (b_k = 0; b_k < inner; b_k++) {
+      i0 = b_k * m;
+      temp = Ap->data[boffset + b_k];
+      for (i = 0; i < m; i++) {
+        i1 = coffset + i;
+        d_y->data[i1] += temp * (double)(signed char)Q->data[i0 + i];
+      }
+    }
+  }
+
+  emxFree_real_T(&Ap);
+  m = d_y->size[0];
+  i0 = c_y->size[0];
+  c_y->size[0] = d_y->size[0];
+  emxEnsureCapacity_real_T(c_y, i0);
+  for (i = 0; i < m; i++) {
+    c_y->data[i] = 0.0;
+  }
+
+  for (i = 0; i < m; i++) {
+    c_y->data[i] += xk[0] * d_y->data[i];
+  }
+
+  for (i = 0; i < m; i++) {
+    c_y->data[i] += xk[1] * d_y->data[m + i];
+  }
+
+  aoffset = m << 1;
+  for (i = 0; i < m; i++) {
+    c_y->data[i] += xk[2] * d_y->data[aoffset + i];
+  }
+
+  aoffset = 3 * m;
+  for (i = 0; i < m; i++) {
+    c_y->data[i] += xk[3] * d_y->data[aoffset + i];
+  }
+
+  emxFree_real_T(&d_y);
+  c = (4.0 * M + 1.0) + 2.0 * P;
+  temp = 4.0 * M + 4.0 * P;
+  if (c > temp) {
+    i0 = 0;
+    i1 = 0;
+  } else {
+    i0 = (int)c - 1;
+    i1 = (int)temp;
+  }
+
+  iy = r1->size[0] * r1->size[1];
+  r1->size[0] = 1;
+  loop_ub = i1 - i0;
+  r1->size[1] = loop_ub;
+  emxEnsureCapacity_int32_T(r1, iy);
+  for (i1 = 0; i1 < loop_ub; i1++) {
+    r1->data[i1] = i0 + i1;
+  }
+
+  loop_ub = r1->size[0] * r1->size[1];
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    S->data[r1->data[i0]] = (double)d_a->data[i0] * 17.0 + c_y->data[i0];
+  }
+
+  emxFree_int8_T(&d_a);
+  emxFree_int32_T(&r1);
+  i0 = S->size[0];
+  emxEnsureCapacity_real_T(S, i0);
+  loop_ub = S->size[0];
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    S->data[i0] = -S->data[i0];
   }
 
   /*  G = eye(2*M, 2*M); */
@@ -455,157 +1033,145 @@ void solveQP(const double xk[4], const emxArray_real_T *rp, double x_data[], int
   /*  S = [S; ones(2*P,1)*17 + Cv*Ap*xk]; */
   /*  ub = ones(2*M,1)*20; */
   /*  lb = ones(2*M,1)*(-20); */
-  for (i0 = 0; i0 < 10; i0++) {
-    for (i1 = 0; i1 < 48; i1++) {
-      b_Bp[i0 + 10 * i1] = 0.0;
-      for (loop_ub = 0; loop_ub < 48; loop_ub++) {
-        b_Bp[i0 + 10 * i1] += Bp[loop_ub + 48 * i0] * Q[loop_ub + 48 * i1];
-      }
-    }
-
-    for (i1 = 0; i1 < 10; i1++) {
-      ajj = 0.0;
-      for (loop_ub = 0; loop_ub < 48; loop_ub++) {
-        ajj += b_Bp[i0 + 10 * loop_ub] * Bp[loop_ub + 48 * i1];
-      }
-
-      R[i0 + 10 * i1] = b_R[i0 + 10 * i1] + ajj;
-    }
-  }
-
-  for (i0 = 0; i0 < 10; i0++) {
-    memcpy(&A_data[i0 * 10], &R[i0 * 10], 10U * sizeof(double));
-  }
-
-  info = 0;
-  j = 1;
-  exitg1 = false;
-  while ((!exitg1) && (j <= 10)) {
-    jj = (j + (j - 1) * 10) - 1;
-    ajj = 0.0;
-    if (!(j - 1 < 1)) {
-      ix = j;
-      iy = j;
-      for (jmax = 1; jmax < j; jmax++) {
-        ajj += A_data[ix - 1] * A_data[iy - 1];
-        ix += 10;
-        iy += 10;
-      }
-    }
-
-    ajj = A_data[jj] - ajj;
-    if (ajj > 0.0) {
-      ajj = std::sqrt(ajj);
-      A_data[jj] = ajj;
-      if (j < 10) {
-        if (j - 1 != 0) {
+  n = H->size[1];
+  if (H->size[1] != 0) {
+    m = H->size[0];
+    inner = 0;
+    if (H->size[0] != 0) {
+      j = 0;
+      exitg1 = false;
+      while ((!exitg1) && (j <= m - 1)) {
+        jj = j + j * n;
+        temp = 0.0;
+        if (j >= 1) {
           ix = j;
-          i0 = (j + 10 * (j - 2)) + 1;
-          for (jmax = j + 1; jmax <= i0; jmax += 10) {
-            c = -A_data[ix - 1];
-            iy = jj + 1;
-            i1 = (jmax - j) + 9;
-            for (loop_ub = jmax; loop_ub <= i1; loop_ub++) {
-              A_data[iy] += A_data[loop_ub - 1] * c;
-              iy++;
-            }
-
-            ix += 10;
+          iy = j;
+          for (b_k = 0; b_k < j; b_k++) {
+            temp += H->data[ix] * H->data[iy];
+            ix += n;
+            iy += n;
           }
         }
 
-        ajj = 1.0 / ajj;
-        memcpy(&L_data[0], &A_data[0], 100U * sizeof(double));
-        i0 = jj - j;
-        for (jmax = jj + 1; jmax < i0 + 11; jmax++) {
-          L_data[jmax] *= ajj;
+        temp = H->data[jj] - temp;
+        if (temp > 0.0) {
+          temp = std::sqrt(temp);
+          H->data[jj] = temp;
+          if (j + 1 < m) {
+            nmj = (m - j) - 1;
+            coffset = j + 2;
+            if ((nmj == 0) || (j == 0)) {
+            } else {
+              ix = j;
+              i0 = (j + n * (j - 1)) + 2;
+              for (boffset = coffset; n < 0 ? boffset >= i0 : boffset <= i0;
+                   boffset += n) {
+                c = -H->data[ix];
+                iy = jj + 1;
+                i1 = (boffset + nmj) - 1;
+                for (aoffset = boffset; aoffset <= i1; aoffset++) {
+                  H->data[iy] += H->data[aoffset - 1] * c;
+                  iy++;
+                }
+
+                ix += n;
+              }
+            }
+
+            xscal(nmj, 1.0 / temp, H, jj + 2);
+          }
+
+          j++;
+        } else {
+          H->data[jj] = temp;
+          inner = j + 1;
+          exitg1 = true;
         }
-
-        memcpy(&A_data[0], &L_data[0], (unsigned int)(100 * (int)sizeof(double)));
       }
+    }
 
-      j++;
+    if (inner == 0) {
+      nmj = n;
     } else {
-      A_data[jj] = ajj;
-      info = j;
-      exitg1 = true;
+      nmj = inner - 1;
+    }
+
+    for (j = 2; j <= nmj; j++) {
+      for (i = 0; i <= j - 2; i++) {
+        H->data[i + H->size[0] * (j - 1)] = 0.0;
+      }
+    }
+
+    if (1 > nmj) {
+      loop_ub = 0;
+      jj = 0;
+    } else {
+      loop_ub = nmj;
+      jj = nmj;
+    }
+
+    i0 = Q->size[0] * Q->size[1];
+    Q->size[0] = loop_ub;
+    Q->size[1] = jj;
+    emxEnsureCapacity_real_T(Q, i0);
+    for (i0 = 0; i0 < jj; i0++) {
+      for (i1 = 0; i1 < loop_ub; i1++) {
+        Q->data[i1 + Q->size[0] * i0] = H->data[i1 + H->size[0] * i0];
+      }
+    }
+
+    i0 = H->size[0] * H->size[1];
+    H->size[0] = Q->size[0];
+    H->size[1] = Q->size[1];
+    emxEnsureCapacity_real_T(H, i0);
+    loop_ub = Q->size[0] * Q->size[1];
+    for (i0 = 0; i0 < loop_ub; i0++) {
+      H->data[i0] = Q->data[i0];
     }
   }
 
-  memcpy(&L_data[0], &A_data[0], 100U * sizeof(double));
-  if (info == 0) {
-    jmax = 10;
+  emxFree_real_T(&Q);
+  if ((H->size[0] == 0) || (H->size[1] == 0)) {
+    i0 = Linv->size[0] * Linv->size[1];
+    Linv->size[0] = H->size[0];
+    Linv->size[1] = H->size[1];
+    emxEnsureCapacity_real_T(Linv, i0);
+    loop_ub = H->size[0] * H->size[1];
+    for (i0 = 0; i0 < loop_ub; i0++) {
+      Linv->data[i0] = H->data[i0];
+    }
   } else {
-    jmax = info - 1;
+    invNxN(H, Linv);
   }
 
-  for (j = 1; j < jmax; j++) {
-    for (jj = 1; jj <= j; jj++) {
-      L_data[(jj + 10 * j) - 1] = 0.0;
-    }
-  }
-
-  if (1 > jmax) {
-    loop_ub = 0;
-    jmax = 0;
-  } else {
-    loop_ub = jmax;
-  }
-
-  for (i0 = 0; i0 < jmax; i0++) {
-    for (i1 = 0; i1 < loop_ub; i1++) {
-      R[i1 + loop_ub * i0] = L_data[i1 + 10 * i0];
-    }
-  }
-
-  L_size[0] = loop_ub;
-  L_size[1] = jmax;
-  for (i0 = 0; i0 < jmax; i0++) {
-    for (i1 = 0; i1 < loop_ub; i1++) {
-      L_data[i1 + loop_ub * i0] = R[i1 + loop_ub * i0];
-    }
-  }
-
-  emxInit_real_T(&b_rp, 2);
+  emxFree_real_T(&H);
+  unnamed_idx_0 = (unsigned int)S->size[0];
 
   /*      [x,fval,exitflag,output,lambda] = quadprog(H,f,A,b,[],[],lb); */
-  inv(L_data, L_size);
-  i0 = b_rp->size[0] * b_rp->size[1];
-  b_rp->size[0] = 1;
-  b_rp->size[1] = rp->size[0];
-  emxEnsureCapacity_real_T(b_rp, i0);
-  loop_ub = rp->size[0];
+  i0 = c_y->size[0];
+  c_y->size[0] = y->size[1];
+  emxEnsureCapacity_real_T(c_y, i0);
+  loop_ub = y->size[1];
   for (i0 = 0; i0 < loop_ub; i0++) {
-    b_rp->data[b_rp->size[0] * i0] = rp->data[i0];
+    c_y->data[i0] = y->data[i0];
   }
 
-  for (i0 = 0; i0 < 48; i0++) {
-    ajj = 0.0;
-    for (i1 = 0; i1 < 4; i1++) {
-      ajj += xk[i1] * Ap[i0 + 48 * i1];
-    }
-
-    c_xk[i0] = ajj - b_rp->data[i0];
+  emxFree_real_T(&y);
+  emxInit_boolean_T(&r3, 1);
+  i0 = r3->size[0];
+  r3->size[0] = (int)unnamed_idx_0;
+  emxEnsureCapacity_boolean_T(r3, i0);
+  loop_ub = (int)unnamed_idx_0;
+  for (i0 = 0; i0 < loop_ub; i0++) {
+    r3->data[i0] = false;
   }
 
-  emxFree_real_T(&b_rp);
-  for (i0 = 0; i0 < 48; i0++) {
-    b_xk[i0] = 0.0;
-    for (i1 = 0; i1 < 48; i1++) {
-      b_xk[i0] += c_xk[i1] * Q[i1 + 48 * i0];
-    }
-  }
-
-  for (i0 = 0; i0 < 10; i0++) {
-    e_xk[i0] = 0.0;
-    for (i1 = 0; i1 < 48; i1++) {
-      e_xk[i0] += b_xk[i1] * Bp[i1 + 48 * i0];
-    }
-
-    d_xk[i0] = e_xk[i0];
-  }
-
-  mpcqpsolver(L_data, L_size, d_xk, G, S, x_data, x_size, &ajj);
+  mpcqpsolver(Linv, c_y, G, S, r3, x, &temp);
+  emxFree_boolean_T(&r3);
+  emxFree_real_T(&c_y);
+  emxFree_real_T(&Linv);
+  emxFree_real_T(&S);
+  emxFree_real_T(&G);
 }
 
 /* End of code generation (solveQP.cpp) */

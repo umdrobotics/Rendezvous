@@ -13,7 +13,7 @@
  * Abstract:
  *       MATLAB for code generation function to initialize non-finite, Inf and MinusInf
  */
-#include "navigation/rtGetInf.h"
+#include "rtGetInf.h"
 
 /* Function: rtGetInf ==================================================
  * Abstract:

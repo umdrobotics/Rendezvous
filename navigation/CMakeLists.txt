@@ -151,6 +151,7 @@ add_library(xgeqrf src/xgeqrf.cpp)
 add_library(xger src/xger.cpp)
 #~ add_library(xgetrf src/xgetrf.cpp)
 add_library(xnrm2 src/xnrm2.cpp)
+add_library(xscal src/xscal.cpp)
 #~ add_library(xpotrf src/xpotrf.cpp)
 #~ add_library(xzlarf src/xzlarf.cpp)
 #~ add_library(xzlarfg src/xzlarfg.cpp)
@@ -184,7 +185,11 @@ add_dependencies(navigation_menu navigation_generate_messages_cpp)
 # add_dependencies(MPCController navigation_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} MPCController KalmanFilter ExtendedKalmanFilter abs eye inv mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite solveQP solveQP_emxAPI solveQP_emxutil solveQP_initialize solveQP_terminate xgemv xgeqrf xger xnrm2)
+target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} 
+    MPCController KalmanFilter ExtendedKalmanFilter 
+    abs eye inv mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite 
+    solveQP solveQP_emxAPI solveQP_emxutil solveQP_initialize solveQP_terminate xgemv xgeqrf xger xnrm2 xscal
+)
 #"/usr/local/lib/lbnlopt.a"  ${nlopt_LIBRARIES}
 #~ target_link_libraries(navigation_node_simulation ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
 

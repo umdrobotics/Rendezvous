@@ -10,31 +10,33 @@
  */
 
 /* Include files */
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/xger.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "xger.h"
 
 /* Function Definitions */
-void xger(int m, int n, double alpha1, int ix0, const double y_data[], double
-          A_data[], int ia0, int lda)
+void xger(int m, int n, double alpha1, int ix0, const emxArray_real_T *y,
+          emxArray_real_T *A, int ia0, int lda)
 {
   int jA;
   int jy;
   int j;
   double temp;
   int ix;
-  int i6;
+  int i20;
+  int i21;
   int ijA;
   if (!(alpha1 == 0.0)) {
     jA = ia0 - 1;
     jy = 0;
-    for (j = 1; j <= n; j++) {
-      if (y_data[jy] != 0.0) {
-        temp = y_data[jy] * alpha1;
+    for (j = 0; j < n; j++) {
+      if (y->data[jy] != 0.0) {
+        temp = y->data[jy] * alpha1;
         ix = ix0;
-        i6 = m + jA;
-        for (ijA = jA; ijA < i6; ijA++) {
-          A_data[ijA] += A_data[ix - 1] * temp;
+        i20 = jA + 1;
+        i21 = m + jA;
+        for (ijA = i20; ijA <= i21; ijA++) {
+          A->data[ijA - 1] += A->data[ix - 1] * temp;
           ix++;
         }
       }

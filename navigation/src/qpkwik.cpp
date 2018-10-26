@@ -12,200 +12,267 @@
 /* Include files */
 #include <cmath>
 #include <string.h>
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/qpkwik.h"
-#include "navigation/qr.h"
-#include "navigation/abs.h"
-#include "navigation/norm.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "qpkwik.h"
+#include "solveQP_emxutil.h"
+#include "qr.h"
+#include "abs.h"
+#include "norm.h"
 
 /* Function Declarations */
-static void DropConstraint(short kDrop, short iA[68], short *nA, short iC[68]);
-static double KWIKfactor(const double Ac[680], const short iC[68], short nA,
-  const double Linv_data[], const int Linv_size[2], double RLinv_data[], int
-  RLinv_size[2], double D_data[], int D_size[2], double H_data[], int H_size[2]);
-static void Unconstrained(const double Hinv_data[], const int Hinv_size[2],
-  const double f[10], double x_data[]);
+static void DropConstraint(short kDrop, emxArray_int16_T *iA, short *nA, short
+  iC_data[]);
+static double KWIKfactor(const emxArray_real_T *Ac, const short iC_data[], short
+  nA, const emxArray_real_T *Linv, emxArray_real_T *RLinv, emxArray_real_T *D,
+  emxArray_real_T *H, short n);
+static void Unconstrained(const emxArray_real_T *Hinv, const emxArray_real_T *f,
+  emxArray_real_T *x, short n);
 
 /* Function Definitions */
-static void DropConstraint(short kDrop, short iA[68], short *nA, short iC[68])
+static void DropConstraint(short kDrop, emxArray_int16_T *iA, short *nA, short
+  iC_data[])
 {
-  int i7;
-  short i8;
+  int i22;
+  short i23;
   short i;
-  iA[iC[kDrop - 1] - 1] = 0;
+  iA->data[iC_data[kDrop - 1] - 1] = 0;
   if (kDrop < *nA) {
-    i7 = *nA - 1;
-    if (i7 < -32768) {
-      i7 = -32768;
+    i22 = *nA - 1;
+    if (i22 < -32768) {
+      i22 = -32768;
     }
 
-    i8 = (short)i7;
-    for (i = kDrop; i <= i8; i++) {
-      iC[i - 1] = iC[i];
+    i23 = (short)i22;
+    for (i = kDrop; i <= i23; i++) {
+      iC_data[i - 1] = iC_data[i];
     }
   }
 
-  iC[*nA - 1] = 0;
-  i7 = *nA - 1;
-  if (i7 < -32768) {
-    i7 = -32768;
+  iC_data[*nA - 1] = 0;
+  i22 = *nA - 1;
+  if (i22 < -32768) {
+    i22 = -32768;
   }
 
-  *nA = (short)i7;
+  *nA = (short)i22;
 }
 
-static double KWIKfactor(const double Ac[680], const short iC[68], short nA,
-  const double Linv_data[], const int Linv_size[2], double RLinv_data[], int
-  RLinv_size[2], double D_data[], int D_size[2], double H_data[], int H_size[2])
+static double KWIKfactor(const emxArray_real_T *Ac, const short iC_data[], short
+  nA, const emxArray_real_T *Linv, emxArray_real_T *RLinv, emxArray_real_T *D,
+  emxArray_real_T *H, short n)
 {
   double Status;
-  int TL_size_idx_0;
+  emxArray_real_T *TL;
+  int i15;
   int loop_ub;
   int b_loop_ub;
-  int aoffset;
-  short i;
-  int m;
-  double QQ_data[100];
-  int QQ_size[2];
-  double RR_data[100];
-  int RR_size[2];
-  int b_size_idx_0;
+  int i16;
+  emxArray_real_T *r4;
+  emxArray_real_T *b;
+  int i;
+  emxArray_real_T *QQ;
+  emxArray_real_T *RR;
+  emxArray_real_T *a;
   int exitg1;
-  double b_data[10];
+  int m;
+  int inner;
+  int aoffset;
   short j;
-  double a_data[10];
-  double y;
   short k;
-  double TL_data[100];
-  TL_size_idx_0 = Linv_size[0];
+  short b_i;
+  short i17;
+  boolean_T guard1 = false;
+  double b_a;
+  emxInit_real_T(&TL, 2);
+  i15 = TL->size[0] * TL->size[1];
+  TL->size[0] = Linv->size[0];
+  TL->size[1] = Linv->size[1];
+  emxEnsureCapacity_real_T(TL, i15);
   Status = 1.0;
-  loop_ub = RLinv_size[0];
-  b_loop_ub = RLinv_size[1];
-  for (aoffset = 0; aoffset < b_loop_ub; aoffset++) {
-    for (m = 0; m < loop_ub; m++) {
-      RLinv_data[m + RLinv_size[0] * aoffset] = 0.0;
+  loop_ub = RLinv->size[0];
+  b_loop_ub = RLinv->size[1];
+  for (i15 = 0; i15 < b_loop_ub; i15++) {
+    for (i16 = 0; i16 < loop_ub; i16++) {
+      RLinv->data[i16 + RLinv->size[0] * i15] = 0.0;
     }
   }
 
-  for (i = 1; i <= nA; i++) {
-    if (Linv_size[1] == 1) {
-      b_size_idx_0 = Linv_size[0];
-      loop_ub = Linv_size[0];
-      for (aoffset = 0; aoffset < loop_ub; aoffset++) {
-        b_data[aoffset] = 0.0;
-        for (m = 0; m < 1; m++) {
-          b_data[aoffset] += Linv_data[aoffset] * Ac[iC[i - 1] - 1];
+  i15 = nA;
+  emxInit_real_T(&r4, 1);
+  emxInit_real_T(&b, 1);
+  for (i = 0; i < i15; i++) {
+    loop_ub = Ac->size[1];
+    i16 = b->size[0];
+    b->size[0] = loop_ub;
+    emxEnsureCapacity_real_T(b, i16);
+    for (i16 = 0; i16 < loop_ub; i16++) {
+      b->data[i16] = Ac->data[(iC_data[i] + Ac->size[0] * i16) - 1];
+    }
+
+    if ((Linv->size[1] == 1) || (b->size[0] == 1)) {
+      i16 = r4->size[0];
+      r4->size[0] = Linv->size[0];
+      emxEnsureCapacity_real_T(r4, i16);
+      loop_ub = Linv->size[0];
+      for (i16 = 0; i16 < loop_ub; i16++) {
+        r4->data[i16] = 0.0;
+        b_loop_ub = Linv->size[1];
+        for (aoffset = 0; aoffset < b_loop_ub; aoffset++) {
+          r4->data[i16] += Linv->data[i16 + Linv->size[0] * aoffset] * b->
+            data[aoffset];
         }
       }
     } else {
-      m = Linv_size[0];
-      b_size_idx_0 = Linv_size[0];
-      for (b_loop_ub = 1; b_loop_ub <= m; b_loop_ub++) {
-        b_data[b_loop_ub - 1] = 0.0;
+      m = Linv->size[0];
+      inner = Linv->size[1];
+      i16 = r4->size[0];
+      r4->size[0] = Linv->size[0];
+      emxEnsureCapacity_real_T(r4, i16);
+      for (b_loop_ub = 0; b_loop_ub < m; b_loop_ub++) {
+        r4->data[b_loop_ub] = 0.0;
       }
 
-      for (loop_ub = 0; loop_ub < Linv_size[1]; loop_ub++) {
-        if (Ac[(iC[i - 1] + 68 * loop_ub) - 1] != 0.0) {
-          aoffset = loop_ub * m;
-          for (b_loop_ub = 0; b_loop_ub < m; b_loop_ub++) {
-            b_data[b_loop_ub] += Ac[(iC[i - 1] + 68 * loop_ub) - 1] *
-              Linv_data[aoffset + b_loop_ub];
-          }
+      for (loop_ub = 0; loop_ub < inner; loop_ub++) {
+        aoffset = loop_ub * m;
+        for (b_loop_ub = 0; b_loop_ub < m; b_loop_ub++) {
+          r4->data[b_loop_ub] += b->data[loop_ub] * Linv->data[aoffset +
+            b_loop_ub];
         }
       }
     }
 
-    for (aoffset = 0; aoffset < b_size_idx_0; aoffset++) {
-      RLinv_data[aoffset + RLinv_size[0] * (i - 1)] = b_data[aoffset];
+    loop_ub = r4->size[0];
+    for (i16 = 0; i16 < loop_ub; i16++) {
+      RLinv->data[i16 + RLinv->size[0] * i] = r4->data[i16];
     }
   }
 
-  qr(RLinv_data, RLinv_size, QQ_data, QQ_size, RR_data, RR_size);
-  i = 1;
+  emxFree_real_T(&r4);
+  emxInit_real_T(&QQ, 2);
+  emxInit_real_T(&RR, 2);
+  qr(RLinv, QQ, RR);
+  i = 0;
+  emxInit_real_T(&a, 2);
   do {
     exitg1 = 0;
-    if (i <= nA) {
-      if (std::abs(RR_data[(i + RR_size[0] * (i - 1)) - 1]) < 1.0E-12) {
+    if (i <= nA - 1) {
+      if (std::abs(RR->data[i + RR->size[0] * i]) < 1.0E-12) {
         Status = -2.0;
         exitg1 = 1;
       } else {
         i++;
       }
     } else {
-      loop_ub = Linv_size[0];
-      m = Linv_size[0];
-      b_loop_ub = QQ_size[0];
-      for (i = 0; i < 10; i++) {
-        for (aoffset = 0; aoffset < loop_ub; aoffset++) {
-          a_data[aoffset] = Linv_data[aoffset + Linv_size[0] * i];
-        }
-
-        for (j = 0; j < 10; j++) {
-          for (aoffset = 0; aoffset < b_loop_ub; aoffset++) {
-            b_data[aoffset] = QQ_data[aoffset + QQ_size[0] * j];
+      i15 = n;
+      for (i = 0; i < i15; i++) {
+        i16 = n;
+        for (b_loop_ub = 0; b_loop_ub < i16; b_loop_ub++) {
+          loop_ub = Linv->size[0];
+          aoffset = a->size[0] * a->size[1];
+          a->size[0] = 1;
+          a->size[1] = loop_ub;
+          emxEnsureCapacity_real_T(a, aoffset);
+          for (aoffset = 0; aoffset < loop_ub; aoffset++) {
+            a->data[aoffset] = Linv->data[aoffset + Linv->size[0] * i];
           }
 
-          if ((loop_ub == 1) || (QQ_size[0] == 1)) {
-            y = 0.0;
-            for (aoffset = 0; aoffset < m; aoffset++) {
-              y += a_data[aoffset] * b_data[aoffset];
-            }
+          loop_ub = QQ->size[0];
+          aoffset = b->size[0];
+          b->size[0] = loop_ub;
+          emxEnsureCapacity_real_T(b, aoffset);
+          for (aoffset = 0; aoffset < loop_ub; aoffset++) {
+            b->data[aoffset] = QQ->data[aoffset + QQ->size[0] * b_loop_ub];
+          }
+
+          guard1 = false;
+          if (a->size[1] == 1) {
+            guard1 = true;
           } else {
-            y = 0.0;
-            for (aoffset = 0; aoffset < m; aoffset++) {
-              y += a_data[aoffset] * b_data[aoffset];
+            aoffset = QQ->size[0];
+            if (aoffset == 1) {
+              guard1 = true;
+            } else {
+              b_a = 0.0;
+              loop_ub = a->size[1];
+              for (aoffset = 0; aoffset < loop_ub; aoffset++) {
+                b_a += a->data[aoffset] * b->data[aoffset];
+              }
+
+              TL->data[i + TL->size[0] * b_loop_ub] = b_a;
             }
           }
 
-          TL_data[i + TL_size_idx_0 * j] = y;
+          if (guard1) {
+            b_a = 0.0;
+            loop_ub = a->size[1];
+            for (aoffset = 0; aoffset < loop_ub; aoffset++) {
+              b_a += a->data[aoffset] * b->data[aoffset];
+            }
+
+            TL->data[i + TL->size[0] * b_loop_ub] = b_a;
+          }
         }
       }
 
-      loop_ub = RLinv_size[0];
-      b_loop_ub = RLinv_size[1];
-      for (aoffset = 0; aoffset < b_loop_ub; aoffset++) {
-        for (m = 0; m < loop_ub; m++) {
-          RLinv_data[m + RLinv_size[0] * aoffset] = 0.0;
+      loop_ub = RLinv->size[0];
+      b_loop_ub = RLinv->size[1];
+      for (i15 = 0; i15 < b_loop_ub; i15++) {
+        for (i16 = 0; i16 < loop_ub; i16++) {
+          RLinv->data[i16 + RLinv->size[0] * i15] = 0.0;
         }
       }
 
-      for (j = nA; j > 0; j--) {
-        RLinv_data[(j + RLinv_size[0] * (j - 1)) - 1] = 1.0;
+      for (j = nA; j >= 1; j--) {
+        i15 = j - 1;
+        RLinv->data[(j + RLinv->size[0] * i15) - 1] = 1.0;
         for (k = j; k <= nA; k++) {
-          RLinv_data[(j + RLinv_size[0] * (k - 1)) - 1] /= RR_data[(j + RR_size
-            [0] * (j - 1)) - 1];
+          RLinv->data[(j + RLinv->size[0] * (k - 1)) - 1] /= RR->data[(j +
+            RR->size[0] * i15) - 1];
         }
 
         if (j > 1) {
-          for (i = 1; i < j; i++) {
+          i15 = j;
+          for (i = 0; i <= i15 - 2; i++) {
             for (k = j; k <= nA; k++) {
-              RLinv_data[(i + RLinv_size[0] * (k - 1)) - 1] -= RR_data[(i +
-                RR_size[0] * (j - 1)) - 1] * RLinv_data[(j + RLinv_size[0] * (k
-                - 1)) - 1];
+              RLinv->data[i + RLinv->size[0] * (k - 1)] -= RR->data[i + RR->
+                size[0] * (j - 1)] * RLinv->data[(j + RLinv->size[0] * (k - 1))
+                - 1];
             }
           }
         }
       }
 
-      for (i = 0; i < 10; i++) {
-        for (j = (short)(i + 1); j < 11; j++) {
-          H_data[i + H_size[0] * (j - 1)] = 0.0;
-          for (k = (short)(nA + 1); k < 11; k++) {
-            H_data[i + H_size[0] * (j - 1)] -= TL_data[i + TL_size_idx_0 * (k -
-              1)] * TL_data[(j + TL_size_idx_0 * (k - 1)) - 1];
+      i15 = n;
+      for (i = 0; i < i15; i++) {
+        b_i = (short)(1 + i);
+        for (j = b_i; j <= n; j++) {
+          H->data[i + H->size[0] * (j - 1)] = 0.0;
+          i16 = nA + 1;
+          if (i16 > 32767) {
+            i16 = 32767;
           }
 
-          H_data[(j + H_size[0] * i) - 1] = H_data[i + H_size[0] * (j - 1)];
+          i17 = (short)i16;
+          for (k = i17; k <= n; k++) {
+            H->data[i + H->size[0] * (j - 1)] -= TL->data[i + TL->size[0] * (k -
+              1)] * TL->data[(j + TL->size[0] * (k - 1)) - 1];
+          }
+
+          H->data[(j + H->size[0] * i) - 1] = H->data[i + H->size[0] * (j - 1)];
         }
       }
 
-      for (j = 1; j <= nA; j++) {
-        for (i = 0; i < 10; i++) {
-          D_data[i + D_size[0] * (j - 1)] = 0.0;
+      i15 = nA;
+      for (b_loop_ub = 0; b_loop_ub < i15; b_loop_ub++) {
+        j = (short)(1 + b_loop_ub);
+        i16 = n;
+        for (i = 0; i < i16; i++) {
+          D->data[i + D->size[0] * b_loop_ub] = 0.0;
           for (k = j; k <= nA; k++) {
-            D_data[i + D_size[0] * (j - 1)] += TL_data[i + TL_size_idx_0 * (k -
-              1)] * RLinv_data[(j + RLinv_size[0] * (k - 1)) - 1];
+            aoffset = k - 1;
+            D->data[i + D->size[0] * b_loop_ub] += TL->data[i + TL->size[0] *
+              aoffset] * RLinv->data[b_loop_ub + RLinv->size[0] * aoffset];
           }
         }
       }
@@ -214,412 +281,652 @@ static double KWIKfactor(const double Ac[680], const short iC[68], short nA,
     }
   } while (exitg1 == 0);
 
+  emxFree_real_T(&a);
+  emxFree_real_T(&b);
+  emxFree_real_T(&RR);
+  emxFree_real_T(&QQ);
+  emxFree_real_T(&TL);
   return Status;
 }
 
-static void Unconstrained(const double Hinv_data[], const int Hinv_size[2],
-  const double f[10], double x_data[])
+static void Unconstrained(const emxArray_real_T *Hinv, const emxArray_real_T *f,
+  emxArray_real_T *x, short n)
 {
+  int i13;
+  emxArray_real_T *a;
+  int i;
   int loop_ub;
-  short i;
-  int i9;
-  double d2;
-  double b_Hinv_data[10];
-  loop_ub = Hinv_size[1];
-  for (i = 0; i < 10; i++) {
-    for (i9 = 0; i9 < loop_ub; i9++) {
-      b_Hinv_data[i9] = -Hinv_data[i + Hinv_size[0] * i9];
+  int i14;
+  double b_a;
+  i13 = n;
+  emxInit_real_T(&a, 2);
+  for (i = 0; i < i13; i++) {
+    loop_ub = Hinv->size[1];
+    i14 = a->size[0] * a->size[1];
+    a->size[0] = 1;
+    a->size[1] = loop_ub;
+    emxEnsureCapacity_real_T(a, i14);
+    for (i14 = 0; i14 < loop_ub; i14++) {
+      a->data[i14] = -Hinv->data[i + Hinv->size[0] * i14];
     }
 
-    d2 = 0.0;
-    for (i9 = 0; i9 < 10; i9++) {
-      d2 += b_Hinv_data[i9] * f[i9];
-    }
+    if ((a->size[1] == 1) || (f->size[0] == 1)) {
+      b_a = 0.0;
+      loop_ub = a->size[1];
+      for (i14 = 0; i14 < loop_ub; i14++) {
+        b_a += a->data[i14] * f->data[i14];
+      }
 
-    x_data[i] = d2;
+      x->data[i] = b_a;
+    } else {
+      b_a = 0.0;
+      loop_ub = a->size[1];
+      for (i14 = 0; i14 < loop_ub; i14++) {
+        b_a += a->data[i14] * f->data[i14];
+      }
+
+      x->data[i] = b_a;
+    }
   }
+
+  emxFree_real_T(&a);
 }
 
-void qpkwik(const double Linv_data[], const int Linv_size[2], const double
-            Hinv_data[], const int Hinv_size[2], const double f[10], const
-            double Ac[680], const double b[68], double x_data[], int x_size[1],
-            double lambda[68], double *status, short iA[68])
+void qpkwik(const emxArray_real_T *Linv, const emxArray_real_T *Hinv, const
+            emxArray_real_T *f, const emxArray_real_T *Ac, const emxArray_real_T
+            *b, emxArray_int16_T *iA, short m, short n, emxArray_real_T *x,
+            emxArray_real_T *lambda, double *status)
 {
-  double r_data[10];
+  int b_status;
+  int i11;
+  int idx;
+  emxArray_real_T *r;
+  emxArray_real_T *RLinv;
+  emxArray_real_T *D;
+  emxArray_real_T *H;
+  emxArray_real_T *cTol;
   double rMin;
-  int RLinv_size[2];
-  int D_size[2];
-  int H_size[2];
   boolean_T cTolComputed;
-  int i;
+  short iC_data[32767];
   short nA;
-  double cTol[68];
-  short iC[68];
   double Xnorm0;
+  emxArray_real_T *AcRow;
+  emxArray_real_T *z;
+  emxArray_real_T *y;
+  emxArray_real_T *b_x;
+  emxArray_real_T *a;
+  emxArray_real_T *varargin_1;
+  emxArray_real_T *b_a;
   int exitg2;
   double cMin;
   short kNext;
-  short b_i;
-  double b_x_data[10];
+  int i;
+  int inner;
   int exitg1;
-  double d0;
-  double b_Ac[10];
   double cVal;
+  int nx;
+  unsigned int varargin_1_idx_0;
   boolean_T guard1 = false;
-  double RLinv_data[100];
-  double D_data[100];
-  double H_data[100];
   int k;
-  double varargin_1[68];
-  int m;
-  int z_size_idx_0;
   boolean_T exitg3;
-  int a_size_idx_1;
-  double z_data[10];
-  double a_data[100];
-  int aoffset;
   short kDrop;
   double t1;
   boolean_T isT1Inf;
   boolean_T tempOK;
-  short iSave;
-  *status = 1.0;
-  memset(&iA[0], 0, 68U * sizeof(short));
-  memset(&lambda[0], 0, 68U * sizeof(double));
-  memset(&r_data[0], 0, 10U * sizeof(double));
-  rMin = 0.0;
-  RLinv_size[0] = Linv_size[0];
-  RLinv_size[1] = Linv_size[1];
-  D_size[0] = Linv_size[0];
-  D_size[1] = Linv_size[1];
-  H_size[0] = Linv_size[0];
-  H_size[1] = Linv_size[1];
-  cTolComputed = false;
-  for (i = 0; i < 68; i++) {
-    cTol[i] = 1.0;
-    iC[i] = 0;
+  boolean_T b_guard1 = false;
+  short i12;
+  b_status = 1;
+  i11 = lambda->size[0];
+  lambda->size[0] = m;
+  emxEnsureCapacity_real_T(lambda, i11);
+  idx = m;
+  for (i11 = 0; i11 < idx; i11++) {
+    lambda->data[i11] = 0.0;
   }
 
-  nA = 0;
-  x_size[0] = 10;
-  memset(&x_data[0], 0, 10U * sizeof(double));
-  Unconstrained(Hinv_data, Hinv_size, f, x_data);
-  Xnorm0 = norm(x_data);
-  do {
-    exitg2 = 0;
-    if (*status <= 200.0) {
-      cMin = -1.0E-6;
-      kNext = 0;
-      for (b_i = 0; b_i < 68; b_i++) {
-        if (!cTolComputed) {
-          memcpy(&b_x_data[0], &x_data[0], 10U * sizeof(double));
-          for (i = 0; i < 10; i++) {
-            b_Ac[i] = Ac[b_i + 68 * i] * b_x_data[i];
-          }
+  i11 = x->size[0];
+  x->size[0] = n;
+  emxEnsureCapacity_real_T(x, i11);
+  idx = n;
+  for (i11 = 0; i11 < idx; i11++) {
+    x->data[i11] = 0.0;
+  }
 
-          b_abs(b_Ac, b_x_data);
-          if (!rtIsNaN(b_x_data[0])) {
-            i = 1;
-          } else {
-            i = 0;
-            k = 2;
-            exitg3 = false;
-            while ((!exitg3) && (k < 11)) {
-              if (!rtIsNaN(b_x_data[k - 1])) {
-                i = k;
-                exitg3 = true;
-              } else {
-                k++;
-              }
+  if (m == 0) {
+    Unconstrained(Hinv, f, x, n);
+  } else {
+    emxInit_real_T(&r, 1);
+    i11 = r->size[0];
+    r->size[0] = n;
+    emxEnsureCapacity_real_T(r, i11);
+    idx = n;
+    for (i11 = 0; i11 < idx; i11++) {
+      r->data[i11] = 0.0;
+    }
+
+    emxInit_real_T(&RLinv, 2);
+    emxInit_real_T(&D, 2);
+    emxInit_real_T(&H, 2);
+    emxInit_real_T(&cTol, 1);
+    rMin = 0.0;
+    i11 = RLinv->size[0] * RLinv->size[1];
+    RLinv->size[0] = Linv->size[0];
+    RLinv->size[1] = Linv->size[1];
+    emxEnsureCapacity_real_T(RLinv, i11);
+    i11 = D->size[0] * D->size[1];
+    D->size[0] = Linv->size[0];
+    D->size[1] = Linv->size[1];
+    emxEnsureCapacity_real_T(D, i11);
+    i11 = H->size[0] * H->size[1];
+    H->size[0] = Linv->size[0];
+    H->size[1] = Linv->size[1];
+    emxEnsureCapacity_real_T(H, i11);
+    i11 = cTol->size[0];
+    cTol->size[0] = m;
+    emxEnsureCapacity_real_T(cTol, i11);
+    idx = m;
+    for (i11 = 0; i11 < idx; i11++) {
+      cTol->data[i11] = 1.0;
+    }
+
+    cTolComputed = false;
+    if (0 <= m - 1) {
+      memset(&iC_data[0], 0, (unsigned int)(m * (int)sizeof(short)));
+    }
+
+    nA = 0;
+    Unconstrained(Hinv, f, x, n);
+    Xnorm0 = b_norm(x);
+    emxInit_real_T(&AcRow, 2);
+    emxInit_real_T(&z, 1);
+    emxInit_real_T(&y, 2);
+    emxInit_real_T(&b_x, 2);
+    emxInit_real_T(&a, 2);
+    emxInit_real_T(&varargin_1, 1);
+    emxInit_real_T(&b_a, 2);
+    do {
+      exitg2 = 0;
+      if (b_status <= 200) {
+        cMin = -1.0E-6;
+        kNext = 0;
+        i11 = m;
+        for (i = 0; i < i11; i++) {
+          if (!cTolComputed) {
+            idx = Ac->size[1];
+            inner = b_x->size[0] * b_x->size[1];
+            b_x->size[0] = 1;
+            b_x->size[1] = idx;
+            emxEnsureCapacity_real_T(b_x, inner);
+            for (inner = 0; inner < idx; inner++) {
+              b_x->data[inner] = Ac->data[i + Ac->size[0] * inner] * x->
+                data[inner];
             }
-          }
 
-          if (i == 0) {
-            cVal = b_x_data[0];
-          } else {
-            cVal = b_x_data[i - 1];
-            while (i + 1 < 11) {
-              if (cVal < b_x_data[i]) {
-                cVal = b_x_data[i];
-              }
-
-              i++;
+            nx = b_x->size[1];
+            inner = y->size[0] * y->size[1];
+            y->size[0] = 1;
+            y->size[1] = (unsigned short)b_x->size[1];
+            emxEnsureCapacity_real_T(y, inner);
+            for (k = 0; k < nx; k++) {
+              y->data[k] = std::abs(b_x->data[k]);
             }
-          }
 
-          if ((cTol[b_i] > cVal) || rtIsNaN(cVal)) {
-          } else {
-            cTol[b_i] = cVal;
-          }
-        }
-
-        if (iA[b_i] == 0) {
-          d0 = 0.0;
-          for (i = 0; i < 10; i++) {
-            d0 += Ac[b_i + 68 * i] * x_data[i];
-          }
-
-          cVal = (d0 - b[b_i]) / cTol[b_i];
-          if (cVal < cMin) {
-            cMin = cVal;
-            kNext = (short)(b_i + 1);
-          }
-        }
-      }
-
-      cTolComputed = true;
-      if (kNext <= 0) {
-        exitg2 = 1;
-      } else {
-        do {
-          exitg1 = 0;
-          if ((kNext > 0) && (*status <= 200.0)) {
-            guard1 = false;
-            if (nA == 0) {
-              if (Hinv_size[1] == 1) {
-                z_size_idx_0 = Hinv_size[0];
-                m = Hinv_size[0];
-                for (i = 0; i < m; i++) {
-                  z_data[i] = 0.0;
-                  for (aoffset = 0; aoffset < 1; aoffset++) {
-                    z_data[i] += Hinv_data[i] * Ac[kNext - 1];
-                  }
-                }
+            nx = y->size[1];
+            if (y->size[1] <= 2) {
+              if (y->size[1] == 1) {
+                cVal = y->data[0];
+              } else if ((y->data[0] < y->data[1]) || (rtIsNaN(y->data[0]) &&
+                          (!rtIsNaN(y->data[1])))) {
+                cVal = y->data[1];
               } else {
-                m = Hinv_size[0];
-                z_size_idx_0 = Hinv_size[0];
-                for (i = 1; i <= m; i++) {
-                  z_data[i - 1] = 0.0;
-                }
-
-                for (k = 0; k < Hinv_size[1]; k++) {
-                  if (Ac[(kNext + 68 * k) - 1] != 0.0) {
-                    aoffset = k * m;
-                    for (i = 0; i < m; i++) {
-                      z_data[i] += Ac[(kNext + 68 * k) - 1] * Hinv_data[aoffset
-                        + i];
-                    }
-                  }
-                }
+                cVal = y->data[0];
               }
-
-              guard1 = true;
             } else {
-              cVal = KWIKfactor(Ac, iC, nA, Linv_data, Linv_size, RLinv_data,
-                                RLinv_size, D_data, D_size, H_data, H_size);
-              if (cVal <= 0.0) {
-                *status = -2.0;
-                exitg1 = 1;
+              if (!rtIsNaN(y->data[0])) {
+                idx = 1;
               } else {
-                a_size_idx_1 = H_size[1];
-                m = H_size[0] * H_size[1];
-                for (i = 0; i < m; i++) {
-                  a_data[i] = -H_data[i];
+                idx = 0;
+                k = 2;
+                exitg3 = false;
+                while ((!exitg3) && (k <= y->size[1])) {
+                  if (!rtIsNaN(y->data[k - 1])) {
+                    idx = k;
+                    exitg3 = true;
+                  } else {
+                    k++;
+                  }
+                }
+              }
+
+              if (idx == 0) {
+                cVal = y->data[0];
+              } else {
+                cVal = y->data[idx - 1];
+                inner = idx + 1;
+                for (k = inner; k <= nx; k++) {
+                  if (cVal < y->data[k - 1]) {
+                    cVal = y->data[k - 1];
+                  }
+                }
+              }
+            }
+
+            if ((!(cTol->data[i] > cVal)) && (!rtIsNaN(cVal))) {
+              cTol->data[i] = cVal;
+            }
+          }
+
+          if (iA->data[i] == 0) {
+            idx = Ac->size[1];
+            inner = a->size[0] * a->size[1];
+            a->size[0] = 1;
+            a->size[1] = idx;
+            emxEnsureCapacity_real_T(a, inner);
+            for (inner = 0; inner < idx; inner++) {
+              a->data[inner] = Ac->data[i + Ac->size[0] * inner];
+            }
+
+            inner = Ac->size[1];
+            if ((inner == 1) || (x->size[0] == 1)) {
+              cVal = 0.0;
+              idx = a->size[1];
+              for (inner = 0; inner < idx; inner++) {
+                cVal += a->data[inner] * x->data[inner];
+              }
+            } else {
+              cVal = 0.0;
+              idx = a->size[1];
+              for (inner = 0; inner < idx; inner++) {
+                cVal += a->data[inner] * x->data[inner];
+              }
+            }
+
+            cVal = (cVal - b->data[i]) / cTol->data[i];
+            if (cVal < cMin) {
+              cMin = cVal;
+              kNext = (short)(1 + i);
+            }
+          }
+        }
+
+        cTolComputed = true;
+        if (kNext <= 0) {
+          exitg2 = 1;
+        } else {
+          do {
+            exitg1 = 0;
+            if ((kNext > 0) && (b_status <= 200)) {
+              idx = Ac->size[1];
+              i11 = AcRow->size[0] * AcRow->size[1];
+              AcRow->size[0] = 1;
+              AcRow->size[1] = idx;
+              emxEnsureCapacity_real_T(AcRow, i11);
+              for (i11 = 0; i11 < idx; i11++) {
+                AcRow->data[i11] = Ac->data[(kNext + Ac->size[0] * i11) - 1];
+              }
+
+              guard1 = false;
+              if (nA == 0) {
+                i11 = varargin_1->size[0];
+                varargin_1->size[0] = AcRow->size[1];
+                emxEnsureCapacity_real_T(varargin_1, i11);
+                idx = AcRow->size[1];
+                for (i11 = 0; i11 < idx; i11++) {
+                  varargin_1->data[i11] = AcRow->data[i11];
                 }
 
-                if (H_size[1] == 1) {
-                  z_size_idx_0 = H_size[0];
-                  m = H_size[0];
-                  for (i = 0; i < m; i++) {
-                    z_data[i] = 0.0;
-                    for (aoffset = 0; aoffset < a_size_idx_1; aoffset++) {
-                      z_data[i] += a_data[i + H_size[0] * aoffset] * Ac[(kNext +
-                        68 * aoffset) - 1];
+                if ((Hinv->size[1] == 1) || (varargin_1->size[0] == 1)) {
+                  i11 = z->size[0];
+                  z->size[0] = Hinv->size[0];
+                  emxEnsureCapacity_real_T(z, i11);
+                  idx = Hinv->size[0];
+                  for (i11 = 0; i11 < idx; i11++) {
+                    z->data[i11] = 0.0;
+                    nx = Hinv->size[1];
+                    for (inner = 0; inner < nx; inner++) {
+                      z->data[i11] += Hinv->data[i11 + Hinv->size[0] * inner] *
+                        varargin_1->data[inner];
                     }
                   }
                 } else {
-                  m = H_size[0];
-                  z_size_idx_0 = H_size[0];
-                  for (i = 1; i <= m; i++) {
-                    z_data[i - 1] = 0.0;
+                  idx = Hinv->size[0];
+                  inner = Hinv->size[1];
+                  i11 = z->size[0];
+                  z->size[0] = Hinv->size[0];
+                  emxEnsureCapacity_real_T(z, i11);
+                  for (i = 0; i < idx; i++) {
+                    z->data[i] = 0.0;
                   }
 
-                  for (k = 0; k < a_size_idx_1; k++) {
-                    if (Ac[(kNext + 68 * k) - 1] != 0.0) {
-                      aoffset = k * m;
-                      for (i = 0; i < m; i++) {
-                        z_data[i] += Ac[(kNext + 68 * k) - 1] * a_data[aoffset +
-                          i];
-                      }
+                  for (k = 0; k < inner; k++) {
+                    nx = k * idx;
+                    for (i = 0; i < idx; i++) {
+                      z->data[i] += varargin_1->data[k] * Hinv->data[nx + i];
                     }
                   }
-                }
-
-                for (b_i = 1; b_i <= nA; b_i++) {
-                  m = D_size[0];
-                  for (i = 0; i < m; i++) {
-                    b_x_data[i] = D_data[i + D_size[0] * (b_i - 1)];
-                  }
-
-                  d0 = 0.0;
-                  for (i = 0; i < 10; i++) {
-                    d0 += Ac[(kNext + 68 * i) - 1] * b_x_data[i];
-                  }
-
-                  r_data[b_i - 1] = d0;
                 }
 
                 guard1 = true;
-              }
-            }
-
-            if (guard1) {
-              kDrop = 0;
-              t1 = 0.0;
-              isT1Inf = true;
-              tempOK = true;
-              if (nA > 0) {
-                iSave = 1;
-                exitg3 = false;
-                while ((!exitg3) && (iSave <= nA)) {
-                  if (r_data[iSave - 1] >= 1.0E-12) {
-                    tempOK = false;
-                    exitg3 = true;
-                  } else {
-                    iSave++;
+              } else {
+                cVal = KWIKfactor(Ac, iC_data, nA, Linv, RLinv, D, H, n);
+                if (cVal <= 0.0) {
+                  b_status = -2;
+                  exitg1 = 1;
+                } else {
+                  i11 = b_a->size[0] * b_a->size[1];
+                  b_a->size[0] = H->size[0];
+                  b_a->size[1] = H->size[1];
+                  emxEnsureCapacity_real_T(b_a, i11);
+                  idx = H->size[0] * H->size[1];
+                  for (i11 = 0; i11 < idx; i11++) {
+                    b_a->data[i11] = -H->data[i11];
                   }
+
+                  i11 = varargin_1->size[0];
+                  varargin_1->size[0] = AcRow->size[1];
+                  emxEnsureCapacity_real_T(varargin_1, i11);
+                  idx = AcRow->size[1];
+                  for (i11 = 0; i11 < idx; i11++) {
+                    varargin_1->data[i11] = AcRow->data[i11];
+                  }
+
+                  if ((b_a->size[1] == 1) || (varargin_1->size[0] == 1)) {
+                    i11 = z->size[0];
+                    z->size[0] = b_a->size[0];
+                    emxEnsureCapacity_real_T(z, i11);
+                    idx = b_a->size[0];
+                    for (i11 = 0; i11 < idx; i11++) {
+                      z->data[i11] = 0.0;
+                      nx = b_a->size[1];
+                      for (inner = 0; inner < nx; inner++) {
+                        z->data[i11] += b_a->data[i11 + b_a->size[0] * inner] *
+                          varargin_1->data[inner];
+                      }
+                    }
+                  } else {
+                    idx = b_a->size[0];
+                    inner = b_a->size[1];
+                    i11 = z->size[0];
+                    z->size[0] = b_a->size[0];
+                    emxEnsureCapacity_real_T(z, i11);
+                    for (i = 0; i < idx; i++) {
+                      z->data[i] = 0.0;
+                    }
+
+                    for (k = 0; k < inner; k++) {
+                      nx = k * idx;
+                      for (i = 0; i < idx; i++) {
+                        z->data[i] += varargin_1->data[k] * b_a->data[nx + i];
+                      }
+                    }
+                  }
+
+                  i11 = nA;
+                  for (i = 0; i < i11; i++) {
+                    idx = D->size[0];
+                    inner = varargin_1->size[0];
+                    varargin_1->size[0] = idx;
+                    emxEnsureCapacity_real_T(varargin_1, inner);
+                    for (inner = 0; inner < idx; inner++) {
+                      varargin_1->data[inner] = D->data[inner + D->size[0] * i];
+                    }
+
+                    inner = Ac->size[1];
+                    b_guard1 = false;
+                    if (inner == 1) {
+                      b_guard1 = true;
+                    } else {
+                      inner = D->size[0];
+                      if (inner == 1) {
+                        b_guard1 = true;
+                      } else {
+                        cVal = 0.0;
+                        idx = AcRow->size[1];
+                        for (inner = 0; inner < idx; inner++) {
+                          cVal += AcRow->data[inner] * varargin_1->data[inner];
+                        }
+
+                        r->data[i] = cVal;
+                      }
+                    }
+
+                    if (b_guard1) {
+                      cVal = 0.0;
+                      idx = AcRow->size[1];
+                      for (inner = 0; inner < idx; inner++) {
+                        cVal += AcRow->data[inner] * varargin_1->data[inner];
+                      }
+
+                      r->data[i] = cVal;
+                    }
+                  }
+
+                  guard1 = true;
                 }
               }
 
-              if ((nA == 0) || tempOK) {
-              } else {
-                for (b_i = 1; b_i <= nA; b_i++) {
-                  if (r_data[b_i - 1] > 1.0E-12) {
-                    cVal = lambda[iC[b_i - 1] - 1] / r_data[b_i - 1];
-                    if ((kDrop == 0) || (cVal < rMin)) {
-                      rMin = cVal;
-                      kDrop = b_i;
+              if (guard1) {
+                kDrop = 0;
+                t1 = 0.0;
+                isT1Inf = true;
+                tempOK = true;
+                if (nA > 0) {
+                  nx = 0;
+                  exitg3 = false;
+                  while ((!exitg3) && (nx <= nA - 1)) {
+                    if (r->data[nx] >= 1.0E-12) {
+                      tempOK = false;
+                      exitg3 = true;
+                    } else {
+                      nx++;
                     }
                   }
                 }
 
-                if (kDrop > 0) {
-                  t1 = rMin;
-                  isT1Inf = false;
-                }
-              }
-
-              if (0 <= z_size_idx_0 - 1) {
-                memcpy(&b_x_data[0], &z_data[0], (unsigned int)(z_size_idx_0 *
-                        (int)sizeof(double)));
-              }
-
-              d0 = 0.0;
-              for (i = 0; i < 10; i++) {
-                d0 += b_x_data[i] * Ac[(kNext + 68 * i) - 1];
-              }
-
-              if (d0 <= 0.0) {
-                cMin = 0.0;
-                tempOK = true;
-              } else {
-                cVal = 0.0;
-                for (i = 0; i < 10; i++) {
-                  cVal += Ac[(kNext + 68 * i) - 1] * x_data[i];
-                }
-
-                cMin = (b[kNext - 1] - cVal) / d0;
-                tempOK = false;
-              }
-
-              if (isT1Inf && tempOK) {
-                *status = -1.0;
-                exitg1 = 1;
-              } else {
-                if ((t1 < cMin) || rtIsNaN(cMin)) {
-                  cVal = t1;
+                if ((nA == 0) || tempOK) {
                 } else {
-                  cVal = cMin;
+                  i11 = nA;
+                  for (i = 0; i < i11; i++) {
+                    if (r->data[i] > 1.0E-12) {
+                      cVal = lambda->data[iC_data[i] - 1] / r->data[i];
+                      if ((kDrop == 0) || (cVal < rMin)) {
+                        rMin = cVal;
+                        kDrop = (short)(1 + i);
+                      }
+                    }
+                  }
+
+                  if (kDrop > 0) {
+                    t1 = rMin;
+                    isT1Inf = false;
+                  }
                 }
 
-                if (tempOK) {
-                  cVal = t1;
+                i11 = a->size[0] * a->size[1];
+                a->size[0] = 1;
+                a->size[1] = z->size[0];
+                emxEnsureCapacity_real_T(a, i11);
+                idx = z->size[0];
+                for (i11 = 0; i11 < idx; i11++) {
+                  a->data[i11] = z->data[i11];
+                }
+
+                i11 = varargin_1->size[0];
+                varargin_1->size[0] = AcRow->size[1];
+                emxEnsureCapacity_real_T(varargin_1, i11);
+                idx = AcRow->size[1];
+                for (i11 = 0; i11 < idx; i11++) {
+                  varargin_1->data[i11] = AcRow->data[i11];
+                }
+
+                if ((a->size[1] == 1) || (varargin_1->size[0] == 1)) {
+                  cMin = 0.0;
+                  idx = a->size[1];
+                  for (i11 = 0; i11 < idx; i11++) {
+                    cMin += a->data[i11] * varargin_1->data[i11];
+                  }
                 } else {
-                  if (isT1Inf) {
+                  cMin = 0.0;
+                  idx = a->size[1];
+                  for (i11 = 0; i11 < idx; i11++) {
+                    cMin += a->data[i11] * varargin_1->data[i11];
+                  }
+                }
+
+                if (cMin <= 0.0) {
+                  cMin = 0.0;
+                  tempOK = true;
+                } else {
+                  i11 = Ac->size[1];
+                  if ((i11 == 1) || (x->size[0] == 1)) {
+                    cVal = 0.0;
+                    idx = AcRow->size[1];
+                    for (i11 = 0; i11 < idx; i11++) {
+                      cVal += AcRow->data[i11] * x->data[i11];
+                    }
+                  } else {
+                    cVal = 0.0;
+                    idx = AcRow->size[1];
+                    for (i11 = 0; i11 < idx; i11++) {
+                      cVal += AcRow->data[i11] * x->data[i11];
+                    }
+                  }
+
+                  cMin = (b->data[kNext - 1] - cVal) / cMin;
+                  tempOK = false;
+                }
+
+                if (isT1Inf && tempOK) {
+                  b_status = -1;
+                  exitg1 = 1;
+                } else {
+                  if ((t1 < cMin) || rtIsNaN(cMin)) {
+                    cVal = t1;
+                  } else {
                     cVal = cMin;
                   }
-                }
 
-                for (b_i = 1; b_i <= nA; b_i++) {
-                  lambda[iC[b_i - 1] - 1] -= cVal * r_data[b_i - 1];
-                  if (lambda[iC[b_i - 1] - 1] < 0.0) {
-                    lambda[iC[b_i - 1] - 1] = 0.0;
-                  }
-                }
-
-                lambda[kNext - 1] += cVal;
-                if (cVal == t1) {
-                  DropConstraint(kDrop, iA, &nA, iC);
-                }
-
-                if (!tempOK) {
-                  x_size[0] = 10;
-                  for (i = 0; i < 10; i++) {
-                    x_data[i] += cVal * z_data[i];
+                  if (tempOK) {
+                    cVal = t1;
+                  } else {
+                    if (isT1Inf) {
+                      cVal = cMin;
+                    }
                   }
 
-                  if (cVal == cMin) {
-                    if (nA == 10) {
-                      *status = -1.0;
-                      exitg1 = 1;
+                  i11 = nA;
+                  for (i = 0; i < i11; i++) {
+                    inner = iC_data[i] - 1;
+                    lambda->data[inner] -= cVal * r->data[i];
+                    if ((iC_data[i] <= m) && (lambda->data[inner] < 0.0)) {
+                      lambda->data[inner] = 0.0;
+                    }
+                  }
+
+                  lambda->data[kNext - 1] += cVal;
+                  if (cVal == t1) {
+                    DropConstraint(kDrop, iA, &nA, iC_data);
+                  }
+
+                  if (!tempOK) {
+                    i11 = x->size[0];
+                    emxEnsureCapacity_real_T(x, i11);
+                    idx = x->size[0];
+                    for (i11 = 0; i11 < idx; i11++) {
+                      x->data[i11] += cVal * z->data[i11];
+                    }
+
+                    if (cVal == cMin) {
+                      if (nA == n) {
+                        b_status = -1;
+                        exitg1 = 1;
+                      } else {
+                        i11 = nA + 1;
+                        if (i11 > 32767) {
+                          i11 = 32767;
+                        }
+
+                        nA = (short)i11;
+                        iC_data[(short)i11 - 1] = kNext;
+                        kDrop = (short)i11;
+                        exitg3 = false;
+                        while ((!exitg3) && (kDrop > 1)) {
+                          i11 = kDrop - 1;
+                          i12 = iC_data[i11];
+                          inner = kDrop - 2;
+                          if (iC_data[i11] > iC_data[inner]) {
+                            exitg3 = true;
+                          } else {
+                            iC_data[i11] = iC_data[inner];
+                            iC_data[inner] = i12;
+                            kDrop = (short)i11;
+                          }
+                        }
+
+                        iA->data[kNext - 1] = 1;
+                        kNext = 0;
+                        b_status++;
+                      }
                     } else {
-                      i = nA + 1;
-                      if (i > 32767) {
-                        i = 32767;
-                      }
-
-                      nA = (short)i;
-                      iC[nA - 1] = kNext;
-                      b_i = nA;
-                      while ((b_i > 1) && (!(iC[b_i - 1] > iC[b_i - 2]))) {
-                        iSave = iC[b_i - 1];
-                        iC[b_i - 1] = iC[b_i - 2];
-                        iC[b_i - 2] = iSave;
-                        b_i--;
-                      }
-
-                      iA[kNext - 1] = 1;
-                      kNext = 0;
-                      (*status)++;
+                      b_status++;
                     }
                   } else {
-                    (*status)++;
+                    b_status++;
                   }
-                } else {
-                  (*status)++;
                 }
               }
-            }
-          } else {
-            cVal = norm(x_data);
-            if (std::abs(cVal - Xnorm0) > 0.001) {
-              Xnorm0 = cVal;
-              c_abs(b, varargin_1);
-              for (k = 0; k < 68; k++) {
-                cVal = varargin_1[k];
-                if (!(cVal > 1.0)) {
-                  cVal = 1.0;
+            } else {
+              cVal = b_norm(x);
+              if (std::abs(cVal - Xnorm0) > 0.001) {
+                Xnorm0 = cVal;
+                b_abs(b, varargin_1);
+                varargin_1_idx_0 = (unsigned int)varargin_1->size[0];
+                i11 = cTol->size[0];
+                cTol->size[0] = (int)varargin_1_idx_0;
+                emxEnsureCapacity_real_T(cTol, i11);
+                varargin_1_idx_0 = (unsigned int)varargin_1->size[0];
+                nx = (int)varargin_1_idx_0;
+                for (k = 0; k < nx; k++) {
+                  cVal = varargin_1->data[k];
+                  if (!(cVal > 1.0)) {
+                    cVal = 1.0;
+                  }
+
+                  cTol->data[k] = cVal;
                 }
 
-                cTol[k] = cVal;
+                cTolComputed = false;
               }
 
-              cTolComputed = false;
+              exitg1 = 2;
             }
+          } while (exitg1 == 0);
 
-            exitg1 = 2;
+          if (exitg1 == 1) {
+            exitg2 = 1;
           }
-        } while (exitg1 == 0);
-
-        if (exitg1 == 1) {
-          exitg2 = 1;
         }
+      } else {
+        b_status = 0;
+        exitg2 = 1;
       }
-    } else {
-      *status = 0.0;
-      exitg2 = 1;
-    }
-  } while (exitg2 == 0);
+    } while (exitg2 == 0);
+
+    emxFree_real_T(&b_a);
+    emxFree_real_T(&varargin_1);
+    emxFree_real_T(&a);
+    emxFree_real_T(&b_x);
+    emxFree_real_T(&y);
+    emxFree_real_T(&z);
+    emxFree_real_T(&AcRow);
+    emxFree_real_T(&cTol);
+    emxFree_real_T(&H);
+    emxFree_real_T(&D);
+    emxFree_real_T(&RLinv);
+    emxFree_real_T(&r);
+  }
+
+  *status = b_status;
 }
 
 /* End of code generation (qpkwik.cpp) */

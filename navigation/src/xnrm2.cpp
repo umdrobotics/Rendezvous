@@ -11,12 +11,12 @@
 
 /* Include files */
 #include <cmath>
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/xnrm2.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "xnrm2.h"
 
 /* Function Definitions */
-double xnrm2(int n, const double x_data[], int ix0)
+double xnrm2(int n, const emxArray_real_T *x, int ix0)
 {
   double y;
   double scale;
@@ -25,14 +25,14 @@ double xnrm2(int n, const double x_data[], int ix0)
   double absxk;
   double t;
   y = 0.0;
-  if (!(n < 1)) {
+  if (n >= 1) {
     if (n == 1) {
-      y = std::abs(x_data[ix0 - 1]);
+      y = std::abs(x->data[ix0 - 1]);
     } else {
       scale = 3.3121686421112381E-170;
       kend = (ix0 + n) - 1;
       for (k = ix0; k <= kend; k++) {
-        absxk = std::abs(x_data[k - 1]);
+        absxk = std::abs(x->data[k - 1]);
         if (absxk > scale) {
           t = scale / absxk;
           y = 1.0 + y * t * t;

@@ -10,9 +10,9 @@
  */
 
 /* Include files */
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/solveQP_terminate.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "solveQP_terminate.h"
 
 /* Function Definitions */
 void solveQP_terminate()

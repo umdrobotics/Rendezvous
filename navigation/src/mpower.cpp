@@ -12,72 +12,98 @@
 /* Include files */
 #include <cmath>
 #include <string.h>
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/mpower.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "mpower.h"
+#include "inv.h"
 
 /* Function Definitions */
 void mpower(const double a[16], double b, double c[16])
 {
-  double b_a[16];
   double e;
+  double b_a[16];
   int n;
-  int b_n;
+  int i3;
   boolean_T firstmult;
-  int nbitson;
+  int cBuffer_tmp;
+  int b_cBuffer_tmp;
   int exitg1;
   int nb;
   double ed2;
+  boolean_T first;
   boolean_T aBufferInUse;
-  boolean_T cBufferInUse;
-  int k;
   double cBuffer[16];
-  int i2;
+  int i4;
+  int k;
   double aBuffer[16];
-  if (b == b) {
-    if (std::abs(b) <= 2.147483647E+9) {
+  if (std::floor(b) == b) {
+    e = std::abs(b);
+    if (e <= 2.147483647E+9) {
       memcpy(&b_a[0], &a[0], sizeof(double) << 4);
-      e = std::abs(b);
-      b_n = (int)std::abs(b);
       n = (int)e;
-      nbitson = 0;
-      nb = -1;
-      while (n > 0) {
+      cBuffer_tmp = (int)e;
+      b_cBuffer_tmp = 0;
+      nb = -2;
+      while (cBuffer_tmp > 0) {
         nb++;
-        if ((n & 1) != 0) {
-          nbitson++;
+        if ((cBuffer_tmp & 1) != 0) {
+          b_cBuffer_tmp++;
         }
 
-        n >>= 1;
+        cBuffer_tmp >>= 1;
       }
 
       if ((int)e <= 2) {
         if (b == 2.0) {
-          for (n = 0; n < 4; n++) {
-            for (nbitson = 0; nbitson < 4; nbitson++) {
-              c[n + (nbitson << 2)] = 0.0;
-              for (i2 = 0; i2 < 4; i2++) {
-                c[n + (nbitson << 2)] += a[n + (i2 << 2)] * a[i2 + (nbitson << 2)];
-              }
+          for (i3 = 0; i3 < 4; i3++) {
+            for (i4 = 0; i4 < 4; i4++) {
+              cBuffer_tmp = i4 << 2;
+              b_cBuffer_tmp = i3 + cBuffer_tmp;
+              c[b_cBuffer_tmp] = 0.0;
+              c[b_cBuffer_tmp] = ((a[i3] * a[cBuffer_tmp] + a[i3 + 4] * a[1 +
+                                   cBuffer_tmp]) + a[i3 + 8] * a[2 + cBuffer_tmp])
+                + a[i3 + 12] * a[3 + cBuffer_tmp];
             }
           }
         } else if (b == 1.0) {
           memcpy(&c[0], &a[0], sizeof(double) << 4);
+        } else if (b == -1.0) {
+          inv(a, c);
+        } else if (b == -2.0) {
+          for (i3 = 0; i3 < 4; i3++) {
+            for (i4 = 0; i4 < 4; i4++) {
+              cBuffer_tmp = i4 << 2;
+              b_cBuffer_tmp = i3 + cBuffer_tmp;
+              b_a[b_cBuffer_tmp] = 0.0;
+              b_a[b_cBuffer_tmp] = ((a[i3] * a[cBuffer_tmp] + a[i3 + 4] * a[1 +
+                cBuffer_tmp]) + a[i3 + 8] * a[2 + cBuffer_tmp]) + a[i3 + 12] *
+                a[3 + cBuffer_tmp];
+            }
+          }
+
+          inv(b_a, c);
         } else {
           memset(&c[0], 0, sizeof(double) << 4);
-          for (n = 0; n < 4; n++) {
-            c[n + (n << 2)] = 1.0;
-          }
+          c[0] = 1.0;
+          c[5] = 1.0;
+          c[10] = 1.0;
+          c[15] = 1.0;
         }
       } else {
-        firstmult = true;
+        first = true;
         aBufferInUse = false;
-        cBufferInUse = !((nbitson & 1) != 0);
-        for (k = 1; k <= nb; k++) {
-          if ((b_n & 1) != 0) {
-            if (firstmult) {
-              firstmult = false;
-              if (cBufferInUse) {
+        firstmult = ((b_cBuffer_tmp & 1) != 0);
+        if ((firstmult && (b < 0.0)) || ((!firstmult) && (b >= 0.0))) {
+          firstmult = true;
+        } else {
+          firstmult = false;
+        }
+
+        for (k = 0; k <= nb; k++) {
+          if ((n & 1) != 0) {
+            if (first) {
+              first = false;
+              if (firstmult) {
                 if (aBufferInUse) {
                   memcpy(&cBuffer[0], &aBuffer[0], sizeof(double) << 4);
                 } else {
@@ -90,72 +116,83 @@ void mpower(const double a[16], double b, double c[16])
               }
             } else {
               if (aBufferInUse) {
-                if (cBufferInUse) {
-                  for (n = 0; n < 4; n++) {
-                    for (nbitson = 0; nbitson < 4; nbitson++) {
-                      c[n + (nbitson << 2)] = 0.0;
-                      for (i2 = 0; i2 < 4; i2++) {
-                        c[n + (nbitson << 2)] += cBuffer[n + (i2 << 2)] *
-                          aBuffer[i2 + (nbitson << 2)];
-                      }
+                if (firstmult) {
+                  for (i3 = 0; i3 < 4; i3++) {
+                    for (i4 = 0; i4 < 4; i4++) {
+                      cBuffer_tmp = i4 << 2;
+                      b_cBuffer_tmp = i3 + cBuffer_tmp;
+                      c[b_cBuffer_tmp] = 0.0;
+                      c[b_cBuffer_tmp] = ((cBuffer[i3] * aBuffer[cBuffer_tmp] +
+                                           cBuffer[i3 + 4] * aBuffer[1 +
+                                           cBuffer_tmp]) + cBuffer[i3 + 8] *
+                                          aBuffer[2 + cBuffer_tmp]) + cBuffer[i3
+                        + 12] * aBuffer[3 + cBuffer_tmp];
                     }
                   }
                 } else {
-                  for (n = 0; n < 4; n++) {
-                    for (nbitson = 0; nbitson < 4; nbitson++) {
-                      cBuffer[n + (nbitson << 2)] = 0.0;
-                      for (i2 = 0; i2 < 4; i2++) {
-                        cBuffer[n + (nbitson << 2)] += c[n + (i2 << 2)] *
-                          aBuffer[i2 + (nbitson << 2)];
-                      }
+                  for (i3 = 0; i3 < 4; i3++) {
+                    for (i4 = 0; i4 < 4; i4++) {
+                      cBuffer_tmp = i4 << 2;
+                      b_cBuffer_tmp = i3 + cBuffer_tmp;
+                      cBuffer[b_cBuffer_tmp] = 0.0;
+                      cBuffer[b_cBuffer_tmp] = ((c[i3] * aBuffer[cBuffer_tmp] +
+                        c[i3 + 4] * aBuffer[1 + cBuffer_tmp]) + c[i3 + 8] *
+                        aBuffer[2 + cBuffer_tmp]) + c[i3 + 12] * aBuffer[3 +
+                        cBuffer_tmp];
                     }
                   }
                 }
-              } else if (cBufferInUse) {
-                for (n = 0; n < 4; n++) {
-                  for (nbitson = 0; nbitson < 4; nbitson++) {
-                    c[n + (nbitson << 2)] = 0.0;
-                    for (i2 = 0; i2 < 4; i2++) {
-                      c[n + (nbitson << 2)] += cBuffer[n + (i2 << 2)] * b_a[i2 +
-                        (nbitson << 2)];
-                    }
+              } else if (firstmult) {
+                for (i3 = 0; i3 < 4; i3++) {
+                  for (i4 = 0; i4 < 4; i4++) {
+                    cBuffer_tmp = i4 << 2;
+                    b_cBuffer_tmp = i3 + cBuffer_tmp;
+                    c[b_cBuffer_tmp] = 0.0;
+                    c[b_cBuffer_tmp] = ((cBuffer[i3] * b_a[cBuffer_tmp] +
+                                         cBuffer[i3 + 4] * b_a[1 + cBuffer_tmp])
+                                        + cBuffer[i3 + 8] * b_a[2 + cBuffer_tmp])
+                      + cBuffer[i3 + 12] * b_a[3 + cBuffer_tmp];
                   }
                 }
               } else {
-                for (n = 0; n < 4; n++) {
-                  for (nbitson = 0; nbitson < 4; nbitson++) {
-                    cBuffer[n + (nbitson << 2)] = 0.0;
-                    for (i2 = 0; i2 < 4; i2++) {
-                      cBuffer[n + (nbitson << 2)] += c[n + (i2 << 2)] * b_a[i2 +
-                        (nbitson << 2)];
-                    }
+                for (i3 = 0; i3 < 4; i3++) {
+                  for (i4 = 0; i4 < 4; i4++) {
+                    cBuffer_tmp = i4 << 2;
+                    b_cBuffer_tmp = i3 + cBuffer_tmp;
+                    cBuffer[b_cBuffer_tmp] = 0.0;
+                    cBuffer[b_cBuffer_tmp] = ((c[i3] * b_a[cBuffer_tmp] + c[i3 +
+                      4] * b_a[1 + cBuffer_tmp]) + c[i3 + 8] * b_a[2 +
+                      cBuffer_tmp]) + c[i3 + 12] * b_a[3 + cBuffer_tmp];
                   }
                 }
               }
 
-              cBufferInUse = !cBufferInUse;
+              firstmult = !firstmult;
             }
           }
 
-          b_n >>= 1;
+          n >>= 1;
           if (aBufferInUse) {
-            for (n = 0; n < 4; n++) {
-              for (nbitson = 0; nbitson < 4; nbitson++) {
-                b_a[n + (nbitson << 2)] = 0.0;
-                for (i2 = 0; i2 < 4; i2++) {
-                  b_a[n + (nbitson << 2)] += aBuffer[n + (i2 << 2)] * aBuffer[i2
-                    + (nbitson << 2)];
-                }
+            for (i3 = 0; i3 < 4; i3++) {
+              for (i4 = 0; i4 < 4; i4++) {
+                cBuffer_tmp = i4 << 2;
+                b_cBuffer_tmp = i3 + cBuffer_tmp;
+                b_a[b_cBuffer_tmp] = 0.0;
+                b_a[b_cBuffer_tmp] = ((aBuffer[i3] * aBuffer[cBuffer_tmp] +
+                  aBuffer[i3 + 4] * aBuffer[1 + cBuffer_tmp]) + aBuffer[i3 + 8] *
+                                      aBuffer[2 + cBuffer_tmp]) + aBuffer[i3 +
+                  12] * aBuffer[3 + cBuffer_tmp];
               }
             }
           } else {
-            for (n = 0; n < 4; n++) {
-              for (nbitson = 0; nbitson < 4; nbitson++) {
-                aBuffer[n + (nbitson << 2)] = 0.0;
-                for (i2 = 0; i2 < 4; i2++) {
-                  aBuffer[n + (nbitson << 2)] += b_a[n + (i2 << 2)] * b_a[i2 +
-                    (nbitson << 2)];
-                }
+            for (i3 = 0; i3 < 4; i3++) {
+              for (i4 = 0; i4 < 4; i4++) {
+                cBuffer_tmp = i4 << 2;
+                b_cBuffer_tmp = i3 + cBuffer_tmp;
+                aBuffer[b_cBuffer_tmp] = 0.0;
+                aBuffer[b_cBuffer_tmp] = ((b_a[i3] * b_a[cBuffer_tmp] + b_a[i3 +
+                  4] * b_a[1 + cBuffer_tmp]) + b_a[i3 + 8] * b_a[2 + cBuffer_tmp])
+                  + b_a[i3 + 12] * b_a[3 + cBuffer_tmp];
               }
             }
           }
@@ -163,38 +200,73 @@ void mpower(const double a[16], double b, double c[16])
           aBufferInUse = !aBufferInUse;
         }
 
-        if (firstmult) {
-          if (aBufferInUse) {
+        if (first) {
+          if (b < 0.0) {
+            if (aBufferInUse) {
+              inv(aBuffer, c);
+            } else {
+              inv(b_a, c);
+            }
+          } else if (aBufferInUse) {
             memcpy(&c[0], &aBuffer[0], sizeof(double) << 4);
           } else {
             memcpy(&c[0], &b_a[0], sizeof(double) << 4);
           }
-        } else if (aBufferInUse) {
-          for (n = 0; n < 4; n++) {
-            for (nbitson = 0; nbitson < 4; nbitson++) {
-              c[n + (nbitson << 2)] = 0.0;
-              for (i2 = 0; i2 < 4; i2++) {
-                c[n + (nbitson << 2)] += cBuffer[n + (i2 << 2)] * aBuffer[i2 +
-                  (nbitson << 2)];
+        } else if (b < 0.0) {
+          if (aBufferInUse) {
+            for (i3 = 0; i3 < 4; i3++) {
+              for (i4 = 0; i4 < 4; i4++) {
+                cBuffer_tmp = i4 << 2;
+                b_cBuffer_tmp = i3 + cBuffer_tmp;
+                cBuffer[b_cBuffer_tmp] = 0.0;
+                cBuffer[b_cBuffer_tmp] = ((c[i3] * aBuffer[cBuffer_tmp] + c[i3 +
+                  4] * aBuffer[1 + cBuffer_tmp]) + c[i3 + 8] * aBuffer[2 +
+                  cBuffer_tmp]) + c[i3 + 12] * aBuffer[3 + cBuffer_tmp];
+              }
+            }
+          } else {
+            for (i3 = 0; i3 < 4; i3++) {
+              for (i4 = 0; i4 < 4; i4++) {
+                cBuffer_tmp = i4 << 2;
+                b_cBuffer_tmp = i3 + cBuffer_tmp;
+                cBuffer[b_cBuffer_tmp] = 0.0;
+                cBuffer[b_cBuffer_tmp] = ((c[i3] * b_a[cBuffer_tmp] + c[i3 + 4] *
+                  b_a[1 + cBuffer_tmp]) + c[i3 + 8] * b_a[2 + cBuffer_tmp]) +
+                  c[i3 + 12] * b_a[3 + cBuffer_tmp];
               }
             }
           }
+
+          inv(cBuffer, c);
+        } else if (aBufferInUse) {
+          for (i3 = 0; i3 < 4; i3++) {
+            for (i4 = 0; i4 < 4; i4++) {
+              cBuffer_tmp = i4 << 2;
+              b_cBuffer_tmp = i3 + cBuffer_tmp;
+              c[b_cBuffer_tmp] = 0.0;
+              c[b_cBuffer_tmp] = ((cBuffer[i3] * aBuffer[cBuffer_tmp] +
+                                   cBuffer[i3 + 4] * aBuffer[1 + cBuffer_tmp]) +
+                                  cBuffer[i3 + 8] * aBuffer[2 + cBuffer_tmp]) +
+                cBuffer[i3 + 12] * aBuffer[3 + cBuffer_tmp];
+            }
+          }
         } else {
-          for (n = 0; n < 4; n++) {
-            for (nbitson = 0; nbitson < 4; nbitson++) {
-              c[n + (nbitson << 2)] = 0.0;
-              for (i2 = 0; i2 < 4; i2++) {
-                c[n + (nbitson << 2)] += cBuffer[n + (i2 << 2)] * b_a[i2 +
-                  (nbitson << 2)];
-              }
+          for (i3 = 0; i3 < 4; i3++) {
+            for (i4 = 0; i4 < 4; i4++) {
+              cBuffer_tmp = i4 << 2;
+              b_cBuffer_tmp = i3 + cBuffer_tmp;
+              c[b_cBuffer_tmp] = 0.0;
+              c[b_cBuffer_tmp] = ((cBuffer[i3] * b_a[cBuffer_tmp] + cBuffer[i3 +
+                                   4] * b_a[1 + cBuffer_tmp]) + cBuffer[i3 + 8] *
+                                  b_a[2 + cBuffer_tmp]) + cBuffer[i3 + 12] *
+                b_a[3 + cBuffer_tmp];
             }
           }
         }
       }
     } else {
       memcpy(&b_a[0], &a[0], sizeof(double) << 4);
-      if (!rtIsNaN(b)) {
-        e = std::abs(b);
+      if ((!rtIsInf(b)) && (!rtIsNaN(b))) {
         firstmult = true;
         do {
           exitg1 = 0;
@@ -204,21 +276,18 @@ void mpower(const double a[16], double b, double c[16])
               memcpy(&c[0], &b_a[0], sizeof(double) << 4);
               firstmult = false;
             } else {
-              for (n = 0; n < 4; n++) {
-                for (nbitson = 0; nbitson < 4; nbitson++) {
-                  cBuffer[n + (nbitson << 2)] = 0.0;
-                  for (i2 = 0; i2 < 4; i2++) {
-                    cBuffer[n + (nbitson << 2)] += c[n + (i2 << 2)] * b_a[i2 +
-                      (nbitson << 2)];
-                  }
+              for (i3 = 0; i3 < 4; i3++) {
+                for (i4 = 0; i4 < 4; i4++) {
+                  cBuffer_tmp = i4 << 2;
+                  b_cBuffer_tmp = i3 + cBuffer_tmp;
+                  cBuffer[b_cBuffer_tmp] = 0.0;
+                  cBuffer[b_cBuffer_tmp] = ((c[i3] * b_a[cBuffer_tmp] + c[i3 + 4]
+                    * b_a[1 + cBuffer_tmp]) + c[i3 + 8] * b_a[2 + cBuffer_tmp])
+                    + c[i3 + 12] * b_a[3 + cBuffer_tmp];
                 }
               }
 
-              for (n = 0; n < 4; n++) {
-                for (nbitson = 0; nbitson < 4; nbitson++) {
-                  c[nbitson + (n << 2)] = cBuffer[nbitson + (n << 2)];
-                }
-              }
+              memcpy(&c[0], &cBuffer[0], sizeof(double) << 4);
             }
           }
 
@@ -226,26 +295,28 @@ void mpower(const double a[16], double b, double c[16])
             exitg1 = 1;
           } else {
             e = ed2;
-            for (n = 0; n < 4; n++) {
-              for (nbitson = 0; nbitson < 4; nbitson++) {
-                cBuffer[n + (nbitson << 2)] = 0.0;
-                for (i2 = 0; i2 < 4; i2++) {
-                  cBuffer[n + (nbitson << 2)] += b_a[n + (i2 << 2)] * b_a[i2 +
-                    (nbitson << 2)];
-                }
+            for (i3 = 0; i3 < 4; i3++) {
+              for (i4 = 0; i4 < 4; i4++) {
+                cBuffer_tmp = i4 << 2;
+                b_cBuffer_tmp = i3 + cBuffer_tmp;
+                cBuffer[b_cBuffer_tmp] = 0.0;
+                cBuffer[b_cBuffer_tmp] = ((b_a[i3] * b_a[cBuffer_tmp] + b_a[i3 +
+                  4] * b_a[1 + cBuffer_tmp]) + b_a[i3 + 8] * b_a[2 + cBuffer_tmp])
+                  + b_a[i3 + 12] * b_a[3 + cBuffer_tmp];
               }
             }
 
-            for (n = 0; n < 4; n++) {
-              for (nbitson = 0; nbitson < 4; nbitson++) {
-                b_a[nbitson + (n << 2)] = cBuffer[nbitson + (n << 2)];
-              }
-            }
+            memcpy(&b_a[0], &cBuffer[0], sizeof(double) << 4);
           }
         } while (exitg1 == 0);
+
+        if (b < 0.0) {
+          memcpy(&b_a[0], &c[0], sizeof(double) << 4);
+          inv(b_a, c);
+        }
       } else {
-        for (n = 0; n < 16; n++) {
-          c[n] = rtNaN;
+        for (i3 = 0; i3 < 16; i3++) {
+          c[i3] = rtNaN;
         }
       }
     }

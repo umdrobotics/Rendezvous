@@ -11,13 +11,14 @@
 
 /* Include files */
 #include <cmath>
-#include "navigation/rt_nonfinite.h"
-#include <string.h>
-#include "navigation/solveQP.h"
-#include "navigation/xgeqrf.h"
-#include "navigation/xger.h"
-#include "navigation/xgemv.h"
-#include "navigation/xnrm2.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "xgeqrf.h"
+#include "solveQP_emxutil.h"
+#include "xger.h"
+#include "xgemv.h"
+#include "xscal.h"
+#include "xnrm2.h"
 
 /* Function Declarations */
 static double rt_hypotd_snf(double u0, double u1);
@@ -45,127 +46,118 @@ static double rt_hypotd_snf(double u0, double u1)
   return y;
 }
 
-void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
+void xgeqrf(emxArray_real_T *A, emxArray_real_T *tau)
 {
   int m;
   int n;
   int lastc;
   int mn;
-  double work_data[10];
+  emxArray_real_T *work;
+  int knt;
   int i;
   int i_i;
-  int mmi;
-  double atmp;
-  double d1;
-  double xnorm;
-  int i_ip1;
   int lastv;
-  int knt;
+  int mmip1;
+  double atmp;
+  double xnorm;
+  int ic0;
+  double beta1;
   boolean_T exitg2;
-  int coltop;
   int exitg1;
-  m = A_size[0];
-  n = A_size[1];
-  lastc = A_size[0];
-  mn = A_size[1];
+  m = A->size[0];
+  n = A->size[1];
+  lastc = A->size[0];
+  mn = A->size[1];
   if (lastc < mn) {
     mn = lastc;
   }
 
-  tau_size[0] = (signed char)mn;
-  if (!((A_size[0] == 0) || (A_size[1] == 0))) {
-    lastc = (signed char)A_size[1];
-    if (0 <= lastc - 1) {
-      memset(&work_data[0], 0, (unsigned int)(lastc * (int)sizeof(double)));
+  lastc = tau->size[0];
+  tau->size[0] = mn;
+  emxEnsureCapacity_real_T(tau, lastc);
+  if ((A->size[0] != 0) && (A->size[1] != 0)) {
+    emxInit_real_T(&work, 1);
+    knt = A->size[1];
+    lastc = work->size[0];
+    work->size[0] = knt;
+    emxEnsureCapacity_real_T(work, lastc);
+    for (lastc = 0; lastc < knt; lastc++) {
+      work->data[lastc] = 0.0;
     }
 
-    for (i = 1; i <= mn; i++) {
-      i_i = (i + (i - 1) * m) - 1;
-      mmi = m - i;
-      if (i < m) {
-        atmp = A_data[i_i];
-        d1 = 0.0;
-        if (!(1 + mmi <= 0)) {
-          xnorm = xnrm2(mmi, A_data, i_i + 2);
+    for (i = 0; i < mn; i++) {
+      i_i = i + i * m;
+      lastv = m - i;
+      mmip1 = lastv - 1;
+      if (i + 1 < m) {
+        atmp = A->data[i_i];
+        tau->data[i] = 0.0;
+        if (lastv > 0) {
+          xnorm = xnrm2(mmip1, A, i_i + 2);
           if (xnorm != 0.0) {
-            xnorm = rt_hypotd_snf(A_data[i_i], xnorm);
-            if (A_data[i_i] >= 0.0) {
-              xnorm = -xnorm;
+            beta1 = rt_hypotd_snf(A->data[i_i], xnorm);
+            if (A->data[i_i] >= 0.0) {
+              beta1 = -beta1;
             }
 
-            if (std::abs(xnorm) < 1.0020841800044864E-292) {
-              knt = 0;
-              lastc = i_i + mmi;
+            if (std::abs(beta1) < 1.0020841800044864E-292) {
+              knt = -1;
               do {
                 knt++;
-                for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
-                  A_data[coltop] *= 9.9792015476736E+291;
-                }
-
-                xnorm *= 9.9792015476736E+291;
+                xscal(mmip1, 9.9792015476736E+291, A, i_i + 2);
+                beta1 *= 9.9792015476736E+291;
                 atmp *= 9.9792015476736E+291;
-              } while (!(std::abs(xnorm) >= 1.0020841800044864E-292));
+              } while (!(std::abs(beta1) >= 1.0020841800044864E-292));
 
-              xnorm = rt_hypotd_snf(atmp, xnrm2(mmi, A_data, i_i + 2));
+              beta1 = rt_hypotd_snf(atmp, xnrm2(lastv - 1, A, i_i + 2));
               if (atmp >= 0.0) {
-                xnorm = -xnorm;
+                beta1 = -beta1;
               }
 
-              d1 = (xnorm - atmp) / xnorm;
-              atmp = 1.0 / (atmp - xnorm);
-              lastc = i_i + mmi;
-              for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
-                A_data[coltop] *= atmp;
+              tau->data[i] = (beta1 - atmp) / beta1;
+              xscal(mmip1, 1.0 / (atmp - beta1), A, i_i + 2);
+              for (lastc = 0; lastc <= knt; lastc++) {
+                beta1 *= 1.0020841800044864E-292;
               }
 
-              for (coltop = 1; coltop <= knt; coltop++) {
-                xnorm *= 1.0020841800044864E-292;
-              }
-
-              atmp = xnorm;
+              atmp = beta1;
             } else {
-              d1 = (xnorm - A_data[i_i]) / xnorm;
-              atmp = 1.0 / (A_data[i_i] - xnorm);
-              lastc = i_i + mmi;
-              for (coltop = i_i + 1; coltop < lastc + 1; coltop++) {
-                A_data[coltop] *= atmp;
-              }
-
-              atmp = xnorm;
+              tau->data[i] = (beta1 - A->data[i_i]) / beta1;
+              xnorm = 1.0 / (A->data[i_i] - beta1);
+              xscal(mmip1, xnorm, A, i_i + 2);
+              atmp = beta1;
             }
           }
         }
 
-        tau_data[i - 1] = d1;
-        A_data[i_i] = atmp;
+        A->data[i_i] = atmp;
       } else {
-        tau_data[i - 1] = 0.0;
+        tau->data[i] = 0.0;
       }
 
-      if (i < n) {
-        atmp = A_data[i_i];
-        A_data[i_i] = 1.0;
-        i_ip1 = i + i * m;
-        if (tau_data[i - 1] != 0.0) {
-          lastv = 1 + mmi;
-          lastc = i_i + mmi;
-          while ((lastv > 0) && (A_data[lastc] == 0.0)) {
+      if (i + 1 < n) {
+        atmp = A->data[i_i];
+        A->data[i_i] = 1.0;
+        ic0 = (i + (i + 1) * m) + 1;
+        if (tau->data[i] != 0.0) {
+          lastc = i_i + mmip1;
+          while ((lastv > 0) && (A->data[lastc] == 0.0)) {
             lastv--;
             lastc--;
           }
 
-          lastc = n - i;
+          lastc = (n - i) - 1;
           exitg2 = false;
           while ((!exitg2) && (lastc > 0)) {
-            coltop = i_ip1 + (lastc - 1) * m;
-            knt = coltop;
+            knt = ic0 + (lastc - 1) * m;
+            mmip1 = knt;
             do {
               exitg1 = 0;
-              if (knt <= (coltop + lastv) - 1) {
-                if (A_data[knt - 1] != 0.0) {
+              if (mmip1 <= (knt + lastv) - 1) {
+                if (A->data[mmip1 - 1] != 0.0) {
                   exitg1 = 1;
                 } else {
-                  knt++;
+                  mmip1++;
                 }
               } else {
                 lastc--;
@@ -183,14 +175,15 @@ void xgeqrf(double A_data[], int A_size[2], double tau_data[], int tau_size[1])
         }
 
         if (lastv > 0) {
-          xgemv(lastv, lastc, A_data, i_ip1, m, A_data, i_i + 1, work_data);
-          xger(lastv, lastc, -tau_data[i - 1], i_i + 1, work_data, A_data, i_ip1,
-               m);
+          xgemv(lastv, lastc, A, ic0, m, A, i_i + 1, work);
+          xger(lastv, lastc, -tau->data[i], i_i + 1, work, A, ic0, m);
         }
 
-        A_data[i_i] = atmp;
+        A->data[i_i] = atmp;
       }
     }
+
+    emxFree_real_T(&work);
   }
 }
 

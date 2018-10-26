@@ -11,24 +11,24 @@
 
 /* Include files */
 #include <cmath>
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/abs.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "abs.h"
+#include "solveQP_emxutil.h"
 
 /* Function Definitions */
-void b_abs(const double x[10], double y[10])
+void b_abs(const emxArray_real_T *x, emxArray_real_T *y)
 {
+  int nx;
+  unsigned int x_idx_0;
   int k;
-  for (k = 0; k < 10; k++) {
-    y[k] = std::abs(x[k]);
-  }
-}
-
-void c_abs(const double x[68], double y[68])
-{
-  int k;
-  for (k = 0; k < 68; k++) {
-    y[k] = std::abs(x[k]);
+  nx = x->size[0];
+  x_idx_0 = (unsigned int)x->size[0];
+  k = y->size[0];
+  y->size[0] = (int)x_idx_0;
+  emxEnsureCapacity_real_T(y, k);
+  for (k = 0; k < nx; k++) {
+    y->data[k] = std::abs(x->data[k]);
   }
 }
 

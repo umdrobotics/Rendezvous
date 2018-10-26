@@ -31,13 +31,13 @@
 #include <stddef.h>
 #include <stdlib.h>
 
-#include "navigation/rt_nonfinite.h" 
-#include "navigation/solveQP.h"
-#include "navigation/solveQP_terminate.h"
-#include "navigation/solveQP_emxAPI.h"
-#include "navigation/solveQP_initialize.h"
-#include "navigation/rtwtypes.h"
-#include "navigation/solveQP_types.h"
+#include "rt_nonfinite.h" 
+#include "solveQP.h"
+#include "solveQP_terminate.h"
+#include "solveQP_emxAPI.h"
+#include "solveQP_initialize.h"
+#include "rtwtypes.h"
+#include "solveQP_types.h"
 
 using namespace std;
 using namespace Eigen;
@@ -208,6 +208,8 @@ void ShutDown(void)
     // Do some custom action.
     // For example, publish a stop message to some other nodes.
     ROS_INFO("It is requested to terminate navigation ...");
+    
+    solveQP_terminate();
 
     delete(_ptrDrone);
     // _ofsTragetTrackingLog.close();
@@ -481,7 +483,7 @@ static void argInit_4x1_real_T(double result[4], Vector4d xk)
 static emxArray_real_T *argInit_Unboundedx1_real_T(VectorXd desiredState)
 {
   emxArray_real_T *result;
-  static int iv2[1] = { 48 };
+  static int iv2[1] = { int(_mpc.nx_*_mpc.P_) };
 
   int idx0;
 
@@ -508,31 +510,73 @@ static double argInit_real_T()
 }
 
 VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
-  
-  // Optimal control input
-    double xkarray[4];
+    
+    double xkArray[4];
     emxArray_real_T *rp;
-    double x_data[10];    // control input
-    int x_size[1];
+    emxArray_real_T *x;
     
-    /* Initialize function 'solveQP' input arguments. */
+    // Initialize the system input
+    emxInitArray_real_T(&x, int(_mpc.nu_*_mpc.M_)); // system input
+
     /* Initialize function input argument 'xk'. */
-    argInit_4x1_real_T(xkarray, xk);
-    
+    argInit_4x1_real_T(xkArray, xk);
+
     /* Initialize function input argument 'rp'. */
     rp = argInit_Unboundedx1_real_T(desiredState);
     
-    /* Call the entry-point 'solveQP'. */
-    solveQP(xkarray, rp, x_data, x_size); 
+    std::cout << (double)_mpc.P_<<","<< (double)_mpc.M_<<","<< _mpc.q_<<","<<_mpc.Qk_<<","<<_mpc.Qf_<<","<<_mpc.Qb_ << std::endl;
     
-    emxDestroyArray_real_T(rp); 
+    VectorXd test1 = MatrixXd::Zero(4,1);
+    for( int i = 0; i < 4 ;i++){ test1(i) = xkArray[i]; } 
+    VectorXd test2 = MatrixXd::Zero(48,1);
+    for( int i = 0; i < 48 ;i++){ test2(i) = rp->data[i]; } 
+    VectorXd test3 = MatrixXd::Zero(10,1);
+    for( int i = 0; i < x->size[0U] ;i++){ test3(i) = x->data[i]; } 
     
+    std::cout << test1.transpose() << std::endl;
+    std::cout << test2.transpose() << std::endl;
+    std::cout << test3.transpose() << std::endl;
+
+    //~ /* Call the entry-point 'solveQP'. */
+    //~ solveQP((double)_mpc.P_, (double)_mpc.M_, xkArray, rp, _mpc.q_, _mpc.Qk_, _mpc.Qf_, _mpc.Qb_, x);
+    //~ solveQP(12.0, 5.0, xkArray, rp, 0.99, 3.0, 10.0, 1.5, x);
     
-    
-    VectorXd um = MatrixXd::Zero(10,1);
-    for( int i = 0; i<10 ;i++){
-        um(i) = x_data[i];
+    VectorXd um = MatrixXd::Zero((int)(_mpc.nu_*_mpc.M_),1);
+    for( int i = 0; i < x->size[0U] ;i++){
+        um(i) = x->data[i];
     } 
+    
+    emxDestroyArray_real_T(x);
+    emxDestroyArray_real_T(rp);
+    
+
+  
+  
+  
+  //~ // Optimal control input
+    //~ double xkarray[4];
+    //~ emxArray_real_T *rp;
+    //~ double x_data[10];    // control input
+    //~ int x_size[1];
+    //~ 
+    //~ /* Initialize function 'solveQP' input arguments. */
+    //~ /* Initialize function input argument 'xk'. */
+    //~ argInit_4x1_real_T(xkarray, xk);
+    //~ 
+    //~ /* Initialize function input argument 'rp'. */
+    //~ rp = argInit_Unboundedx1_real_T(desiredState);
+    //~ 
+    //~ /* Call the entry-point 'solveQP'. */
+    //~ solveQP(xkarray, rp, x_data, x_size); 
+    //~ 
+    //~ emxDestroyArray_real_T(rp); 
+    //~ 
+    //~ 
+    //~ 
+    //~ VectorXd um = MatrixXd::Zero(10,1);
+    //~ for( int i = 0; i<10 ;i++){
+        //~ um(i) = x_data[i];
+    //~ } 
     
     std::cout << um.transpose() << std::endl;
     
@@ -586,9 +630,9 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
       
 
     // Get optimal control input series
-    VectorXd um = MatrixXd::Zero(10,1);
+    VectorXd um = MatrixXd::Zero(_mpc.M_*_mpc.nu_,1);
     um = RunConstraintedMPC(xk, desiredState);
-    Vector2d uk = um.head(2);
+    Vector2d uk = um.head(_mpc.nu_);
     //~ std::cout << "Um: " << um.transpose() << endl;
     
     
@@ -2202,14 +2246,14 @@ void LoadNodeSettings(ros::NodeHandle nh){
     nh.getParam("/KalmanFilterParameters/defaultSetting", bIsMPCSettingDefault);
     if(!bIsMPCSettingDefault){
         // if not default, then redefine the settings.        
-        nh.getParam("/KalmanFilterParameters/P", _mpc.P_);
-        nh.getParam("/KalmanFilterParameters/M", _mpc.M_);
-        nh.getParam("/KalmanFilterParameters/q", _mpc.q_);
-        nh.getParam("/KalmanFilterParameters/kiPos", _mpc.kiPos_);
-        nh.getParam("/KalmanFilterParameters/kiVec", _mpc.kiVec_);
-        nh.getParam("/KalmanFilterParameters/Qk", _mpc.Qk_);
-        nh.getParam("/KalmanFilterParameters/Qf", _mpc.Qf_);
-        nh.getParam("/KalmanFilterParameters/Qb", _mpc.Qb_);
+        nh.getParam("/MPCControllerParameters/P", _mpc.P_);
+        nh.getParam("/MPCControllerParameters/M", _mpc.M_);
+        nh.getParam("/MPCControllerParameters/q", _mpc.q_);
+        nh.getParam("/MPCControllerParameters/kiPos", _mpc.kiPos_);
+        nh.getParam("/MPCControllerParameters/kiVec", _mpc.kiVec_);
+        nh.getParam("/MPCControllerParameters/Qk", _mpc.Qk_);
+        nh.getParam("/MPCControllerParameters/Qf", _mpc.Qf_);
+        nh.getParam("/MPCControllerParameters/Qb", _mpc.Qb_);
     }
     
 }

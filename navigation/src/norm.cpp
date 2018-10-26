@@ -11,33 +11,41 @@
 
 /* Include files */
 #include <cmath>
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/norm.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "norm.h"
 
 /* Function Definitions */
-double norm(const double x_data[])
+double b_norm(const emxArray_real_T *x)
 {
   double y;
   double scale;
+  int kend;
   int k;
   double absxk;
   double t;
   y = 0.0;
-  scale = 3.3121686421112381E-170;
-  for (k = 0; k < 10; k++) {
-    absxk = std::abs(x_data[k]);
-    if (absxk > scale) {
-      t = scale / absxk;
-      y = 1.0 + y * t * t;
-      scale = absxk;
-    } else {
-      t = absxk / scale;
-      y += t * t;
+  if (x->size[0] == 1) {
+    y = std::abs(x->data[0]);
+  } else {
+    scale = 3.3121686421112381E-170;
+    kend = x->size[0];
+    for (k = 0; k < kend; k++) {
+      absxk = std::abs(x->data[k]);
+      if (absxk > scale) {
+        t = scale / absxk;
+        y = 1.0 + y * t * t;
+        scale = absxk;
+      } else {
+        t = absxk / scale;
+        y += t * t;
+      }
     }
+
+    y = scale * std::sqrt(y);
   }
 
-  return scale * std::sqrt(y);
+  return y;
 }
 
 /* End of code generation (norm.cpp) */

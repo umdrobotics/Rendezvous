@@ -10,41 +10,39 @@
  */
 
 /* Include files */
-#include "navigation/rt_nonfinite.h"
-#include "navigation/solveQP.h"
-#include "navigation/xgemv.h"
+#include "rt_nonfinite.h"
+#include "solveQP.h"
+#include "xgemv.h"
 
 /* Function Definitions */
-void xgemv(int m, int n, const double A_data[], int ia0, int lda, const double
-           x_data[], int ix0, double y_data[])
+void xgemv(int m, int n, const emxArray_real_T *A, int ia0, int lda, const
+           emxArray_real_T *x, int ix0, emxArray_real_T *y)
 {
   int iy;
-  int i4;
+  int i18;
   int iac;
   int ix;
   double c;
-  int i5;
+  int i19;
   int ia;
   if (n != 0) {
-    for (iy = 1; iy <= n; iy++) {
-      y_data[iy - 1] = 0.0;
+    for (iy = 0; iy < n; iy++) {
+      y->data[iy] = 0.0;
     }
 
     iy = 0;
-    i4 = ia0 + lda * (n - 1);
-    iac = ia0;
-    while ((lda > 0) && (iac <= i4)) {
+    i18 = ia0 + lda * (n - 1);
+    for (iac = ia0; lda < 0 ? iac >= i18 : iac <= i18; iac += lda) {
       ix = ix0;
       c = 0.0;
-      i5 = (iac + m) - 1;
-      for (ia = iac; ia <= i5; ia++) {
-        c += A_data[ia - 1] * x_data[ix - 1];
+      i19 = (iac + m) - 1;
+      for (ia = iac; ia <= i19; ia++) {
+        c += A->data[ia - 1] * x->data[ix - 1];
         ix++;
       }
 
-      y_data[iy] += c;
+      y->data[iy] += c;
       iy++;
-      iac += lda;
     }
   }
 }
