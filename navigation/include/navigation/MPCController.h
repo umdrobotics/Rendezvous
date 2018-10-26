@@ -23,7 +23,7 @@ class MPCController {
         MatrixXd K_;
         
     
-        double P_, M_;
+        int P_, M_;
         int nx_, nu_;
         double q_, kiPos_, kiVec_;
         double Qk_, Qf_, Qb_;
