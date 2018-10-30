@@ -11,7 +11,7 @@
         <param name="bIsKeepLanding" type="bool" value="true"/>
     </group>
     <group ns="KalmanFilterParameters">
-        <param name="defaultSetting" type="bool" value="true"/>
+        <param name="defaultSetting" type="bool" value="false"/>
         <param name="sigma_ax" type="double" value="0.1"/>
         <param name="sigma_ay" type="double" value="0.1"/>
         <param name="sigma_GPSpx" type="double" value="0.3"/>
@@ -20,14 +20,14 @@
         <param name="sigma_GPSvy" type="double" value="0.18"/>
         <param name="sigma_Apriltagpx" type="double" value="0.1"/>
         <param name="sigma_Apriltagpy" type="double" value="0.1"/>
-        <param name="nPred" type="int" value="2"/>
+        <param name="nPred" type="int" value="1"/>
     </group>
     <group ns="MPCControllerParameters">
-        <param name="defaultSetting" type="bool" value="true"/>
+        <param name="defaultSetting" type="bool" value="false"/>
         <param name="P" type="double" value="12"/>
         <param name="M" type="double" value="5"/>
-        <param name="q" type="double" value="0.99"/>
-        <param name="kiPos" type="double" value="0.1"/>
+        <param name="q" type="double" value="0.9"/>
+        <param name="kiPos" type="double" value="0.03"/>
         <param name="kiVec" type="double" value="0"/>
         <param name="Qk" type="double" value="7"/>
         <param name="Qf" type="double" value="10"/>

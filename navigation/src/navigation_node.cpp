@@ -507,7 +507,7 @@ static double argInit_real_T()
   return 0.0;
 }
 
-/*
+
 VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     
     double xkArray[4];
@@ -515,8 +515,8 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     emxArray_real_T *x;
     
     // Initialize the system input
-    emxInitArray_real_T(&x, int(_mpc.nu_*_mpc.M_)); // system input
-
+    //~ emxInitArray_real_T(&x, int(_mpc.nu_*_mpc.M_)); // system input
+    emxInitArray_real_T(&x, 1);
 
     argInit_4x1_real_T(xkArray, xk);
 
@@ -537,8 +537,7 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     //~ std::cout << test3.transpose() << std::endl;
 
 
-    solveQP((double)_mpc.P_, (double)_mpc.M_, xkArray, rp, _mpc.q_, _mpc.Qk_, _mpc.Qf_, _mpc.Qb_, &x);
-    //~ solveQP(12.0, 5.0, xkArray, rp, 0.99, 3.0, 10.0, 1.5, x);
+    solveQP((double)_mpc.P_, (double)_mpc.M_, xkArray, rp, _mpc.q_, _mpc.Qk_, _mpc.Qf_, _mpc.Qb_, x);
     
     VectorXd um = MatrixXd::Zero((int)(_mpc.nu_*_mpc.M_),1);
     for( int i = 0; i < x->size[0U] ;i++){
@@ -548,10 +547,6 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     emxDestroyArray_real_T(x);
     emxDestroyArray_real_T(rp);
     
-
-  
-  
-  
   //~ // Optimal control input
     //~ double xkarray[4];
     //~ emxArray_real_T *rp;
@@ -581,91 +576,7 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     return um;
     
 }
-* */
 
-// Function Definitions
-
-//
-// Arguments    : double result[4]
-// Return Type  : void
-//
-//~ static void argInit_4x1_real_T(double result[4], Vector4d xk)
-//~ {
-  //~ int idx0;
-//~ 
-  //~ // Loop over the array to initialize each element.
-  //~ for (idx0 = 0; idx0 < 4; idx0++) {
-    //~ // Set the value of the array element.
-    //~ // Change this value to the value that the application requires.
-    //~ result[idx0] = xk(idx0);
-  //~ }
-//~ }
-
-//
-// Arguments    : void
-// Return Type  : emxArray_real_T *
-//
-//~ static emxArray_real_T *argInit_Unboundedx1_real_T(VectorXd desiredState)
-//~ {
-  //~ emxArray_real_T *result;
-  //~ static int iv1[1] = { int(_mpc.nx_*_mpc.P_) };
-//~ 
-  //~ int idx0;
-//~ 
-  //~ // Set the size of the array.
-  //~ // Change this size to the value that the application requires.
-  //~ result = emxCreateND_real_T(1, *(int (*)[1])&iv1[0]);
-//~ 
-  //~ // Loop over the array to initialize each element.
-  //~ for (idx0 = 0; idx0 < result->size[0U]; idx0++) {
-    //~ // Set the value of the array element.
-    //~ // Change this value to the value that the application requires.
-    //~ result->data[idx0] = desiredState(idx0);
-  //~ }
-//~ 
-  //~ return result;
-//~ }
-
-//
-// Arguments    : void
-// Return Type  : double
-//
-
-//
-// Arguments    : void
-// Return Type  : void
-//
-static VectorXd RunConstraintedMPC(Vector4d xkVec, VectorXd desiredState)
-{
-  emxArray_real_T *x;
-  double P = 12;
-  double M = 5;
-  double xk[4];
-  emxArray_real_T *rp;
-  emxInitArray_real_T(&x, 1);
-  //~ static int iv1[1] = { 1 };
-  //~ x = emxCreateND_real_T(1, *(int (*)[1])&iv1[0]);
-  
-
-  // Initialize function 'solveQP' input arguments.
-  //~ P = argInit_real_T();
-  //~ M = argInit_real_T();
-
-  // Initialize function input argument 'xk'.
-  argInit_4x1_real_T(xk, xkVec);
-
-  // Initialize function input argument 'rp'.
-  rp = argInit_Unboundedx1_real_T(desiredState);
-
-  // Call the entry-point 'solveQP'.
-  solveQP(P, M, xk, rp, 0.99, 3.0, 10.0, 1.5, x);
-  
-  emxDestroyArray_real_T(x);
-  emxDestroyArray_real_T(rp);
-}
-
-
-  
 
 float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitch, float& droll)
 {
