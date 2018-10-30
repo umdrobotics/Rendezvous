@@ -2,11 +2,10 @@
  * Academic License - for use in teaching, academic research, and meeting
  * course requirements at degree granting institutions only.  Not for
  * government, commercial, or other organizational use.
+ * File: rtGetNaN.h
  *
- * rtGetNaN.h
- *
- * Code generation for function 'solveQP'
- *
+ * MATLAB Coder version            : 3.4
+ * C/C++ source code generated on  : 29-Oct-2018 21:02:18
  */
 
 #ifndef RTGETNAN_H
@@ -20,4 +19,8 @@ extern real32_T rtGetNaNF(void);
 
 #endif
 
-/* End of code generation (rtGetNaN.h) */
+/*
+ * File trailer for rtGetNaN.h
+ *
+ * [EOF]
+ */

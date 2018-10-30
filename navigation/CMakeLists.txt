@@ -130,28 +130,42 @@ add_library(MPCController src/MPCController.cpp )
 add_library(KalmanFilter src/KalmanFilter.cpp )
 add_library(ExtendedKalmanFilter src/ExtendedKalmanFilter.cpp )
 
-add_library(abs src/abs.cpp)
-add_library(eye src/eye.cpp)
-add_library(inv src/inv.cpp)
-add_library(mpcqpsolver src/mpcqpsolver.cpp)
-add_library(mpower src/mpower.cpp)
-add_library(norm src/norm.cpp)
-add_library(qpkwik src/qpkwik.cpp)
-add_library(qr src/qr.cpp)
-add_library(rtGetInf src/rtGetInf.cpp)
-add_library(rtGetNaN src/rtGetNaN.cpp)
-add_library(rt_nonfinite src/rt_nonfinite.cpp)
-add_library(solveQP src/solveQP.cpp src/inv.cpp src/mpower.cpp src/mpcqpsolver.cpp src/eye.cpp src/qpkwik.cpp src/abs.cpp src/norm.cpp src/qr.cpp src/xgemv.cpp src/xnrm2.cpp src/xger.cpp)
-add_library(solveQP_emxAPI src/solveQP_emxAPI.cpp)
-add_library(solveQP_emxutil src/solveQP_emxutil.cpp)
-add_library(solveQP_initialize src/solveQP_initialize.cpp src/rt_nonfinite.cpp src/rtGetInf.cpp src/rtGetNaN.cpp)
-add_library(solveQP_terminate src/solveQP_terminate.cpp)
-add_library(xgemv src/xgemv.cpp)
-add_library(xgeqrf src/xgeqrf.cpp)
-add_library(xger src/xger.cpp)
+add_library(abs src/matlabCode/abs.cpp)
+add_library(eye src/matlabCode/eye.cpp)
+add_library(inv src/matlabCode/inv.cpp)
+add_library(matrix_to_integer_power src/matlabCode/matrix_to_integer_power.cpp)
+add_library(mpcqpsolver src/matlabCode/mpcqpsolver.cpp)
+add_library(mpower src/matlabCode/mpower.cpp)
+add_library(norm src/matlabCode/norm.cpp)
+add_library(qpkwik src/matlabCode/qpkwik.cpp)
+add_library(qr src/matlabCode/qr.cpp)
+add_library(rtGetInf src/matlabCode/rtGetInf.cpp)
+add_library(rtGetNaN src/matlabCode/rtGetNaN.cpp)
+add_library(rt_nonfinite src/matlabCode/rt_nonfinite.cpp)
+add_library(solveQP src/matlabCode/solveQP.cpp 
+                    src/matlabCode/inv.cpp 
+                    src/matlabCode/matrix_to_integer_power.cpp
+                    src/matlabCode/mpower.cpp 
+                    src/matlabCode/mpcqpsolver.cpp 
+                    src/matlabCode/eye.cpp 
+                    src/matlabCode/qpkwik.cpp 
+                    src/matlabCode/abs.cpp 
+                    src/matlabCode/norm.cpp 
+                    src/matlabCode/qr.cpp 
+                    src/matlabCode/xgemv.cpp 
+                    src/matlabCode/xnrm2.cpp 
+                    src/matlabCode/xger.cpp
+            )
+add_library(solveQP_emxAPI src/matlabCode/solveQP_emxAPI.cpp)
+add_library(solveQP_emxutil src/matlabCode/solveQP_emxutil.cpp)
+add_library(solveQP_initialize src/matlabCode/solveQP_initialize.cpp src/matlabCode/rt_nonfinite.cpp src/matlabCode/rtGetInf.cpp src/matlabCode/rtGetNaN.cpp)
+add_library(solveQP_terminate src/matlabCode/solveQP_terminate.cpp)
+add_library(xgemv src/matlabCode/xgemv.cpp)
+add_library(xgeqrf src/matlabCode/xgeqrf.cpp)
+add_library(xger src/matlabCode/xger.cpp)
 #~ add_library(xgetrf src/xgetrf.cpp)
-add_library(xnrm2 src/xnrm2.cpp)
-add_library(xscal src/xscal.cpp)
+add_library(xnrm2 src/matlabCode/xnrm2.cpp)
+add_library(xscal src/matlabCode/xscal.cpp)
 #~ add_library(xpotrf src/xpotrf.cpp)
 #~ add_library(xzlarf src/xzlarf.cpp)
 #~ add_library(xzlarfg src/xzlarfg.cpp)
@@ -187,7 +201,7 @@ add_dependencies(navigation_menu navigation_generate_messages_cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} 
     MPCController KalmanFilter ExtendedKalmanFilter 
-    abs eye inv mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite 
+    abs eye inv matrix_to_integer_power mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite 
     solveQP solveQP_emxAPI solveQP_emxutil solveQP_initialize solveQP_terminate xgemv xgeqrf xger xnrm2 xscal
 )
 #"/usr/local/lib/lbnlopt.a"  ${nlopt_LIBRARIES}
