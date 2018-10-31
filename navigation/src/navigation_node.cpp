@@ -645,7 +645,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
 
     if (abs(distance_x) < 20)
     {
-        _sumPosErrX = IntegratorCalculationPos(stateError(0)*0.85, _lastPosErrX, _sumPosErrX);
+        _sumPosErrX = IntegratorCalculationPos(stateError(0)*0.55, _lastPosErrX, _sumPosErrX);
         _sumVecErrX = IntegratorCalculationVec(stateError(2), _lastVecErrX, _sumVecErrX);
         _lastPosErrX = stateError(0);
         _lastVecErrX = stateError(2);
@@ -658,7 +658,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     if (abs(distance_y) < 20)
     {
-        _sumPosErrY = IntegratorCalculationPos(stateError(1)*0.85, _lastPosErrY, _sumPosErrY);
+        _sumPosErrY = IntegratorCalculationPos(stateError(1)*0.55, _lastPosErrY, _sumPosErrY);
         _sumVecErrY = IntegratorCalculationVec(stateError(3), _lastVecErrY, _sumVecErrY);
         _lastPosErrY = stateError(1);
         _lastVecErrY = stateError(3);
@@ -2218,6 +2218,7 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/NavigationSwitches/bIsMPCEnable", _bIsMPCEnable);
         nh.getParam("/NavigationSwitches/bIsLQREnable", _bIsLQREnable);
         nh.getParam("/NavigationSwitches/bIsKeepLanding", _bIsKeepLanding);
+        nh.getParam("/NavigationSwitches/bIsClearIntegratorError", _bIsClearIntegratorError); 
     }
     
     bool bIsKFSettingDefault = true;
