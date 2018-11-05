@@ -24,8 +24,8 @@ ExtendedKalmanFilter::ExtendedKalmanFilter()
 
     R_ <<   0.3*0.3, 0, 0, 0,
             0, 0.3*0.3, 0, 0,
-            0, 0, 0.18*0.18*1.414, 0,
-            0, 0, 0, 0.087*0.087;   // noise, sigma = 0.5
+            0, 0, 0.18*0.18*2, 0,
+            0, 0, 0, 0.001*0.001;   // noise, sigma = 0.5
 
 
     nx_ = 4;  
@@ -69,10 +69,10 @@ VectorXd ExtendedKalmanFilter::Update(VectorXd xk){
     VectorXd output = ObservationModel(xk, dt_);
     
     double sigma_a = 0.1;
-    double sigma_w = 0.041;
-    Q_ <<   pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(2))*cos(xk(2)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(2))*sin(xk(2)), pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(2)), 0,
-            pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(2))*sin(xk(2)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*sin(xk(2))*sin(xk(2)), pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(2)), 0,
-            pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(2)), 		   pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(2)),            pow(dt_,2.0)*pow(sigma_a,2.0),              0,
+    double sigma_w = 0.001;
+    Q_ <<   pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(3))*cos(xk(3)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(3))*sin(xk(3)), pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(3)), 0,
+            pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(3))*sin(xk(3)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*sin(xk(3))*sin(xk(3)), pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(3)), 0,
+            pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(3)), 		   pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(3)),            pow(dt_,2.0)*pow(sigma_a,2.0),              0,
             0, 													   0,                                                     0,                                          pow(dt_,2.0)*pow(sigma_w,2.0);
 
     // Predict
@@ -111,8 +111,9 @@ VectorXd ExtendedKalmanFilter::SystemModel(VectorXd xk, double dt){
 
     double dx = x + dt*v*cos(theta);
     double dy = y + dt*v*sin(theta);
-    double dtheta = theta;  // rads
     double dv = v;
+    double dtheta = theta;  // rads
+    
     // double domega = omega;				// rads/s
 
     xk1 << dx, dy,dv, dtheta ;//, domega;
@@ -143,8 +144,8 @@ MatrixXd ExtendedKalmanFilter::JacobianSystemModel(VectorXd xk, double dt){
 
     // double x = xk(0);
     // double y = xk(1);
-    double theta = xk(2);
-    double v = xk(3);
+    double v = xk(2);
+    double theta = xk(3);
     // double omega = xk(4);
     
     // MatrixXd jacobian(5,5);
@@ -212,8 +213,8 @@ Vector4d ExtendedKalmanFilter::StateTransformer(VectorXd xk){
 
     double x = xk(0);
     double y = xk(1);
-    double theta = xk(3);
     double v = xk(2);
+    double theta = xk(3);
     // double omega = xk(4);
 
     double px = x;

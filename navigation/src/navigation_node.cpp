@@ -42,7 +42,7 @@
 using namespace std;
 using namespace Eigen;
 
-//~ #define EKF_DEBUG
+#define EKF_DEBUG
 #define FUSE_DEBUG
 
 //~ #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
@@ -169,7 +169,7 @@ std::ofstream _ofsGoToTruckLog;
 std::ofstream _ofsAutonomousLandingLog;
 std::ofstream _ofsSearchingRangeLog;
 std::ofstream _ofsMPCControllerLog;
-//~ std::ofstream _ofsKalmanFilterLog;
+std::ofstream _ofsKalmanFilterLog;
 
 
 // GPS & Camera data funsion
@@ -190,7 +190,7 @@ geometry_msgs::PointStamped _msgTruckLocalPosition;
 geometry_msgs::PointStamped _msgTruckGPSPosition;
 geometry_msgs::PointStamped _msgRealTruckLocalPosition;
 geometry_msgs::PointStamped _msgTruckVelocity;
-geometry_msgs::PointStamped _msgFusedTargetPosition;
+geometry_msgs::PointStamped _msgFusedTargetPosition; 
 geometry_msgs::PointStamped _msgFusedTargetVelocity;
 
 geometry_msgs::PointStamped _msgDesiredAttitudeDeg;
@@ -603,6 +603,15 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     _ekf.SetPredHorizon(nPred + P);
     if(!_IsGPSUpdated){
         _targetEstState = _ekf.PredictWOObservation();
+        
+        _msgFusedTargetPosition.header.stamp = ros::Time::now();
+        _msgFusedTargetPosition.point.x = _targetEstState(0);
+        _msgFusedTargetPosition.point.y = _targetEstState(1);
+        _msgFusedTargetPosition.point.z = 0;
+
+        _msgFusedTargetVelocity.point.x = _targetEstState(2)*cos(_targetEstState(3));
+        _msgFusedTargetVelocity.point.y = _targetEstState(2)*sin(_targetEstState(3));
+        _msgFusedTargetVelocity.point.z = 0;
     }
     _IsGPSUpdated = false;
     VectorXd truckPred = _ekf.Predict(_targetEstState);
@@ -713,7 +722,10 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
                             << _msgFusedTargetPosition.point.z << ","      // fused target local position
                             << _msgFusedTargetVelocity.point.x << ","
                             << _msgFusedTargetVelocity.point.y << ","
-                            << _msgFusedTargetVelocity.point.z << ","      // fused target local position                            
+                            << _msgFusedTargetVelocity.point.z << ","      // fused target local position 
+                            << _msgRealTruckLocalPosition.point.x << ","
+                            << _msgRealTruckLocalPosition.point.y << "," 
+                            << _msgRealTruckLocalPosition.point.z << ","                           
                             //~ << _targetEstState.transpose() << ","        // truck estimated position & velocity
                             << drone.local_position.x << ","
                             << drone.local_position.y << ","
@@ -1104,7 +1116,9 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         //~ _queMsgTargetLocalPosition.pop_front();
     //~ }
     //~ _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
-    
+
+#ifndef EKF_DEBUG
+
     // Update estimate by kalman filter
     Vector2d targetState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
     ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
@@ -1126,7 +1140,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         _bIsLock = false;
     }
     
- 
+#endif
 
     // Logging
     _bIsTargetBeingTracked = true;
@@ -1297,16 +1311,30 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
 
     double x = _msgTruckLocalPosition.point.x;
     double y = _msgTruckLocalPosition.point.y;
-    double theta = atan2(y,x)*180/PI;
     double v = sqrt(pow(_msgTruckVelocity.point.x,2) + pow(_msgTruckVelocity.point.y,2));
+    double theta = atan2(y,x); //*180/PI;
+    
     // double omega = 0;
     
     xk1 << x, y, v, theta;// omega;
     
     _ekf.SetXhatInitialPoint(xk1);
     _targetEstState = _ekf.Update(xk1);
+    
+    
+    _msgFusedTargetPosition.header.stamp = ros::Time::now();
+    _msgFusedTargetPosition.point.x = _targetEstState(0);
+    _msgFusedTargetPosition.point.y = _targetEstState(1);
+    _msgFusedTargetPosition.point.z = 0;
+
+    _msgFusedTargetVelocity.point.x = _targetEstState(2)*cos(_targetEstState(3));
+    _msgFusedTargetVelocity.point.y = _targetEstState(2)*sin(_targetEstState(3));
+    _msgFusedTargetVelocity.point.z = 0;
+    
+    _IsGPSUpdated = true;
+    
 #else
-  _kf.SetXhatInitialPoint(targetState);
+    _kf.SetXhatInitialPoint(targetState);
 
     if (!_kf.IsXhatInitialized_){ 
         _kf.IsXhatInitialized_ = true;
@@ -1336,18 +1364,26 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     
 #endif
   
-  // _IsGPSUpdated = true;
-      //~ _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
-                            //~ << ros::Time::now().toSec() << ","              
-                            //~ << _msgTruckLocalPosition.point.x << ","
-                            //~ << _msgTruckLocalPosition.point.y << ","
-                            //~ << _msgTruckLocalPosition.point.z << ","  // truck local position, mey be noisy
-                            //~ << _msgTruckVelocity.point.x << ","
-              //~ << _msgTruckVelocity.point.y << ","
-              //~ << _msgRealTruckLocalPosition.point.x << ","
-              //~ << _msgRealTruckLocalPosition.point.y << ","
-              //~ << _msgRealTruckLocalPosition.point.z << "," // truck true local position 
-              //~ << _targetEstState.transpose() << std::endl;   
+    
+      _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                            << ros::Time::now().toSec() << ","              
+                            << _msgTruckLocalPosition.point.x << ","
+                            << _msgTruckLocalPosition.point.y << ","
+                            << _msgTruckLocalPosition.point.z << "," 
+                            << _msgTruckVelocity.point.x << ","
+                            << _msgTruckVelocity.point.y << ","       // truck local position
+                            << _msgTargetLocalPosition.point.x << ","
+                            << _msgTargetLocalPosition.point.y << ","
+                            << _msgTargetLocalPosition.point.z << ","     // target local position
+                            << _msgFusedTargetPosition.point.x << ","
+                            << _msgFusedTargetPosition.point.y << ","
+                            << _msgFusedTargetPosition.point.z << ","      // fused target local position
+                            << _msgFusedTargetVelocity.point.x << ","
+                            << _msgFusedTargetVelocity.point.y << ","
+                            << _msgFusedTargetVelocity.point.z << ","      // fused target local position 
+                            << _msgRealTruckLocalPosition.point.x << ","
+                            << _msgRealTruckLocalPosition.point.y << "," 
+                            << _msgRealTruckLocalPosition.point.z << std::endl;  
 
 }
 
@@ -2197,10 +2233,10 @@ void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
     
     // Log about KalmanFilter
-    //~ ss.str("");
-    //~ ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
-    //~ _ofsKalmanFilterLog.open(ss.str());
-    //~ ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
+    ss.str("");
+    ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
+    _ofsKalmanFilterLog.open(ss.str());
+    ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
 }
 
 void LoadNodeSettings(ros::NodeHandle nh){
@@ -2220,7 +2256,8 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/NavigationSwitches/bIsKeepLanding", _bIsKeepLanding);
         nh.getParam("/NavigationSwitches/bIsClearIntegratorError", _bIsClearIntegratorError); 
     }
-    
+
+#ifndef EKF_DEBUG
     bool bIsKFSettingDefault = true;
     nh.getParam("/KalmanFilterParameters/defaultSetting", bIsKFSettingDefault);
     if(!bIsKFSettingDefault){
@@ -2235,6 +2272,7 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/KalmanFilterParameters/sigma_Apriltagpy", _kf.sigma_Apriltagpy_);
         nh.getParam("/KalmanFilterParameters/nPred", _kf.nPred_);
     }
+#endif
 
     bool bIsMPCSettingDefault = true;
     nh.getParam("/KalmanFilterParameters/defaultSetting", bIsMPCSettingDefault);
@@ -2272,8 +2310,10 @@ int main(int argc, char **argv)
     solveQP_initialize();
     
     LoadNodeSettings(nh);
+
+#ifndef EKF_DEBUG
     _kf.Initialize();
-    
+#endif
     
 
     // Log files
