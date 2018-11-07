@@ -12,8 +12,11 @@ using namespace Eigen;
 ExtendedKalmanFilter::ExtendedKalmanFilter()
 {
 
-    dt_ = 0.1;
-    dpt_ = 0.025; // for prediction
+    //~ dt_ = 0.1;
+    //~ dpt_ = 0.025; // for prediction
+    
+    sigma_a_ = 0.1;
+    sigma_w_ = 0.001;
     
 
 
@@ -22,14 +25,17 @@ ExtendedKalmanFilter::ExtendedKalmanFilter()
     //~ Q_.block(3,3,2,2) = MatrixXd::Identity(2,2);
 
 
-    R_ <<   0.3*0.3, 0, 0, 0,
+    Rg_ <<  0.3*0.3, 0, 0, 0,
             0, 0.3*0.3, 0, 0,
             0, 0, 0.18*0.18*2, 0,
             0, 0, 0, 0.001*0.001;   // noise, sigma = 0.5
+            
+    Ra_ <<  0.1*0.1, 0,
+            0, 0.1*0.1;
 
 
     nx_ = 4;  
-    nxdrone_ = 4;// for drone state
+    //~ nxdrone_ = 4;// for drone state
 
 }
 
@@ -48,7 +54,7 @@ void ExtendedKalmanFilter::Initialize(){
 void ExtendedKalmanFilter::SetPredHorizon(int nPred){
     
     nPred_ = nPred;
-    XP_ = MatrixXd::Zero(nxdrone_*nPred_,1);
+    XP_ = MatrixXd::Zero(nx_*nPred_,1);
     
 }    
 
@@ -64,26 +70,27 @@ void ExtendedKalmanFilter::SetXhatInitialPoint(VectorXd xk){
 }
 
 
-VectorXd ExtendedKalmanFilter::Update(VectorXd xk){
+Vector4d ExtendedKalmanFilter::UpdateWithGPSMeasurements(Vector4d xk, double dt){
 
-    VectorXd output = ObservationModel(xk, dt_);
+    Vector4d output = ObservationModelForGPS(xk, dt);
+    double theta = xk(3);
     
-    double sigma_a = 0.1;
-    double sigma_w = 0.001;
-    Q_ <<   pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(3))*cos(xk(3)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(3))*sin(xk(3)), pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(3)), 0,
-            pow(dt_,4.0)/4*pow(sigma_a,2.0)*cos(xk(3))*sin(xk(3)), pow(dt_,4.0)/4*pow(sigma_a,2.0)*sin(xk(3))*sin(xk(3)), pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(3)), 0,
-            pow(dt_,3.0)/2*pow(sigma_a,2.0)*cos(xk(3)), 		   pow(dt_,3.0)/2*pow(sigma_a,2.0)*sin(xk(3)),            pow(dt_,2.0)*pow(sigma_a,2.0),              0,
-            0, 													   0,                                                     0,                                          pow(dt_,2.0)*pow(sigma_w,2.0);
+    Q_ <<   pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*cos(theta), pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*sin(theta), pow(dt,3.0)/2*pow(sigma_a_,2.0)*cos(theta), 0,
+            pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*sin(theta), pow(dt,4.0)/4*pow(sigma_a_,2.0)*sin(theta)*sin(theta), pow(dt,3.0)/2*pow(sigma_a_,2.0)*sin(theta), 0,
+            pow(dt,3.0)/2*pow(sigma_a_,2.0)*cos(theta), 		   pow(dt,3.0)/2*pow(sigma_a_,2.0)*sin(theta),            pow(dt,2.0)*pow(sigma_a_,2.0),              0,
+            0, 													   0,                                                     0,                                          pow(dt,2.0)*pow(sigma_w_,2.0);
 
     // Predict
-    VectorXd xpred = SystemModel(xhat_, dt_) ;              // local var, prediction for time 
-    MatrixXd F = JacobianSystemModel(xhat_, dt_);           // state transition Jacobian
+    VectorXd xpred = SystemModel(xhat_, dt) ;              // local var, prediction for time 
+    MatrixXd F = JacobianSystemModel(xhat_, dt);           // state transition Jacobian
     MatrixXd ppred = F * P_ * F.transpose() + Q_;             // local var, prediction for time k
+    
+    //~ std::cout << Q_.transpose() << std::endl;
 
     // Compute Kalman Gain
-    VectorXd innovation = output - ObservationModel(xpred, dt_);
-    MatrixXd H = JacobianObservationModel(xpred, dt_);
-    MatrixXd S = H * ppred * H.transpose() + R_;
+    VectorXd innovation = output - ObservationModelForGPS(xpred, dt);
+    MatrixXd H = JacobianObservationModelForGPS(xpred, dt);
+    MatrixXd S = H * ppred * H.transpose() + Rg_;
     MatrixXd K = ppred * H.transpose() * S.inverse();
 
     // Update estimate
@@ -98,7 +105,40 @@ VectorXd ExtendedKalmanFilter::Update(VectorXd xk){
 }
 
 
-VectorXd ExtendedKalmanFilter::SystemModel(VectorXd xk, double dt){
+Vector4d ExtendedKalmanFilter::UpdateWithCameraMeasurements(Vector4d xk, double dt){
+
+    Vector2d output = ObservationModelForCamera(xk, dt);
+    double theta = xk(3);
+    
+    Q_ <<   pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*cos(theta), pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*sin(theta), pow(dt,3.0)/2*pow(sigma_a_,2.0)*cos(theta), 0,
+            pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*sin(theta), pow(dt,4.0)/4*pow(sigma_a_,2.0)*sin(theta)*sin(theta), pow(dt,3.0)/2*pow(sigma_a_,2.0)*sin(theta), 0,
+            pow(dt,3.0)/2*pow(sigma_a_,2.0)*cos(theta), 		   pow(dt,3.0)/2*pow(sigma_a_,2.0)*sin(theta),            pow(dt,2.0)*pow(sigma_a_,2.0),              0,
+            0, 													   0,                                                     0,                                          pow(dt,2.0)*pow(sigma_w_,2.0);
+
+    // Predict
+    VectorXd xpred = SystemModel(xhat_, dt) ;              // local var, prediction for time 
+    MatrixXd F = JacobianSystemModel(xhat_, dt);           // state transition Jacobian
+    MatrixXd ppred = F * P_ * F.transpose() + Q_;             // local var, prediction for time k
+
+    // Compute Kalman Gain
+    VectorXd innovation = output - ObservationModelForCamera(xpred, dt);
+    MatrixXd H = JacobianObservationModelForCamera(xpred, dt);
+    MatrixXd S = H * ppred * H.transpose() + Ra_;
+    MatrixXd K = ppred * H.transpose() * S.inverse();
+
+    // Update estimate
+    xhat_ = xpred + K * innovation;
+    P_ = ppred - K * H * ppred;
+    
+    
+    xEstmWO_ = xhat_;
+
+    return xhat_;
+
+}
+
+
+Vector4d ExtendedKalmanFilter::SystemModel(Vector4d xk, double dt){
 
     VectorXd xk1(4);
 
@@ -122,11 +162,7 @@ VectorXd ExtendedKalmanFilter::SystemModel(VectorXd xk, double dt){
 }
 
 
-VectorXd ExtendedKalmanFilter::ObservationModel(VectorXd xk, double dt){
-
-    // MatrixXd H(2,5);
-    // H <<  1, 0, 0, 0, 0,
-    //       0, 1, 0, 0, 0;
+Vector4d ExtendedKalmanFilter::ObservationModelForGPS(Vector4d xk, double dt){
 
     MatrixXd H(4,4);
     H <<  1, 0, 0, 0,
@@ -134,13 +170,25 @@ VectorXd ExtendedKalmanFilter::ObservationModel(VectorXd xk, double dt){
           0, 0, 1, 0,
           0, 0, 0, 1;
 
-    VectorXd output = H*xk;
+    Vector4d output = H*xk;
 
     return output;
 }
 
 
-MatrixXd ExtendedKalmanFilter::JacobianSystemModel(VectorXd xk, double dt){
+Vector2d ExtendedKalmanFilter::ObservationModelForCamera(Vector4d xk, double dt){
+
+    MatrixXd H(4,2);
+    H <<  1, 0, 0, 0,
+          0, 1, 0, 0;
+
+    Vector2d output = H*xk;
+
+    return output;
+}
+
+
+Matrix4d ExtendedKalmanFilter::JacobianSystemModel(Vector4d xk, double dt){
 
     // double x = xk(0);
     // double y = xk(1);
@@ -148,12 +196,6 @@ MatrixXd ExtendedKalmanFilter::JacobianSystemModel(VectorXd xk, double dt){
     double theta = xk(3);
     // double omega = xk(4);
     
-    // MatrixXd jacobian(5,5);
-    // jacobian <<    			1,  0, -dt*v*sin(theta), dt*cos(theta), 0,
-    //                         0,  1,  dt*v*cos(theta), dt*sin(theta), 0,
-    //                         0,  0,                1,             0, dt,
-    //                         0,  0,                0,             1, 0,
-    //                         0,  0,                0,             0, 1;
     MatrixXd jacobian(4,4);
     jacobian <<             1,  0, dt*cos(theta), -dt*v*sin(theta),
                             0,  1, dt*sin(theta), dt*v*cos(theta),
@@ -163,11 +205,7 @@ MatrixXd ExtendedKalmanFilter::JacobianSystemModel(VectorXd xk, double dt){
     return jacobian;
 }
 
-MatrixXd ExtendedKalmanFilter::JacobianObservationModel(VectorXd xk, double dt){
-
-    // MatrixXd jacobian(2,5);
-    // jacobian <<   1, 0, 0, 0, 0,
-    //               0, 1, 0, 0, 0;
+MatrixXd ExtendedKalmanFilter::JacobianObservationModelForGPS(Vector4d xk, double dt){
 
     MatrixXd jacobian(4,4);
     jacobian <<     1, 0, 0, 0,
@@ -176,29 +214,40 @@ MatrixXd ExtendedKalmanFilter::JacobianObservationModel(VectorXd xk, double dt){
                     0, 0, 0, 1;
     return jacobian;
     
-}                            
+}
 
-VectorXd ExtendedKalmanFilter::PredictWOObservation(){
+
+MatrixXd ExtendedKalmanFilter::JacobianObservationModelForCamera(Vector4d xk, double dt){
+
+    MatrixXd jacobian(4,2);
+    jacobian <<     1, 0, 0, 0,
+                    0, 1, 0, 0;
+    return jacobian;
+    
+} 
+                          
+
+VectorXd ExtendedKalmanFilter::PredictWOObservation(double dt){
 	
-	xEstmWO_ = SystemModel(xEstmWO_, dpt_);
+	xEstmWO_ = SystemModel(xEstmWO_, dt);
 	
 	return xEstmWO_;
 }
 
 
-VectorXd ExtendedKalmanFilter::Predict(VectorXd xk)
+VectorXd ExtendedKalmanFilter::Predict(Vector4d xk)
 {
-	
+	double dt = 0.025;
 	xPred_ = xk;
-	XP_.segment(0, nxdrone_) = StateTransformer(xPred_);
+	XP_.segment(0, nx_) = StateTransformer(xPred_);
 	
     for(int i = 1; i < nPred_; i++){
 
-        xPred_ = SystemModel(xPred_, dpt_);
+        xPred_ = SystemModel(xPred_, dt);
         // MatrixXd F = JacobianSystemModel(xPred_, dpt_);           // state transition Jacobian
         // MatrixXd pPred_ = F * P_ * F.transpose() + Q_;             // local var, prediction for time k
 
-        XP_.segment(i*nxdrone_, nxdrone_) = StateTransformer(xPred_);
+        XP_.segment(i*nx_, nx_) = StateTransformer(xPred_);
 
     }
 
@@ -207,7 +256,7 @@ VectorXd ExtendedKalmanFilter::Predict(VectorXd xk)
 }
 
 
-Vector4d ExtendedKalmanFilter::StateTransformer(VectorXd xk){
+Vector4d ExtendedKalmanFilter::StateTransformer(Vector4d xk){
 	
 	Vector4d xk1;
 

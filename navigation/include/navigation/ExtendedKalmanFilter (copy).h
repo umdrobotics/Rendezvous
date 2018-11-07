@@ -12,16 +12,13 @@ class ExtendedKalmanFilter {
     public: // methods
 
         int nx_;
-        //~ int nxdrone_;
+        int nxdrone_;
         int nPred_;
         
-        //~ float dt_;
-        //~ float dpt_;
+        float dt_;
+        float dpt_;
     
         bool IsXhatInitialized_;
-        
-        double sigma_a_;
-        double sigma_w_;
 
 
         VectorXd xhat_;
@@ -46,18 +43,16 @@ class ExtendedKalmanFilter {
         void SetPredHorizon(int nPred);
 
         // Core functions
-        Vector4d SystemModel(Vector4d xk, double dt);
-        Vector4d ObservationModelForGPS(Vector4d xk, double dt);
-        Vector2d ObservationModelForCamera(Vector4d xk, double dt);
-        Matrix4d JacobianSystemModel(Vector4d xk, double dt);
-        MatrixXd JacobianObservationModelForGPS(Vector4d xk, double dt);
-        MatrixXd JacobianObservationModelForCamera(Vector4d xk, double dt);
+        VectorXd SystemModel(VectorXd xk, double dt);
+        VectorXd ObservationModel(VectorXd xk, double dt);
+        MatrixXd JacobianSystemModel(VectorXd xk, double dt);
+        MatrixXd JacobianObservationModel(VectorXd xk, double dt);
         
-        Vector4d UpdateWithGPSMeasurements(Vector4d xk, double dt);
-        Vector4d UpdateWithCameraMeasurements(Vector4d xk, double dt);
-        VectorXd PredictWOObservation(double dt);
-        VectorXd Predict(Vector4d xk);
-        Vector4d StateTransformer(Vector4d xk);
+        
+        VectorXd Update(VectorXd xk);
+        VectorXd PredictWOObservation();
+        VectorXd Predict(VectorXd xk);
+        Vector4d StateTransformer(VectorXd xk);
 
 
 
@@ -66,8 +61,7 @@ class ExtendedKalmanFilter {
     private: // members
 
         MatrixXd Q_;
-        Matrix4d Rg_;
-        Matrix2d Ra_;
+        Matrix4d R_;
         MatrixXd P_;
 
 

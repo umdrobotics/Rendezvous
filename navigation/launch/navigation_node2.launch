@@ -1,7 +1,7 @@
 <launch>
     <group ns="NavigationSwitches">
         <param name="defaultSetting" type="bool" value="false"/>
-        <param name="bIsSimulation" type="bool" value="true"/>
+        <param name="bIsSimulation" type="bool" value="false"/>
         <param name="bIsIntegralEnable" type="bool" value="true"/>
         <param name="bIsYawControlEnable" type="bool" value="false"/>
         <param name="bIsYawControlAlwaysAlign" type="bool" value="true"/>
@@ -9,7 +9,8 @@
         <param name="bIsMPCEnable" type="bool" value="true"/>
         <param name="bIsLQREnable" type="bool" value="false"/>
         <param name="bIsKeepLanding" type="bool" value="true"/>
-        <param name="bIsClearIntegratorError" type="bool" value="false"/>
+        <param name="bIsClearIntegratorError" type="bool" value="true"/>
+        <param name="bIsEKFEnable" type="bool" value="false"/>
     </group>
     <group ns="KalmanFilterParameters">
         <param name="defaultSetting" type="bool" value="false"/>
@@ -21,17 +22,17 @@
         <param name="sigma_GPSvy" type="double" value="0.18"/>
         <param name="sigma_Apriltagpx" type="double" value="0.1"/>
         <param name="sigma_Apriltagpy" type="double" value="0.1"/>
-        <param name="nPred" type="int" value="1"/>
+        <param name="nPred" type="int" value="1"/> <!-- orignal value 1, 5m/s target 3 -->
     </group>
     <group ns="MPCControllerParameters">
         <param name="defaultSetting" type="bool" value="false"/>
         <param name="P" type="double" value="12"/>
         <param name="M" type="double" value="5"/>
         <param name="q" type="double" value="0.99"/>
-        <param name="kiPos" type="double" value="0.03"/>
+        <param name="kiPos" type="double" value="0.05"/> <!-- 5m/s target 0.08, with wind 0.16; No wind 0.03 -->
         <param name="kiVec" type="double" value="0"/>
-        <param name="Qk" type="double" value="7"/>
-        <param name="Qf" type="double" value="10"/>
+        <param name="Qk" type="double" value="3"/> <!-- orignal value 7, 5m/s target 4 -->
+        <param name="Qf" type="double" value="5"/> <!-- orignal value 10, 5m/s target 6 -->
         <param name="Qb" type="double" value="1.15"/>
     </group>
     <node name="navigation_node" pkg="navigation" type="navigation_node" output="screen" cwd="node">

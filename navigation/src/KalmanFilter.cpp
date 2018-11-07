@@ -59,13 +59,13 @@ void KalmanFilter::Initialize()
             pow(dt,3.0)/2*pow(sigma_ax_,2.0), 0, pow(dt,2.0)*pow(sigma_ax_,2.0), 0,
             0, pow(dt,3.0)/2*pow(sigma_ay_,2.0), 0, pow(dt,2.0)*pow(sigma_ay_,2.0);
 
-    Rg_ <<  sigma_GPSpx_, 0, 0, 0,
-            0, sigma_GPSpy_, 0, 0,
-            0, 0, sigma_GPSvx_, 0,
-            0, 0, 0, sigma_GPSvy_;    // noise, sigma = 0.5
+    Rg_ <<  pow(sigma_GPSpx_,2), 0, 0, 0,
+            0, pow(sigma_GPSpy_,2), 0, 0,
+            0, 0, pow(sigma_GPSvx_,2), 0,
+            0, 0, 0, pow(sigma_GPSvy_,2);    // noise, sigma = 0.5
             
-    Ra_ <<  sigma_Apriltagpx_, 0,
-            0, sigma_Apriltagpy_;
+    Ra_ <<  pow(sigma_Apriltagpx_,2), 0,
+            0, pow(sigma_Apriltagpy_,2);
 
     nx_ = 4;
 
