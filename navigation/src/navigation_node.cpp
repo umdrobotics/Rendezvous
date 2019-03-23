@@ -1,20 +1,27 @@
-#include "ros/ros.h"
-#include <dji_sdk/dji_drone.h>
-#include "std_msgs/String.h"
-#include "std_msgs/UInt16.h"
-#include <navigation/conversion.h>
-#include <navigation/UasMath.h>
-#include <geometry_msgs/PointStamped.h>
-#include <geometry_msgs/PoseStamped.h>
 #include <signal.h>
 #include <math.h>
-#include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
-#include <apriltags_ros/AprilTagDetection.h>
-#include <apriltags_ros/AprilTagDetectionArray.h>
 #include <sstream>
 #include <fstream>
 #include <iostream>
 #include <queue>
+
+
+
+#include "ros/ros.h"
+#include <dji_sdk/dji_drone.h>
+
+#include <navigation/conversion.h>
+#include <navigation/UasMath.h>
+
+#include "std_msgs/String.h"
+#include "std_msgs/UInt16.h"
+#include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/LaserScan.h> //obstacle distance & ultrasonic
+
+#include <apriltags_ros/AprilTagDetection.h>
+#include <apriltags_ros/AprilTagDetectionArray.h>
+
 
 #include <string>
 #include <stdio.h>
@@ -178,9 +185,7 @@ std::ofstream _ofsKalmanFilterLog;
 
 // GPS & Camera data funsion
 std::queue <dji_sdk::Gimbal> _queMsgGimbal;
-// std::deque <geometry_msgs::PointStamped> _queMsgTruckLocalPosition;
-// std::deque <geometry_msgs::PointStamped> _queMsgTargetLocalPosition;
-// geometry_msgs::PointStamped _msgFusedTargetLocalPosition;
+
 
 // Sensor data
 sensor_msgs::LaserScan _msgUltraSonic;
@@ -239,7 +244,7 @@ void SigintHandler(int sig)
  * double roll_rad, pitch_rad, yaw_rad;
  * quaternionToRPY(drone.attitude_quaternion, roll_rad, pitch_rad, yaw_rad);
 **/
- void quaternionToRPY(dji_sdk::AttitudeQuaternion q, double & roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
+ void quaternionToRPY(dji_sdk::AttitudeQuaternion q, double& roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
 {
      roll  = atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2));
      pitch = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
@@ -260,7 +265,6 @@ float PDController(float inputs, float current_position)
 
     _error = inputs - current_position;
     float output = KP * _error + KD * (_error - _error_last);
-    //~ output = current_position - output;
     _error_last = _error;
     return output;
 }
@@ -270,12 +274,6 @@ float LocalPositionControlHelper(float desired, float current_position)
 
     float error = desired - current_position;
     float abs_error = abs(error);
-
-    // return (error < 0.4) ? desired
-    //                      : (error < 5) ? current_position + error * 0.35
-    //                                    : current_position + error * 0.5;
-
-    //ROS_INFO("error: %f", error);
 
     return (abs_error < 0.4) ? desired
                          : (abs_error < 5) ? current_position + error * 0.5
@@ -526,19 +524,6 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
 
 
     rp = argInit_Unboundedx1_real_T(desiredState);
-    
-    //~ std::cout << (double)_mpc.P_<<","<< (double)_mpc.M_<<","<< _mpc.q_<<","<<_mpc.Qk_<<","<<_mpc.Qf_<<","<<_mpc.Qb_ << std::endl;
-    //~ 
-    //~ VectorXd test1 = MatrixXd::Zero(4,1);
-    //~ for( int i = 0; i < 4 ;i++){ test1(i) = xkArray[i]; } 
-    //~ VectorXd test2 = MatrixXd::Zero(48,1);
-    //~ for( int i = 0; i < 48 ;i++){ test2(i) = rp->data[i]; } 
-    //~ VectorXd test3 = MatrixXd::Zero(10,1);
-    //~ for( int i = 0; i < x->size[0U] ;i++){ test3(i) = x->data[i]; } 
-    //~ 
-    //~ std::cout << test1.transpose() << std::endl;
-    //~ std::cout << test2.transpose() << std::endl;
-    //~ std::cout << test3.transpose() << std::endl;
 
 
     solveQP((double)_mpc.P_, (double)_mpc.M_, xkArray, rp, _mpc.q_, _mpc.Qk_, _mpc.Qf_, _mpc.Qb_, x);
@@ -551,29 +536,6 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     emxDestroyArray_real_T(x);
     emxDestroyArray_real_T(rp);
     
-  //~ // Optimal control input
-    //~ double xkarray[4];
-    //~ emxArray_real_T *rp;
-    //~ double x_data[10];    // control input
-    //~ int x_size[1];
-    //~ 
-
-    //~ argInit_4x1_real_T(xkarray, xk);
-    //~ 
-
-    //~ rp = argInit_Unboundedx1_real_T(desiredState);
-    //~ 
-
-    //~ solveQP(xkarray, rp, x_data, x_size); 
-    //~ 
-    //~ emxDestroyArray_real_T(rp); 
-    //~ 
-    //~ 
-    //~ 
-    //~ VectorXd um = MatrixXd::Zero(10,1);
-    //~ for( int i = 0; i<10 ;i++){
-        //~ um(i) = x_data[i];
-    //~ } 
     
     std::cout << um.transpose() << std::endl;
     
@@ -606,7 +568,7 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     VectorXd truckPred;//= Eigen::MatrixXd(P*nx, 1);
     if(_bIsEKFEnable){
         // Fused in Extended Kalman Filter
-        int nPred = 2; 
+        int nPred = _kf.nPred_; 
         _ekf.SetPredHorizon(nPred + P);
         ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
     
@@ -1123,13 +1085,6 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     _TargetLocalPositionPub.publish(_msgTargetLocalPosition);
 
 
-    //~ // Sensor fusion.
-    //~ // Pushed into queue back
-    //~ if (_queMsgTargetLocalPosition.size() > 29){
-        //~ _queMsgTargetLocalPosition.pop_front();
-    //~ }
-    //~ _queMsgTargetLocalPosition.push_back(_msgTargetLocalPosition);
-
 //~ #ifndef EKF_DEBUG
     if(_bIsEKFEnable){
         // Update estimate by kalman filter
@@ -1198,58 +1153,6 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     //                     << _msgTargetLocalPosition.point.z << std::endl; // target local position
 
 }
-
-
-//~ void RunSensorFusing(){
-//~ 
-    //~ float truckSumX=0, truckSumY=0;
-    //~ float truckAvgX=0, truckAvgY=0;
-//~ 
-    //~ float targetSumX=0, targetSumY=0;
-    //~ float targetAvgX=0, targetAvgY=0;
-//~ 
-    //~ // Calculate the mean of Truck local position
-    //~ bool IsGPSLocationEmpty = _queMsgTruckLocalPosition.size() < 1;
-    //~ if (!IsGPSLocationEmpty){
-        //~ for(int i=0; i < _queMsgTruckLocalPosition.size(); i++){
-            //~ truckSumX += _queMsgTruckLocalPosition.at(i).point.x;
-            //~ truckSumY += _queMsgTruckLocalPosition.at(i).point.y;
-        //~ }
-        //~ truckAvgX = truckSumX/_queMsgTruckLocalPosition.size();
-        //~ truckAvgY = truckSumY/_queMsgTruckLocalPosition.size();
-    //~ }
-//~ 
-    //~ // Calculate the mean of Target local position
-    //~ bool IsTagDetectionEmpty = _queMsgTargetLocalPosition.size() < 1;
-    //~ if (!IsTagDetectionEmpty){
-        //~ for(int i=0; i < _queMsgTargetLocalPosition.size(); i++){
-            //~ targetSumX += _queMsgTargetLocalPosition.at(i).point.x;
-            //~ targetSumY += _queMsgTargetLocalPosition.at(i).point.y;
-        //~ }
-        //~ targetAvgX = targetSumX/_queMsgTargetLocalPosition.size();
-        //~ targetAvgY = targetSumY/_queMsgTargetLocalPosition.size();
-    //~ }
-//~ 
-    //~ // Fuse data
-    //~ // Idea is if no GPS and tag detections, then fused position is 0
-    //~ // if only GPS or tag detections available, then his factor is 1;
-    //~ // if both are available, then fuse w/ ratio 3:1
-    //~ float truckFuseFactor = IsGPSLocationEmpty  ? 0
-                                                //~ : IsTagDetectionEmpty   ? 1
-                                                                        //~ : 0.25;
-    //~ float targetFuseFactor = IsTagDetectionEmpty ? 0 : 0.75;
-    //~ _msgFusedTargetLocalPosition.header.stamp = ros::Time::now();
-    //~ _msgFusedTargetLocalPosition.point.x = truckAvgX*truckFuseFactor + targetAvgX*targetFuseFactor;
-    //~ _msgFusedTargetLocalPosition.point.y = truckAvgY*truckFuseFactor + targetAvgY*targetFuseFactor;
-    //~ _msgFusedTargetLocalPosition.point.z = 0;
-    //~ _FusedTargetLocalPositionPub.publish(_msgFusedTargetLocalPosition);
-//~ 
-    //~ // DEBUG
-    //~ ROS_INFO("Truck AVG = %f, %f , %d " , truckAvgX, truckAvgY , _queMsgTruckLocalPosition.size());
-    //~ ROS_INFO("Target AVG = %f, %f , %d ", targetAvgX , targetAvgY, _queMsgTargetLocalPosition.size());
-    //~ ROS_INFO("Fused = %f, %f " , _msgFusedTargetLocalPosition.point.x , _msgFusedTargetLocalPosition.point.y);
-//~ 
-//~ }
 
 
 
@@ -1330,19 +1233,6 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
         _nNavigationTask = 98;
         return;
     }
-
-
-    //~ // Sensor fusion.
-    //~ // Pushed into queue back
-    //~ if (_queMsgTruckLocalPosition.size() > 9){
-        //~ _queMsgTruckLocalPosition.pop_front();
-    //~ }
-    //~ _queMsgTruckLocalPosition.push_back(_msgTruckLocalPosition);
-  //~ 
-    //~ // If target not found, sensor fuse at 10hz.
-    //~ if( !_bIsTargetFound ){
-        //~ RunSensorFusing();
-    //~ }
     
     
     
@@ -1734,7 +1624,7 @@ void RunAutonomousLanding2()
   
     bool bIsDroneLanded = false;
     if(_bIsSimulation){  bIsDroneLanded = drone.local_position.z < 0.1;  }
-    else{        bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.3) && (int)_msgUltraSonic.intensities[0];}
+    else{        bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];}
     
     if (bIsDroneLanded)
     {

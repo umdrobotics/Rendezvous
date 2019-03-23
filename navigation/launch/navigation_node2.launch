@@ -29,10 +29,10 @@
         <param name="P" type="double" value="12"/>
         <param name="M" type="double" value="5"/>
         <param name="q" type="double" value="0.99"/>
-        <param name="kiPos" type="double" value="0.05"/> <!-- 5m/s target 0.08, with wind 0.16; No wind 0.03 -->
+        <param name="kiPos" type="double" value="0.055"/> <!-- 5m/s target 0.08, with wind 0.16; No wind 0.03 -->
         <param name="kiVec" type="double" value="0"/>
-        <param name="Qk" type="double" value="3"/> <!-- orignal value 7, 5m/s target 4 -->
-        <param name="Qf" type="double" value="5"/> <!-- orignal value 10, 5m/s target 6 -->
+        <param name="Qk" type="double" value="4"/> <!-- orignal value 7, 5m/s target 4 -->
+        <param name="Qf" type="double" value="6"/> <!-- orignal value 10, 5m/s target 6 -->
         <param name="Qb" type="double" value="1.15"/>
     </group>
     <node name="navigation_node" pkg="navigation" type="navigation_node" output="screen" cwd="node">
