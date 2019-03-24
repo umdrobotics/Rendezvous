@@ -14,7 +14,6 @@ class ExtendedKalmanFilter {
         int nx_;
         //~ int nxdrone_;
         int nPred_;
-        int stepsAhead_;
         
         //~ float dt_;
         //~ float dpt_;
@@ -23,12 +22,6 @@ class ExtendedKalmanFilter {
         
         double sigma_a_;
         double sigma_w_;
-        double sigma_GPSpx_;
-        double sigma_GPSpy_;
-        double sigma_GPSvx_; 
-        double sigma_GPSvy_;  
-        double sigma_Apriltagpx_; 
-        double sigma_Apriltagpy_;     
 
 
         VectorXd xhat_;

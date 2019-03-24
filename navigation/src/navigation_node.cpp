@@ -161,19 +161,10 @@ float _lastVecErrY = 0;
 bool _bIsFirstTimeReachPitch = true;
 bool _bIsFirstTimeReachRoll = true;
 
-//~ #ifdef EKF_DEBUG
-  //~ // Extended Kalman Filter
-  //~ ExtendedKalmanFilter _ekf;
-  //~ VectorXd _targetEstState(4);
-  //~ bool _IsGPSUpdated = false;
-//~ #else 
-  //~ // Kalman Filter
-  //~ KalmanFilter _kf;
-  //~ Vector4d _targetEstState;
-  //~ // bool _IsGPSUpdated = false;
-//~ #endif
-ExtendedKalmanFilter _ekf;
+
+// KF
 KalmanFilter _kf;
+ExtendedKalmanFilter _ekf;
 Vector4d _targetEstState;
 //~ bool _IsGPSUpdated = false;
 
@@ -253,7 +244,7 @@ void SigintHandler(int sig)
  * double roll_rad, pitch_rad, yaw_rad;
  * quaternionToRPY(drone.attitude_quaternion, roll_rad, pitch_rad, yaw_rad);
 **/
- void quaternionToRPY(dji_sdk::AttitudeQuaternion q, double& roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
+void quaternionToRPY(dji_sdk::AttitudeQuaternion q, double& roll, double& pitch,  double& yaw) //roll pitch and yaw are output variables
 {
      roll  = atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2));
      pitch = asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1));
@@ -516,32 +507,18 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     
     // predict the target position and velocity here, KF
     // First decide now we use prediction or estimation, based whether there exists observations or not
-//~ #ifdef EKF_DEBUG
     VectorXd truckPred;//= Eigen::MatrixXd(P*nx, 1);
     if(_bIsEKFEnable){
         // Fused in Extended Kalman Filter
-        int nPred = _kf.nPred_; 
-        _ekf.SetPredHorizon(nPred + P);
+        _ekf.SetPredHorizon(_ekf.stepsAhead_ + P);
         ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
     
         if(timeElapsed.toSec() > 0.001){
             _targetEstState = _ekf.PredictWOObservation(timeElapsed.toSec());
-        
-            //~ _msgFusedTargetPosition.header.stamp = ros::Time::now();
-            //~ _msgFusedTargetPosition.point.x = _targetEstState(0);
-            //~ _msgFusedTargetPosition.point.y = _targetEstState(1);
-            //~ _msgFusedTargetPosition.point.z = 0;
-//~ 
-            //~ _msgFusedTargetVelocity.point.x = _targetEstState(2)*cos(_targetEstState(3));
-            //~ _msgFusedTargetVelocity.point.y = _targetEstState(2)*sin(_targetEstState(3));
-            //~ _msgFusedTargetVelocity.point.z = 0;
         }
-        //~ _IsGPSUpdated = false;
-
         truckPred = _ekf.Predict(_targetEstState);
     }
     else{
-//~ #else
         // Fused in Kalman Filter
         _kf.SetPredHorizon(_kf.nPred_ + P);
         ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
@@ -549,11 +526,8 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
             // Time elapsed > 0.001 s, update; O.W. no need to update
             _targetEstState = _kf.PredictWOObservation(timeElapsed.toSec());
         }
-        // _IsGPSUpdated = false;
-
         truckPred = _kf.Predict(_targetEstState, _kf.nPred_ + P);
     }
-//~ #endif
     VectorXd desiredState = truckPred.tail(P*nx);
     
       
@@ -992,15 +966,10 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     _TargetLocalPositionPub.publish(_msgTargetLocalPosition);
 
 
-//~ #ifndef EKF_DEBUG
+
     if(_bIsEKFEnable){
-        // Update estimate by kalman filter
-        double x = _msgTargetLocalPosition.point.x;
-        double y = _msgTargetLocalPosition.point.y;
-        double v = sqrt(pow(_msgTruckVelocity.point.x,2) + pow(_msgTruckVelocity.point.y,2));
-        double theta = atan2(y,x);
-        
-        Vector4d targetState(x, y, v, theta);
+        // Update estimate by extended kalman filter
+        Vector2d targetState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
         ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
         _targetEstState = _ekf.UpdateWithCameraMeasurements(targetState, timeElapsed.toSec());
 
@@ -1044,7 +1013,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
         }
     }
     
-//~ #endif
+
 
     // Logging
     _bIsTargetBeingTracked = true;
@@ -1124,7 +1093,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     _msgRealTruckLocalPosition.point.x = drone.local_position.x + realtruckDistance_x;
     _msgRealTruckLocalPosition.point.y = drone.local_position.y + realtruckDistance_y;
     _msgRealTruckLocalPosition.point.z = 0;
-  }
+    }
   
     // Record GPS position
     _msgTruckGPSPosition.point.x = msgTruckPosition.pose.position.x;
@@ -1145,22 +1114,11 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
     
     // Update estimate by kalman filter
     Vector4d targetState(_msgTruckLocalPosition.point.x, _msgTruckLocalPosition.point.y, _msgTruckVelocity.point.x, _msgTruckVelocity.point.y);
-//~ #ifdef EKF_DEBUG
     if(_bIsEKFEnable){
-        VectorXd xk1(4);
-
-        double x = _msgTruckLocalPosition.point.x;
-        double y = _msgTruckLocalPosition.point.y;
-        double v = sqrt(pow(_msgTruckVelocity.point.x,2) + pow(_msgTruckVelocity.point.y,2));
-        double theta = atan2(y,x); //*180/PI;
     
-        // double omega = 0;
-    
-        xk1 << x, y, v, theta;// omega;
-    
-        _ekf.SetXhatInitialPoint(xk1);
+        _ekf.SetXhatInitialPoint(targetState);
         ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
-        _targetEstState = _ekf.UpdateWithGPSMeasurements(xk1, timeElapsed.toSec());
+        _targetEstState = _ekf.UpdateWithGPSMeasurements(targetState, timeElapsed.toSec());
     
         if(_bIsLock){   
             return; 
@@ -1178,11 +1136,9 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
             _bIsLock = false;
         }
     
-        //~ _IsGPSUpdated = true;
     }
     else{
     
-//~ #else
         _kf.SetXhatInitialPoint(targetState);
 
         if (!_kf.IsXhatInitialized_){ 
@@ -1212,7 +1168,6 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
         }
     }
     
-//~ #endif
   
     
       _ofsKalmanFilterLog << std::setprecision(std::numeric_limits<double>::max_digits10)
@@ -1233,7 +1188,8 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
                             << _msgFusedTargetVelocity.point.z << ","      // fused target local position 
                             << _msgRealTruckLocalPosition.point.x << ","
                             << _msgRealTruckLocalPosition.point.y << "," 
-                            << _msgRealTruckLocalPosition.point.z << std::endl;  
+                            << _msgRealTruckLocalPosition.point.z 
+                            << std::endl;  
 
 }
 
@@ -2092,54 +2048,73 @@ void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
 void LoadNodeSettings(ros::NodeHandle nh){
     
     // Load switches settings
-    bool bIsSwitchDefault = true;
+    bool bIsSwitchDefault;
     nh.getParam("/NavigationSwitches/defaultSetting", bIsSwitchDefault);
     if(!bIsSwitchDefault){
         // if not default, then redefine the settings.        
-        nh.getParam("/NavigationSwitches/bIsSimulation", _bIsSimulation);
-        nh.getParam("/NavigationSwitches/bIsIntegralEnable", _bIsIntegralEnable);
-        nh.getParam("/NavigationSwitches/bIsYawControlEnable", _bIsYawControlEnable);
-        nh.getParam("/NavigationSwitches/bIsYawControlAlwaysAlign", _bIsYawControlAlwaysAlign);
-        nh.getParam("/NavigationSwitches/bIsYawControlEnableSearch", _bIsYawControlEnableSearch);
-        nh.getParam("/NavigationSwitches/bIsMPCEnable", _bIsMPCEnable);
-        nh.getParam("/NavigationSwitches/bIsLQREnable", _bIsLQREnable);
-        nh.getParam("/NavigationSwitches/bIsKeepLanding", _bIsKeepLanding);
-        nh.getParam("/NavigationSwitches/bIsClearIntegratorError", _bIsClearIntegratorError); 
-        nh.getParam("/NavigationSwitches/bIsEKFEnable", _bIsEKFEnable); 
+        nh.getParam("/NavigationSwitches/bIsSimulation",              _bIsSimulation);
+        nh.getParam("/NavigationSwitches/bIsIntegralEnable",          _bIsIntegralEnable);
+        nh.getParam("/NavigationSwitches/bIsYawControlEnable",        _bIsYawControlEnable);
+        nh.getParam("/NavigationSwitches/bIsYawControlAlwaysAlign",   _bIsYawControlAlwaysAlign);
+        nh.getParam("/NavigationSwitches/bIsYawControlEnableSearch",  _bIsYawControlEnableSearch);
+        nh.getParam("/NavigationSwitches/bIsMPCEnable",               _bIsMPCEnable);
+        nh.getParam("/NavigationSwitches/bIsLQREnable",               _bIsLQREnable);
+        nh.getParam("/NavigationSwitches/bIsKeepLanding",             _bIsKeepLanding);
+        nh.getParam("/NavigationSwitches/bIsClearIntegratorError",    _bIsClearIntegratorError); 
+        nh.getParam("/NavigationSwitches/bIsEKFEnable",               _bIsEKFEnable); 
     }
 
 //~ #ifndef EKF_DEBUG
     if(!_bIsEKFEnable){
-        bool bIsKFSettingDefault = true;
-        nh.getParam("/KalmanFilterParameters/defaultSetting", bIsKFSettingDefault);
+        bool bIsKFSettingDefault;
+        nh.getParam("/KFParameters/defaultSetting", bIsKFSettingDefault);
         if(!bIsKFSettingDefault){
             // if not default, then redefine the settings.        
-            nh.getParam("/KalmanFilterParameters/sigma_ax", _kf.sigma_ax_);
-            nh.getParam("/KalmanFilterParameters/sigma_ay", _kf.sigma_ax_);
-            nh.getParam("/KalmanFilterParameters/sigma_GPSpx", _kf.sigma_GPSpx_);
-            nh.getParam("/KalmanFilterParameters/sigma_GPSpy", _kf.sigma_GPSpy_);
-            nh.getParam("/KalmanFilterParameters/sigma_GPSvx", _kf.sigma_GPSvx_);
-            nh.getParam("/KalmanFilterParameters/sigma_GPSvy", _kf.sigma_GPSvy_);
-            nh.getParam("/KalmanFilterParameters/sigma_Apriltagpx", _kf.sigma_Apriltagpx_);
-            nh.getParam("/KalmanFilterParameters/sigma_Apriltagpy", _kf.sigma_Apriltagpy_);
-            nh.getParam("/KalmanFilterParameters/nPred", _kf.nPred_);
+            nh.getParam("/KFParameters/sigma_ax", _kf.sigma_ax_);
+            nh.getParam("/KFParameters/sigma_ay", _kf.sigma_ax_);
+            nh.getParam("/KFParameters/sigma_GPSpx", _kf.sigma_GPSpx_);
+            nh.getParam("/KFParameters/sigma_GPSpy", _kf.sigma_GPSpy_);
+            nh.getParam("/KFParameters/sigma_GPSvx", _kf.sigma_GPSvx_);
+            nh.getParam("/KFParameters/sigma_GPSvy", _kf.sigma_GPSvy_);
+            nh.getParam("/KFParameters/sigma_Apriltagpx", _kf.sigma_Apriltagpx_);
+            nh.getParam("/KFParameters/sigma_Apriltagpy", _kf.sigma_Apriltagpy_);
+            nh.getParam("/KFParameters/nPred", _kf.stepsAhead_);
         }
+        ROS_INFO("KF enabled!");
+    }
+    else
+    {
+        bool bIsEKFSettingDefault;
+        nh.getParam("/EKFParameters/defaultSetting", bIsEKFSettingDefault);
+        if(!bIsEKFSettingDefault){
+            // if not default, then redefine the settings.        
+            nh.getParam("/EKFParameters/sigma_a", _ekf.sigma_a_);
+            nh.getParam("/EKFParameters/sigma_w", _ekf.sigma_w_);
+            nh.getParam("/EKFParameters/sigma_GPSpx", _ekf.sigma_GPSpx_);
+            nh.getParam("/EKFParameters/sigma_GPSpy", _ekf.sigma_GPSpy_);
+            nh.getParam("/EKFParameters/sigma_GPSvx", _ekf.sigma_GPSvx_);
+            nh.getParam("/EKFParameters/sigma_GPSvy", _ekf.sigma_GPSvy_);
+            nh.getParam("/EKFParameters/sigma_Apriltagpx", _ekf.sigma_Apriltagpx_);
+            nh.getParam("/EKFParameters/sigma_Apriltagpy", _ekf.sigma_Apriltagpy_);
+            nh.getParam("/EKFParameters/nPred", _ekf.nPred_);
+        }
+        ROS_INFO("Extended KF enabled!");
     }
 
 //~ #endif
 
-    bool bIsMPCSettingDefault = true;
-    nh.getParam("/KalmanFilterParameters/defaultSetting", bIsMPCSettingDefault);
+    bool bIsMPCSettingDefault;
+    nh.getParam("/MPCParameters/defaultSetting", bIsMPCSettingDefault);
     if(!bIsMPCSettingDefault){
         // if not default, then redefine the settings.        
-        nh.getParam("/MPCControllerParameters/P", _mpc.P_);
-        nh.getParam("/MPCControllerParameters/M", _mpc.M_);
-        nh.getParam("/MPCControllerParameters/q", _mpc.q_);
-        nh.getParam("/MPCControllerParameters/kiPos", _mpc.kiPos_);
-        nh.getParam("/MPCControllerParameters/kiVec", _mpc.kiVec_);
-        nh.getParam("/MPCControllerParameters/Qk", _mpc.Qk_);
-        nh.getParam("/MPCControllerParameters/Qf", _mpc.Qf_);
-        nh.getParam("/MPCControllerParameters/Qb", _mpc.Qb_);
+        nh.getParam("/MPCParameters/P", _mpc.P_);
+        nh.getParam("/MPCParameters/M", _mpc.M_);
+        nh.getParam("/MPCParameters/q", _mpc.q_);
+        nh.getParam("/MPCParameters/kiPos", _mpc.kiPos_);
+        nh.getParam("/MPCParameters/kiVec", _mpc.kiVec_);
+        nh.getParam("/MPCParameters/Qk", _mpc.Qk_);
+        nh.getParam("/MPCParameters/Qf", _mpc.Qf_);
+        nh.getParam("/MPCParameters/Qb", _mpc.Qb_);
     }
     
 }
@@ -2168,10 +2143,9 @@ int main(int argc, char **argv)
     LoadNodeSettings(nh);
     
     
-
-//~ #ifndef EKF_DEBUG
     _kf.Initialize();
-//~ #endif
+    _ekf.Initialize();
+
     
 
     // Log files

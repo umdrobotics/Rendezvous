@@ -1,4 +1,3 @@
-<?xml version="1.0"?>
 <launch>
     <group ns="NavigationSwitches">
         <param name="defaultSetting" type="bool" value="false"/>
@@ -11,9 +10,9 @@
         <param name="bIsLQREnable" type="bool" value="false"/>
         <param name="bIsKeepLanding" type="bool" value="true"/>
         <param name="bIsClearIntegratorError" type="bool" value="true"/>
-        <param name="bIsEKFEnable" type="bool" value="true"/>
+        <param name="bIsEKFEnable" type="bool" value="false"/>
     </group>
-    <group ns="KFParameters">
+    <group ns="KalmanFilterParameters">
         <param name="defaultSetting" type="bool" value="false"/>
         <param name="sigma_ax" type="double" value="0.1"/>
         <param name="sigma_ay" type="double" value="0.1"/>
@@ -25,19 +24,7 @@
         <param name="sigma_Apriltagpy" type="double" value="0.1"/>
         <param name="nPred" type="int" value="1"/> <!-- orignal value 1, 5m/s target 3 -->
     </group>
-    <group ns="EKFParameters">
-        <param name="defaultSetting" type="bool" value="false"/>
-        <param name="sigma_a" type="double" value="0.1"/>
-        <param name="sigma_w" type="double" value="0.001"/>
-        <param name="sigma_GPSpx" type="double" value="0.3"/>
-        <param name="sigma_GPSpy" type="double" value="0.3"/>
-        <param name="sigma_GPSvx" type="double" value="0.18"/>
-        <param name="sigma_GPSvy" type="double" value="0.18"/>
-        <param name="sigma_Apriltagpx" type="double" value="0.1"/>
-        <param name="sigma_Apriltagpy" type="double" value="0.1"/>
-        <param name="nPred" type="int" value="1"/> <!-- orignal value 1, 5m/s target 3 -->
-    </group>
-    <group ns="MPCParameters">
+    <group ns="MPCControllerParameters">
         <param name="defaultSetting" type="bool" value="false"/>
         <param name="P" type="double" value="12"/>
         <param name="M" type="double" value="5"/>

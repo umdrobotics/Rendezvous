@@ -1,22 +1,22 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(navigation_new)
-
-## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+project(navigation)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  geometry_msgs
   roscpp
-  rospy
-  std_msgs
+  dji_sdk
+#  cv_bridge 
 )
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+find_package(Eigen REQUIRED)
+
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
+set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
 ## Uncomment this if the package has a setup.py. This macro ensures
 ## modules and global scripts declared therein get installed
@@ -33,10 +33,10 @@ find_package(catkin REQUIRED COMPONENTS
 ##   your messages/services/actions (e.g. std_msgs, actionlib_msgs, ...).
 ## * In the file package.xml:
 ##   * add a build_depend tag for "message_generation"
-##   * add a build_depend and a exec_depend tag for each package in MSG_DEP_SET
+##   * add a build_depend and a run_depend tag for each package in MSG_DEP_SET
 ##   * If MSG_DEP_SET isn't empty the following dependency has been pulled in
 ##     but can be declared for certainty nonetheless:
-##     * add a exec_depend tag for "message_runtime"
+##     * add a run_depend tag for "message_runtime"
 ## * In this file (CMakeLists.txt):
 ##   * add "message_generation" and every package in MSG_DEP_SET to
 ##     find_package(catkin REQUIRED COMPONENTS ...)
@@ -71,7 +71,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   geometry_msgs#   std_msgs
+#   std_msgs  # Or other packages containing msgs
 # )
 
 ################################################
@@ -81,7 +81,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## To declare and build dynamic reconfigure parameters within this
 ## package, follow these steps:
 ## * In the file package.xml:
-##   * add a build_depend and a exec_depend tag for "dynamic_reconfigure"
+##   * add a build_depend and a run_depend tag for "dynamic_reconfigure"
 ## * In this file (CMakeLists.txt):
 ##   * add "dynamic_reconfigure" to
 ##     find_package(catkin REQUIRED COMPONENTS ...)
@@ -99,15 +99,16 @@ find_package(catkin REQUIRED COMPONENTS
 ###################################
 ## The catkin_package macro generates cmake config files for your package
 ## Declare things to be passed to dependent projects
-## INCLUDE_DIRS: uncomment this if your package contains header files
+## INCLUDE_DIRS: uncomment this if you package contains header files
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES navigation_new
-#  CATKIN_DEPENDS geometry_msgs roscpp rospy std_msgs
+  INCLUDE_DIRS include
+  LIBRARIES navigation
+#  CATKIN_DEPENDS other_catkin_pkg
 #  DEPENDS system_lib
+  DEPENDS dji_sdk Eigen # cv_bridge
 )
 
 ###########
@@ -116,40 +117,102 @@ catkin_package(
 
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
-include_directories(
-# include
-  ${catkin_INCLUDE_DIRS}
+include_directories(include)
+include_directories(${catkin_INCLUDE_DIRS}
+                    ${Eigen_INCLUDE_DIRS}
+                
 )
+#~ include_directories("/usr/local/include")
 
 ## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/navigation_new.cpp
-# )
+#add_library(navigation src/navigation.cpp )
+add_library(MPCController src/MPCController.cpp )
+add_library(KalmanFilter src/KalmanFilter.cpp )
+add_library(ExtendedKalmanFilter src/ExtendedKalmanFilter.cpp )
+
+add_library(abs src/matlabCode/abs.cpp)
+add_library(eye src/matlabCode/eye.cpp)
+add_library(inv src/matlabCode/inv.cpp)
+add_library(matrix_to_integer_power src/matlabCode/matrix_to_integer_power.cpp)
+add_library(mpcqpsolver src/matlabCode/mpcqpsolver.cpp)
+add_library(mpower src/matlabCode/mpower.cpp)
+add_library(norm src/matlabCode/norm.cpp)
+add_library(qpkwik src/matlabCode/qpkwik.cpp)
+add_library(qr src/matlabCode/qr.cpp)
+add_library(rtGetInf src/matlabCode/rtGetInf.cpp)
+add_library(rtGetNaN src/matlabCode/rtGetNaN.cpp)
+add_library(rt_nonfinite src/matlabCode/rt_nonfinite.cpp)
+add_library(solveQP src/matlabCode/solveQP.cpp 
+                    src/matlabCode/inv.cpp 
+                    src/matlabCode/matrix_to_integer_power.cpp
+                    src/matlabCode/mpower.cpp 
+                    src/matlabCode/mpcqpsolver.cpp 
+                    src/matlabCode/eye.cpp 
+                    src/matlabCode/qpkwik.cpp 
+                    src/matlabCode/abs.cpp 
+                    src/matlabCode/norm.cpp 
+                    src/matlabCode/qr.cpp 
+                    src/matlabCode/xgemv.cpp 
+                    src/matlabCode/xnrm2.cpp 
+                    src/matlabCode/xger.cpp
+            )
+add_library(solveQP_emxAPI src/matlabCode/solveQP_emxAPI.cpp)
+add_library(solveQP_emxutil src/matlabCode/solveQP_emxutil.cpp)
+add_library(solveQP_initialize src/matlabCode/solveQP_initialize.cpp src/matlabCode/rt_nonfinite.cpp src/matlabCode/rtGetInf.cpp src/matlabCode/rtGetNaN.cpp)
+add_library(solveQP_terminate src/matlabCode/solveQP_terminate.cpp)
+add_library(xgemv src/matlabCode/xgemv.cpp)
+add_library(xgeqrf src/matlabCode/xgeqrf.cpp)
+add_library(xger src/matlabCode/xger.cpp)
+#~ add_library(xgetrf src/xgetrf.cpp)
+add_library(xnrm2 src/matlabCode/xnrm2.cpp)
+add_library(xscal src/matlabCode/xscal.cpp)
+#~ add_library(xpotrf src/xpotrf.cpp)
+#~ add_library(xzlarf src/xzlarf.cpp)
+#~ add_library(xzlarfg src/xzlarfg.cpp)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(navigation ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-## With catkin_make all packages are built within a single CMake context
-## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/navigation_new_node.cpp)
+add_executable(navigation_node src/navigation_node.cpp)# src/MPCController.cpp)
 
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
+#~ add_executable(navigation_node_simulation src/navigation_node_simulation.cpp)
+
+# add_executable(navigation_node_simulation src/navigation_node_simulation.cpp)
+
+add_executable(navigation_menu src/navigation_menu.cpp)
+
+#~ add_executable(main src/main.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(navigation_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(navigation_node navigation_generate_messages_cpp)
+
+#~ add_dependencies(navigation_node_simulation navigation_generate_messages_cpp)
+
+# add_dependencies(navigation_node_simulation navigation_generate_messages_cpp)
+
+add_dependencies(navigation_menu navigation_generate_messages_cpp)
+# add_dependencies(MPCController navigation_generate_messages_cpp)
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(navigation_node ${catkin_LIBRARIES} ${Eigen_LIBRARIES} 
+    MPCController KalmanFilter ExtendedKalmanFilter 
+    abs eye inv matrix_to_integer_power mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite 
+    solveQP solveQP_emxAPI solveQP_emxutil solveQP_initialize solveQP_terminate xgemv xgeqrf xger xnrm2 xscal
+)
+#"/usr/local/lib/lbnlopt.a"  ${nlopt_LIBRARIES}
+#~ target_link_libraries(navigation_node_simulation ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+
+# target_link_libraries(navigation_node_simulation ${catkin_LIBRARIES} ${Eigen_LIBRARIES})
+
+target_link_libraries(navigation_menu ${catkin_LIBRARIES} )
+# target_link_libraries(MPCController ${catkin_LIBRARIES}  ${Eigen_LIBRARIES} )
+
+#~ target_link_libraries(main ${catkin_LIBRARIES} abs eye inv mpcqpsolver mpower norm qpkwik qr rtGetInf rtGetNaN rt_nonfinite solveQP solveQP_emxAPI solveQP_emxutil solveQP_initialize solveQP_terminate xgemv xgeqrf xger xnrm2)
 
 #############
 ## Install ##
@@ -166,11 +229,11 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
+# install(TARGETS navigation # navigation_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+#)
 
 ## Mark cpp header files for installation
 # install(DIRECTORY include/${PROJECT_NAME}/
@@ -191,7 +254,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_navigation_new.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_navigation.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()

@@ -11,16 +11,12 @@ using namespace Eigen;
 // constructor 
 ExtendedKalmanFilter::ExtendedKalmanFilter()
 {
+
+    //~ dt_ = 0.1;
+    //~ dpt_ = 0.025; // for prediction
     
     sigma_a_ = 0.1;
     sigma_w_ = 0.001;
-    sigma_GPSpx_ = 0.3;
-    sigma_GPSpy_ = 0.3;
-    sigma_GPSvx_ = 0.18; 
-    sigma_GPSvy_ = 0.18;  
-    sigma_Apriltagpx_ = 0.1; 
-    sigma_Apriltagpy_ = 0.1;  
-    stepsAhead_ = 1;
     
 
 
@@ -29,13 +25,13 @@ ExtendedKalmanFilter::ExtendedKalmanFilter()
     //~ Q_.block(3,3,2,2) = MatrixXd::Identity(2,2);
 
 
-    Rg_ <<  pow(sigma_GPSpx_,2), 0, 0, 0,
-            0, pow(sigma_GPSpy_,2), 0, 0,
-            0, 0, pow(sigma_GPSvx_,2), 0,
-            0, 0, 0, pow(sigma_GPSvy_,2);    // noise, sigma = 0.5
+    Rg_ <<  0.3*0.3, 0, 0, 0,
+            0, 0.3*0.3, 0, 0,
+            0, 0, 0.18*0.18*2, 0,
+            0, 0, 0, 0.001*0.001;   // noise, sigma = 0.5
             
-    Ra_ <<  pow(sigma_Apriltagpx_,2), 0,
-            0, pow(sigma_Apriltagpy_,2);
+    Ra_ <<  0.1*0.1, 0,
+            0, 0.1*0.1;
 
 
     nx_ = 4;  
@@ -74,8 +70,9 @@ void ExtendedKalmanFilter::SetXhatInitialPoint(VectorXd xk){
 }
 
 
-Vector4d ExtendedKalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double dt){
+Vector4d ExtendedKalmanFilter::UpdateWithGPSMeasurements(Vector4d xk, double dt){
 
+    Vector4d output = ObservationModelForGPS(xk, dt);
     double theta = xk(3);
     
     Q_ <<   pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*cos(theta), pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*sin(theta), pow(dt,3.0)/2*pow(sigma_a_,2.0)*cos(theta), 0,
@@ -108,8 +105,9 @@ Vector4d ExtendedKalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double
 }
 
 
-Vector4d ExtendedKalmanFilter::UpdateWithCameraMeasurements(Vector2d output, double dt){
+Vector4d ExtendedKalmanFilter::UpdateWithCameraMeasurements(Vector4d xk, double dt){
 
+    Vector2d output = ObservationModelForCamera(xk, dt);
     double theta = xk(3);
     
     Q_ <<   pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*cos(theta), pow(dt,4.0)/4*pow(sigma_a_,2.0)*cos(theta)*sin(theta), pow(dt,3.0)/2*pow(sigma_a_,2.0)*cos(theta), 0,
@@ -164,20 +162,15 @@ Vector4d ExtendedKalmanFilter::SystemModel(Vector4d xk, double dt){
 }
 
 
-Vector4d ExtendedKalmanFilter::ObservationModelForGPS(Vector4d xk, double dt)
-{
+Vector4d ExtendedKalmanFilter::ObservationModelForGPS(Vector4d xk, double dt){
 
-    double x = xk(0);
-    double y = xk(1);
-    double v = xk(2);
-    double theta = xk(3);
+    MatrixXd H(4,4);
+    H <<  1, 0, 0, 0,
+          0, 1, 0, 0,
+          0, 0, 1, 0,
+          0, 0, 0, 1;
 
-    double dx = x;
-    double dy = y;
-    double dvx = v*cos(theta);
-    double dvy = v*sin(theta);  // rads
-
-    Vector4d output(dx, dy, dvx, dvy);
+    Vector4d output = H*xk;
 
     return output;
 }
@@ -215,10 +208,10 @@ Matrix4d ExtendedKalmanFilter::JacobianSystemModel(Vector4d xk, double dt){
 MatrixXd ExtendedKalmanFilter::JacobianObservationModelForGPS(Vector4d xk, double dt){
 
     MatrixXd jacobian(4,4);
-    jacobian <<     1, 0, 0,            0,
-                    0, 1, 0,            0,
-                    0, 0, cos(theta),   -v*sin(theta),
-                    0, 0, sin(theta),   v*cos(theta);
+    jacobian <<     1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1;
     return jacobian;
     
 }
