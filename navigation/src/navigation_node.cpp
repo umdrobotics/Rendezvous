@@ -67,6 +67,7 @@ using namespace Eigen;
 #define DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME "/home/ubuntu/SearchRange_"
 #define DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME "/home/ubuntu/MPCController_"
 #define DEFAULT_KALMAN_FILTER_LOG_FILE_NAME "/home/ubuntu/KalmanFilter_"
+#define DEFAULT_FULL_JOURNEY_LOG_FILE_NAME "/home/ubuntu/FullJourney_"
 #define TARGET_LOST_TIME_OUT_SEC (1.0)
 
 #define PI 3.1415926
@@ -181,6 +182,7 @@ std::ofstream _ofsAutonomousLandingLog;
 std::ofstream _ofsSearchingRangeLog;
 std::ofstream _ofsMPCControllerLog;
 std::ofstream _ofsKalmanFilterLog;
+std::ofstream _ofsFullJourneyLog;
 
 
 // GPS & Camera data funsion
@@ -1788,7 +1790,6 @@ void timerCallback(const ros::TimerEvent&)
 
     // we need to run this functioin regardless of the navigation menu.
     RunTimeCriticalTasks();
-    // RunSensorFusing();
 
 
     if (_nNavigationTask < 21 || _nNavigationTask > 90)
@@ -1847,7 +1848,48 @@ void timerCallback(const ros::TimerEvent&)
             break;
     }
 
-  //~ std::cout << std::setprecision(std::numeric_limits<double>::max_digits10) << ros::Time::now().toSec() << std::endl;
+    DJIDrone& drone = *_ptrDrone;
+
+    dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
+    float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
+    float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
+    float roll = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
+
+    _ofsFullJourneyLog << std::setprecision(std::numeric_limits<double>::max_digits10)
+                     << ros::Time::now().toSec() << ","
+                     <<  _msgUltraSonic.ranges[0] << ","
+                     << (int)_msgUltraSonic.intensities[0] << "," // ultrasonic
+                     << _msgTruckLocalPosition.point.x << ","
+                     << _msgTruckLocalPosition.point.y << ","
+                     << _msgTruckLocalPosition.point.z << "," 
+                     << _msgTruckVelocity.point.x << ","
+                     << _msgTruckVelocity.point.y << ","       // truck local position
+                     << _msgTargetLocalPosition.point.x << ","
+                     << _msgTargetLocalPosition.point.y << ","
+                     << _msgTargetLocalPosition.point.z << ","   // target local position
+                     << _msgFusedTargetPosition.point.x << ","
+                     << _msgFusedTargetPosition.point.y << ","
+                     << _msgFusedTargetPosition.point.z << ","  
+                     << _msgFusedTargetVelocity.point.x << ","
+                     << _msgFusedTargetVelocity.point.y << ","
+                     << _msgFusedTargetVelocity.point.z << "," 
+                     << _msgRealTruckLocalPosition.point.x << ","
+                     << _msgRealTruckLocalPosition.point.y << "," 
+                     << _msgRealTruckLocalPosition.point.z << ","                     
+                     << drone.global_position.latitude << ","
+                     << drone.global_position.longitude << ","
+                     << drone.local_position.x << ","
+                     << drone.local_position.y << ","
+                     << drone.local_position.z << ","
+                     << drone.velocity.vx << ","
+                     << drone.velocity.vy << ","
+                     << drone.velocity.vz << ","
+                     << roll << ","
+                     << pitch << ","
+                     << yaw << ","
+                     << std::endl;   
+
+    _FusedTargetLocalPositionPub(_msgFusedTargetPosition);
 }
 
 void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
@@ -2043,6 +2085,12 @@ void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
     ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
     _ofsKalmanFilterLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
+
+    // Log about everything all the journey
+    ss.str("");
+    ss << DEFAULT_FULL_JOURNEY_LOG_FILE_NAME << currentDateTime() << ".log";
+    _ofsFullJourneyLog.open(ss.str());
+    ROS_ASSERT_MSG(_ofsFullJourneyLog, "Failed to open file %s", ss.str().c_str());
 }
 
 void LoadNodeSettings(ros::NodeHandle nh){
