@@ -50,7 +50,7 @@
     </group>
     <node name="navigation_node" pkg="navigation" type="navigation_node" output="screen" cwd="node">
     </node>
-    <node name="rosbag_record" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/navigation /navigation/target_local_position /navigation/truck_local_position /navigation/fused_target_local_position /dji_sdk/local_position /dji_sdk/global_position" >
+    <node name="rosbag_record" pkg="rosbag" type="record" args="-o /home/ubuntu/bagfiles/navigation /navigation/target_local_position /navigation/truck_local_position /navigation/fused_target_local_position /dji_sdk/local_position /dji_sdk/global_position /dji_sdk/attitude_quaternion /dji_sdk/velocity" >
     </node>
 </launch>
 

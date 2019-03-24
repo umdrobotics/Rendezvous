@@ -60,8 +60,8 @@ class ExtendedKalmanFilter {
         MatrixXd JacobianObservationModelForGPS(Vector4d xk, double dt);
         MatrixXd JacobianObservationModelForCamera(Vector4d xk, double dt);
         
-        Vector4d UpdateWithGPSMeasurements(Vector4d xk, double dt);
-        Vector4d UpdateWithCameraMeasurements(Vector4d xk, double dt);
+        Vector4d UpdateWithGPSMeasurements(Vector4d output, double dt);
+        Vector4d UpdateWithCameraMeasurements(Vector2d output, double dt);
         VectorXd PredictWOObservation(double dt);
         VectorXd Predict(Vector4d xk);
         Vector4d StateTransformer(Vector4d xk);

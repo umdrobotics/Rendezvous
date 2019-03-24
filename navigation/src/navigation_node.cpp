@@ -62,12 +62,12 @@ using namespace Eigen;
 #define FUSE_DEBUG
 
 //~ #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
-#define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/GoToTruck_"
-#define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/AutonomousLanding_"
+#define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/GotoTruck/GoToTruck_"
+#define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/AutonomousLanding/AutonomousLanding_"
 #define DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME "/home/ubuntu/SearchRange_"
-#define DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME "/home/ubuntu/MPCController_"
-#define DEFAULT_KALMAN_FILTER_LOG_FILE_NAME "/home/ubuntu/KalmanFilter_"
-#define DEFAULT_FULL_JOURNEY_LOG_FILE_NAME "/home/ubuntu/FullJourney_"
+#define DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/MPC/MPCController_"
+#define DEFAULT_KALMAN_FILTER_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/KF/KalmanFilter_"
+#define DEFAULT_FULL_JOURNEY_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/FullJourney/FullJourney_"
 #define TARGET_LOST_TIME_OUT_SEC (1.0)
 
 #define PI 3.1415926
@@ -1848,8 +1848,6 @@ void timerCallback(const ros::TimerEvent&)
             break;
     }
 
-    DJIDrone& drone = *_ptrDrone;
-
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
     float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
@@ -1889,7 +1887,7 @@ void timerCallback(const ros::TimerEvent&)
                      << yaw << ","
                      << std::endl;   
 
-    _FusedTargetLocalPositionPub(_msgFusedTargetPosition);
+    _FusedTargetLocalPositionPub.publish(_msgFusedTargetPosition);
 }
 
 void navigationTaskCallback(const std_msgs::UInt16 msgNavigationTask)
@@ -2126,7 +2124,7 @@ void LoadNodeSettings(ros::NodeHandle nh){
             nh.getParam("/KFParameters/sigma_GPSvy", _kf.sigma_GPSvy_);
             nh.getParam("/KFParameters/sigma_Apriltagpx", _kf.sigma_Apriltagpx_);
             nh.getParam("/KFParameters/sigma_Apriltagpy", _kf.sigma_Apriltagpy_);
-            nh.getParam("/KFParameters/nPred", _kf.stepsAhead_);
+            nh.getParam("/KFParameters/nPred", _kf.nPred_);
         }
         ROS_INFO("KF enabled!");
     }
@@ -2144,7 +2142,7 @@ void LoadNodeSettings(ros::NodeHandle nh){
             nh.getParam("/EKFParameters/sigma_GPSvy", _ekf.sigma_GPSvy_);
             nh.getParam("/EKFParameters/sigma_Apriltagpx", _ekf.sigma_Apriltagpx_);
             nh.getParam("/EKFParameters/sigma_Apriltagpy", _ekf.sigma_Apriltagpy_);
-            nh.getParam("/EKFParameters/nPred", _ekf.nPred_);
+            nh.getParam("/EKFParameters/nPred", _ekf.stepsAhead_);
         }
         ROS_INFO("Extended KF enabled!");
     }
@@ -2223,6 +2221,7 @@ int main(int argc, char **argv)
     _TargetLocalPositionPub         = nh.advertise<geometry_msgs::PointStamped>("/navigation/target_local_position", 10);
     _TruckLocalPositionPub          = nh.advertise<geometry_msgs::PointStamped>("/navigation/truck_local_position", 10);
     _FusedTargetLocalPositionPub    = nh.advertise<geometry_msgs::PointStamped>("/navigation/fused_target_local_position", 10);
+
 
     // main control loop = 20 Hz
     double dTimeStepSec = 0.025;
