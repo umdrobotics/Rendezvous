@@ -1793,12 +1793,12 @@ void timerCallback(const ros::TimerEvent&)
     RunTimeCriticalTasks();
 
 
-    if (_nNavigationTask < 21 || _nNavigationTask > 90)
-    // we don't take care of these cases in this callback function.
-    // They are taken care in navigationTaskCallback.
-    {
-        return;
-    }
+    //~ if (_nNavigationTask < 21 || _nNavigationTask > 90)
+    //~ // we don't take care of these cases in this callback function.
+    //~ // They are taken care in navigationTaskCallback.
+    //~ {
+        //~ return;
+    //~ }
 
     switch (_nNavigationTask)
     {
