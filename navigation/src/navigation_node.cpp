@@ -116,6 +116,7 @@ bool _bIsStartSim = false;
 bool _bIsLock = false; 
 bool _bIsClearIntegratorError = true;
 bool _bIsEKFEnable = false;
+double _cutoffThreshold = 0.13;
 
 // Target tracking boolean flags 
 bool _bIsTargetTrackingRunning = false;
@@ -1423,7 +1424,7 @@ void RunAutonomousLanding()
 
     DJIDrone& drone = *_ptrDrone;
 
-    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];
+    bool bIsDroneLanded = (_msgUltraSonic.ranges[0] < _cutoffThreshold) && (int)_msgUltraSonic.intensities[0];
     if (bIsDroneLanded)
     {
         if (!_bIsDroneLandingPrinted)
@@ -1489,7 +1490,7 @@ void RunAutonomousLanding2()
   
     bool bIsDroneLanded = false;
     if(_bIsSimulation){  bIsDroneLanded = drone.local_position.z < 0.1;  }
-    else{        bIsDroneLanded = (_msgUltraSonic.ranges[0] < 0.13) && (int)_msgUltraSonic.intensities[0];}
+    else{        bIsDroneLanded = (_msgUltraSonic.ranges[0] < _cutoffThreshold) && (int)_msgUltraSonic.intensities[0];}
     
     if (bIsDroneLanded)
     {
@@ -2108,6 +2109,7 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/NavigationSwitches/bIsKeepLanding",             _bIsKeepLanding);
         nh.getParam("/NavigationSwitches/bIsClearIntegratorError",    _bIsClearIntegratorError); 
         nh.getParam("/NavigationSwitches/bIsEKFEnable",               _bIsEKFEnable); 
+        nh.getParam("/NavigationSwitches/cutoffThreshold",            _cutoffThreshold); 
     }
 
 //~ #ifndef EKF_DEBUG
