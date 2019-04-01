@@ -2040,7 +2040,7 @@ const std::string currentDateTime() {
     tstruct = *localtime(&now);
     // Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
     // for more information about date/time format
-    strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
+    strftime(buf, sizeof(buf), "%Y-%m-%d_%H-%M-%S", &tstruct);
 
     return buf;
 }
@@ -2056,13 +2056,13 @@ void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
 
     //~ ss.str("");
     std::stringstream ss;
-    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME  << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos  << ".log";
+    ss << DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME  << currentDateTime() << ".log";
     _ofsGoToTruckLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsGoToTruckLog, "Failed to open file %s", ss.str().c_str());
     _ofsGoToTruckLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
 
     ss.str("");
-    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME   << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos << ".log";
+    ss << DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME   << currentDateTime() << ".log";
     _ofsAutonomousLandingLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsAutonomousLandingLog, "Failed to open file %s", ss.str().c_str());
     _ofsAutonomousLandingLog << "#Time,UltrasonicDistance,UltrasonicReliability,TargetDistance,TruckLocalPosition(x,y,z),TargetLocalPosition(x,y,z)" << std::endl;
@@ -2075,13 +2075,13 @@ void InitializeLogFiles(float mpc_q, float mpc_kiPos, float mpc_kiVec){
 
     // Log about MPC controller
     ss.str("");
-    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << currentDateTime() << "_" << "q" << mpc_q << "_" << "ki" << mpc_kiPos << ".log";
+    ss << DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME << currentDateTime() << "_" << _mpc.q_ << "_" << _mpc.kiPos_ << ".log";
     _ofsMPCControllerLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsMPCControllerLog, "Failed to open file %s", ss.str().c_str());
     
     // Log about KalmanFilter
     ss.str("");
-    ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << ".log";
+    ss << DEFAULT_KALMAN_FILTER_LOG_FILE_NAME << currentDateTime() << "_" << _ekf.stepsAhead_ << ".log";
     _ofsKalmanFilterLog.open(ss.str());
     ROS_ASSERT_MSG(_ofsKalmanFilterLog, "Failed to open file %s", ss.str().c_str());
 
