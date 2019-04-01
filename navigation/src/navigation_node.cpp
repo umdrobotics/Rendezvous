@@ -62,12 +62,12 @@ using namespace Eigen;
 #define FUSE_DEBUG
 
 //~ #define DEFAULT_TARGET_TRACKING_LOG_FILE_NAME "/home/ubuntu/TargetTracking_"
-#define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/GotoTruck/GoToTruck_"
-#define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/AutonomousLanding/AutonomousLanding_"
+#define DEFAULT_GO_TO_TRUCK_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/GoToTruck_"
+#define DEFAULT_AUTONOMOUS_LANDING_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/AutonomousLanding_"
 #define DEFAULT_SEAECHING_RANGE_LOG_FILE_NAME "/home/ubuntu/SearchRange_"
-#define DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/MPC/MPCController_"
-#define DEFAULT_KALMAN_FILTER_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/KF/KalmanFilter_"
-#define DEFAULT_FULL_JOURNEY_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/FullJourney/FullJourney_"
+#define DEFAULT_MPC_CONTROLLER_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/MPCController_"
+#define DEFAULT_KALMAN_FILTER_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/KalmanFilter_"
+#define DEFAULT_FULL_JOURNEY_LOG_FILE_NAME "/home/ubuntu/FlightTestLog/FullJourney_"
 #define TARGET_LOST_TIME_OUT_SEC (1.0)
 
 #define PI 3.1415926
@@ -950,7 +950,7 @@ void FindDesiredGimbalAngle(const apriltags_ros::AprilTagDetectionArray vecTagDe
     msgDesiredAngleDeg.point.z = drone.gimbal.yaw + yawDeg;
 
     _GimbalAnglePub.publish(msgDesiredAngleDeg);
-    ROS_INFO("Publish desired gimbal angle!! ");
+    //~ ROS_INFO("Publish desired gimbal angle!! ");
     tag.pose.pose.position.y *= -1;
 
 

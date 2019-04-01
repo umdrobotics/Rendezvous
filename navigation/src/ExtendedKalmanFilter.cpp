@@ -87,8 +87,6 @@ Vector4d ExtendedKalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double
     VectorXd xpred = SystemModel(xhat_, dt) ;              // local var, prediction for time 
     MatrixXd F = JacobianSystemModel(xhat_, dt);           // state transition Jacobian
     MatrixXd ppred = F * P_ * F.transpose() + Q_;             // local var, prediction for time k
-    
-    //~ std::cout << Q_.transpose() << std::endl;
 
     // Compute Kalman Gain
     VectorXd innovation = output - ObservationModelForGPS(xpred, dt);
@@ -121,17 +119,16 @@ Vector4d ExtendedKalmanFilter::UpdateWithCameraMeasurements(Vector2d output, dou
     VectorXd xpred = SystemModel(xhat_, dt) ;              // local var, prediction for time 
     MatrixXd F = JacobianSystemModel(xhat_, dt);           // state transition Jacobian
     MatrixXd ppred = F * P_ * F.transpose() + Q_;             // local var, prediction for time k
-
+    
     // Compute Kalman Gain
-    VectorXd innovation = output - ObservationModelForCamera(xpred, dt);
+    Vector2d innovation = output - ObservationModelForCamera(xpred, dt);
     MatrixXd H = JacobianObservationModelForCamera(xpred, dt);
-    MatrixXd S = H * ppred * H.transpose() + Ra_;
+    MatrixXd S = H * ppred * H.transpose() + Ra_;   
     MatrixXd K = ppred * H.transpose() * S.inverse();
-
+    
     // Update estimate
     xhat_ = xpred + K * innovation;
     P_ = ppred - K * H * ppred;
-    
     
     xEstmWO_ = xhat_;
 
@@ -185,7 +182,7 @@ Vector4d ExtendedKalmanFilter::ObservationModelForGPS(Vector4d xk, double dt)
 
 Vector2d ExtendedKalmanFilter::ObservationModelForCamera(Vector4d xk, double dt){
 
-    MatrixXd H(4,2);
+    MatrixXd H(2,4);
     H <<  1, 0, 0, 0,
           0, 1, 0, 0;
 
@@ -229,7 +226,7 @@ MatrixXd ExtendedKalmanFilter::JacobianObservationModelForGPS(Vector4d xk, doubl
 
 MatrixXd ExtendedKalmanFilter::JacobianObservationModelForCamera(Vector4d xk, double dt){
 
-    MatrixXd jacobian(4,2);
+    MatrixXd jacobian(2,4);
     jacobian <<     1, 0, 0, 0,
                     0, 1, 0, 0;
     return jacobian;
