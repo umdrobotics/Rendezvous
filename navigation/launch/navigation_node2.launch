@@ -11,8 +11,9 @@
         <param name="bIsLQREnable" type="bool" value="false"/>
         <param name="bIsKeepLanding" type="bool" value="true"/>
         <param name="bIsClearIntegratorError" type="bool" value="true"/>
-        <param name="bIsEKFEnable" type="bool" value="true"/>
+        <param name="bIsEKFEnable" type="bool" value="false"/>
         <param name="cutoffThreshold" type="double" value="0.3"/>
+        <param name="bIsDisarm" type="bool" value="true"/>
     </group>
     <group ns="KFParameters">
         <param name="defaultSetting" type="bool" value="false"/>

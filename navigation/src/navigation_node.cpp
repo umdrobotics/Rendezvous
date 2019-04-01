@@ -117,6 +117,7 @@ bool _bIsLock = false;
 bool _bIsClearIntegratorError = true;
 bool _bIsEKFEnable = false;
 double _cutoffThreshold = 0.13;
+bool _bIsDisarm = false;
 
 // Target tracking boolean flags 
 bool _bIsTargetTrackingRunning = false;
@@ -483,7 +484,7 @@ VectorXd RunConstraintedMPC(Vector4d xk, VectorXd desiredState){
     emxDestroyArray_real_T(rp);
     
     
-    std::cout << um.transpose() << std::endl;
+    //~ std::cout << um.transpose() << std::endl;
     
     return um;
     
@@ -1500,7 +1501,10 @@ void RunAutonomousLanding2()
           _bIsDroneLandingPrinted = true;
           _bIsTestInitiated = false;
       }
-      drone.landing(); 
+      
+      if(_bIsDisarm){   drone.drone_disarm();       }
+      else{             drone.landing();            }
+          
       return;
     }
 
@@ -2110,6 +2114,7 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/NavigationSwitches/bIsClearIntegratorError",    _bIsClearIntegratorError); 
         nh.getParam("/NavigationSwitches/bIsEKFEnable",               _bIsEKFEnable); 
         nh.getParam("/NavigationSwitches/cutoffThreshold",            _cutoffThreshold); 
+        nh.getParam("/NavigationSwitches/bIsDisarm",                  _bIsDisarm); 
     }
 
 //~ #ifndef EKF_DEBUG
