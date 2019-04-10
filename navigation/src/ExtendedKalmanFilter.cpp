@@ -70,11 +70,13 @@ void ExtendedKalmanFilter::SetXhatInitialPoint(VectorXd xk){
         P_ = MatrixXd::Identity(nx_, nx_);
         
 		IsXhatInitialized_ = true;
+		
 	}
 }
 
 
 Vector4d ExtendedKalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double dt){
+	
 
     double theta = xhat_(3);
     
@@ -107,6 +109,7 @@ Vector4d ExtendedKalmanFilter::UpdateWithGPSMeasurements(Vector4d output, double
 
 
 Vector4d ExtendedKalmanFilter::UpdateWithCameraMeasurements(Vector2d output, double dt){
+	
 
     double theta = xhat_(3);
     
@@ -129,6 +132,7 @@ Vector4d ExtendedKalmanFilter::UpdateWithCameraMeasurements(Vector2d output, dou
     // Update estimate
     xhat_ = xpred + K * innovation;
     P_ = ppred - K * H * ppred;
+
     
     xEstmWO_ = xhat_;
 

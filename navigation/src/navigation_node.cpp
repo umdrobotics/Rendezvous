@@ -207,6 +207,8 @@ geometry_msgs::PointStamped _msgFusedTargetPosition;
 geometry_msgs::PointStamped _msgFusedTargetVelocity;
 
 geometry_msgs::PointStamped _msgDesiredAttitudeDeg;
+geometry_msgs::PointStamped _msgControlInputDeg;
+
 
 // Publishers
 ros::Publisher _GimbalAnglePub;
@@ -521,6 +523,19 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
             _targetEstState = _ekf.PredictWOObservation(timeElapsed.toSec());
         }
         truckPred = _ekf.Predict(_targetEstState);
+        
+        if(!_bIsLock){   
+            _bIsLock = true;
+            _msgFusedTargetPosition.header.stamp = ros::Time::now();
+            _msgFusedTargetPosition.point.x = _targetEstState(0);
+            _msgFusedTargetPosition.point.y = _targetEstState(1);
+            _msgFusedTargetPosition.point.z = 0;
+
+            _msgFusedTargetVelocity.point.x = _targetEstState(2)*cos(_targetEstState(3));
+            _msgFusedTargetVelocity.point.y = _targetEstState(2)*sin(_targetEstState(3));
+            _msgFusedTargetVelocity.point.z = 0;
+            _bIsLock = false;
+        }
     }
     else{
         // Fused in Kalman Filter
@@ -531,6 +546,18 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
             _targetEstState = _kf.PredictWOObservation(timeElapsed.toSec());
         }
         truckPred = _kf.Predict(_targetEstState, _kf.nPred_ + P);
+        if(!_bIsLock){   
+            _bIsLock = true;
+            _msgFusedTargetPosition.header.stamp = ros::Time::now();
+            _msgFusedTargetPosition.point.x = _targetEstState(0);
+            _msgFusedTargetPosition.point.y = _targetEstState(1);
+            _msgFusedTargetPosition.point.z = 0;
+
+            _msgFusedTargetVelocity.point.x = _targetEstState(2);
+            _msgFusedTargetVelocity.point.y = _targetEstState(3);
+            _msgFusedTargetVelocity.point.z = 0;
+            _bIsLock = false;
+        }
     }
     VectorXd desiredState = truckPred.tail(P*nx);
     
@@ -609,6 +636,10 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
     float yaw = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1)) );
     float pitch = (float)UasMath::ConvertRad2Deg( asin(2.0 * (q.q2 * q.q0 - q.q3 * q.q1)) );
     float roll = (float)UasMath::ConvertRad2Deg( atan2(2.0 * (q.q3 * q.q2 + q.q0 * q.q1) , 1.0 - 2.0 * (q.q1 * q.q1 + q.q2 * q.q2)) );
+    
+    _msgControlInputDeg.point.x = -uk(0);
+    _msgControlInputDeg.point.y = -uk(1);
+    
 
     _ofsMPCControllerLog << std::setprecision(std::numeric_limits<double>::max_digits10)
                             << ros::Time::now().toSec() << ","
@@ -1123,7 +1154,7 @@ void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
         _ekf.SetXhatInitialPoint(targetState);
         ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
         _targetEstState = _ekf.UpdateWithGPSMeasurements(targetState, timeElapsed.toSec());
-    
+     
         if(_bIsLock){   
             return; 
         }
@@ -1511,7 +1542,7 @@ void RunAutonomousLanding2()
     float drone_x = drone.local_position.x;
     float drone_y = drone.local_position.y;
     float drone_z = drone.local_position.z;
-    float limitRadius = 0.8;
+    float limitRadius = 1;
     float horiDistance = 0;
     
     if (_bIsSimulation)
@@ -1584,7 +1615,11 @@ void RunAutonomousLanding2()
         
         float desired_yaw = 0;
         if (_bIsYawControlEnable){  desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckVelocity.point.y, _msgTruckVelocity.point.x));  }
-        RunAttitudeControl(desired_position, desired_yaw);   
+        
+        if (_bIsLocalLocationControlEnable)
+        {  RunLocalPositionControl(desired_position, desired_yaw);}
+        else
+        {  RunAttitudeControl(desired_position, desired_yaw);}
 
         
 #endif
@@ -1890,6 +1925,11 @@ void timerCallback(const ros::TimerEvent&)
                      << roll << ","
                      << pitch << ","
                      << yaw << ","
+                     << _msgControlInputDeg.point.x << ","
+                     << _msgControlInputDeg.point.y << ","
+                     << _msgDesiredAttitudeDeg.point.x << ","
+                     << _msgDesiredAttitudeDeg.point.y << ","
+                     << _msgDesiredAttitudeDeg.point.z << ","
                      << std::endl;   
 
     _FusedTargetLocalPositionPub.publish(_msgFusedTargetPosition);
@@ -2110,6 +2150,7 @@ void LoadNodeSettings(ros::NodeHandle nh){
         nh.getParam("/NavigationSwitches/bIsYawControlEnableSearch",  _bIsYawControlEnableSearch);
         nh.getParam("/NavigationSwitches/bIsMPCEnable",               _bIsMPCEnable);
         nh.getParam("/NavigationSwitches/bIsLQREnable",               _bIsLQREnable);
+        nh.getParam("/NavigationSwitches/bIsLocalLocationControlEnable", _bIsLocalLocationControlEnable);
         nh.getParam("/NavigationSwitches/bIsKeepLanding",             _bIsKeepLanding);
         nh.getParam("/NavigationSwitches/bIsClearIntegratorError",    _bIsClearIntegratorError); 
         nh.getParam("/NavigationSwitches/bIsEKFEnable",               _bIsEKFEnable); 

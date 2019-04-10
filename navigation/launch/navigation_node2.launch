@@ -9,9 +9,10 @@
         <param name="bIsYawControlEnableSearch" type="bool" value="false"/>
         <param name="bIsMPCEnable" type="bool" value="true"/>
         <param name="bIsLQREnable" type="bool" value="false"/>
+        <param name="bIsLocalLocationControlEnable" type="bool" value="false"/>
         <param name="bIsKeepLanding" type="bool" value="true"/>
         <param name="bIsClearIntegratorError" type="bool" value="true"/>
-        <param name="bIsEKFEnable" type="bool" value="false"/>
+        <param name="bIsEKFEnable" type="bool" value="true"/>
         <param name="cutoffThreshold" type="double" value="0.3"/>
         <param name="bIsDisarm" type="bool" value="true"/>
     </group>
@@ -25,7 +26,7 @@
         <param name="sigma_GPSvy" type="double" value="0.18"/>
         <param name="sigma_Apriltagpx" type="double" value="0.1"/>
         <param name="sigma_Apriltagpy" type="double" value="0.1"/>
-        <param name="nPred" type="int" value="10"/> <!-- orignal value 1, 5m/s target 3 -->
+        <param name="nPred" type="int" value="0"/> <!-- orignal value 1, 5m/s target 3 -->
     </group>
     <group ns="EKFParameters">
         <param name="defaultSetting" type="bool" value="false"/>
@@ -37,7 +38,7 @@
         <param name="sigma_GPSvy" type="double" value="0.18"/>
         <param name="sigma_Apriltagpx" type="double" value="0.1"/>
         <param name="sigma_Apriltagpy" type="double" value="0.1"/>
-        <param name="nPred" type="int" value="1"/> <!-- orignal value 1, 5m/s target 3 -->
+        <param name="nPred" type="int" value="0"/> <!-- orignal value 1, 5m/s target 3 -->
     </group>
     <group ns="MPCParameters">
         <param name="defaultSetting" type="bool" value="false"/>
