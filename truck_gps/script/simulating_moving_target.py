@@ -17,12 +17,12 @@ class Truck:
     LON_PER_EAST = 0.0000121249
     
     def __init__(self,isEnableNoise = True, timeStep = 0.1, timeStepTag = 0.1, gpsNoiseVariance = 0.3, velocityNoiseVariance = 0.18, tagNoiseVariance = 0.1):
+        
         # inital the class
 
         self.truckGpsPub =            rospy.Publisher("/truck/location_GPS", PoseStamped, queue_size=10)
         self.truckVelocityPub =       rospy.Publisher("/truck/velocity", PointStamped, queue_size=10)
-        self.truckRealPositionPub =   rospy.Publisher("/truck/real_location_GPS", PointStamped, queue_size=10)
-        self.StartSimulationPub =     rospy.Publisher("/truck/start_simulation", PointStamped, queue_size=10)
+        # self.StartSimulationPub =     rospy.Publisher("/truck/start_simulation", PointStamped, queue_size=10)
         self.aprilTagPub =            rospy.Publisher("/truck/tag_detections", PoseStamped, queue_size=10)
         
         self.isEnableNoise = isEnableNoise 
