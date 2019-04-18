@@ -1733,7 +1733,10 @@ void GoToTruckGPSLocation()
             desired_yaw = (float)UasMath::ConvertRad2Deg(atan2(_msgTruckDistance.point.y, _msgTruckDistance.point.x));
         }  
     }
-    RunAttitudeControl(desired_position, desired_yaw);   
+    if (_bIsLocalLocationControlEnable)
+    {   RunLocalPositionControl(desired_position, desired_yaw);}
+    else
+    {   RunAttitudeControl(desired_position, desired_yaw);}
 
     // Calculate yaw angle
     dji_sdk::AttitudeQuaternion q = drone.attitude_quaternion;
