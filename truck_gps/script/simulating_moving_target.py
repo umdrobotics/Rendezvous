@@ -66,10 +66,10 @@ class Truck:
         self.simVehicleVelocity.point.z = 0                 # down speed
 
         self.simTagLocation = PoseStamped()
-        self.simTagLocation.pose.position.x = 0
-        self.simTagLocation.pose.position.y = 0
-        self.simTagLocation.pose.orientation.x = 0   # latitude
-        self.simTagLocation.pose.orientation.y = 0
+        self.simTagLocation.pose.position.x = simLatitudeStart
+        self.simTagLocation.pose.position.y = simLongitudeStart
+        self.simTagLocation.pose.orientation.x = simLatitudeStart   # latitude
+        self.simTagLocation.pose.orientation.y = simLongitudeStart
         
         # speed = math.sqrt((speed_north*speed_north)+(speed_east*speed_east))
 
@@ -226,8 +226,8 @@ class Truck:
         #~ self.StartSimulationPub.publish(self.simStart)
         if self.simPathNumber == 1:
 
-                self.simTagLocation.pose.orientation.x += (self.variable_x * self.timeStepTag) 
-                self.simTagLocation.pose.orientation.y += (self.variable_y * self.timeStepTag) 
+                self.simTagLocation.pose.orientation.x += (self.variable_x * self.timeStepTag) * Truck.LAT_PER_NORTH 
+                self.simTagLocation.pose.orientation.y += (self.variable_y * self.timeStepTag) * Truck.LON_PER_EAST 
 
                 self.simTagLocation.pose.position.x = self.simTagLocation.pose.orientation.x
                 self.simTagLocation.pose.position.y = self.simTagLocation.pose.orientation.y
@@ -245,8 +245,8 @@ class Truck:
                 distance_x = self.variable_y * (1.0 - math.cos(omega*self.timeTag))
                 distance_y = self.variable_y * math.sin(omega*self.timeTag)
  
-                self.simTagLocation.pose.orientation.x = distance_x
-                self.simTagLocation.pose.orientation.y = distance_y
+                self.simTagLocation.pose.orientation.x = distance_x * Truck.LAT_PER_NORTH + self.simLatitudeStart
+                self.simTagLocation.pose.orientation.y = distance_y * Truck.LON_PER_EAST + self.simLongitudeStart
 
                 self.simTagLocation.pose.position.x = self.simTagLocation.pose.orientation.x
                 self.simTagLocation.pose.position.y = self.simTagLocation.pose.orientation.y
@@ -281,8 +281,8 @@ class Truck:
                         # self.count2 += 1
 
 
-                self.simTagLocation.pose.orientation.x += distance_x
-                self.simTagLocation.pose.orientation.y += distance_y
+                self.simTagLocation.pose.orientation.x += distance_x * Truck.LAT_PER_NORTH 
+                self.simTagLocation.pose.orientation.y += distance_y * Truck.LON_PER_EAST
 
                 self.simTagLocation.pose.position.x = self.simTagLocation.pose.orientation.x
                 self.simTagLocation.pose.position.y = self.simTagLocation.pose.orientation.y
@@ -300,8 +300,8 @@ class Truck:
                 distance_x = self.variable_y * (1.0 - math.cos(omega*self.timeTag))
                 distance_y = self.variable_y * math.sin(2*omega*self.timeTag)
 
-                self.simTagLocation.pose.orientation.x = distance_x
-                self.simTagLocation.pose.orientation.y = distance_y
+                self.simTagLocation.pose.orientation.x = distance_x * Truck.LAT_PER_NORTH + self.simLatitudeStart
+                self.simTagLocation.pose.orientation.y = distance_y * Truck.LON_PER_EAST + self.simLongitudeStart
 
                 self.simTagLocation.pose.position.x = self.simTagLocation.pose.orientation.x
                 self.simTagLocation.pose.position.y = self.simTagLocation.pose.orientation.y
@@ -318,8 +318,8 @@ class Truck:
                 distance_x = self.variable_y * math.sin(omega*self.timeTag + math.sin(omega*self.timeTag)) 
                 distance_y = self.variable_y * (math.cos(omega*self.timeTag + math.cos(omega*self.timeTag)) - math.cos(1))
 
-                self.simTagLocation.pose.orientation.x = distance_x
-                self.simTagLocation.pose.orientation.y = distance_y
+                self.simTagLocation.pose.orientation.x = distance_x * Truck.LAT_PER_NORTH + self.simLatitudeStart
+                self.simTagLocation.pose.orientation.y = distance_y * Truck.LON_PER_EAST + self.simLongitudeStart
 
                 self.simTagLocation.pose.position.x = self.simTagLocation.pose.orientation.x
                 self.simTagLocation.pose.position.y = self.simTagLocation.pose.orientation.y                
@@ -331,8 +331,8 @@ class Truck:
 
 
         if self.isEnableNoise:
-            self.simTagLocation.pose.position.x += (np.random.normal(0, self.tagNoiseVariance))
-            self.simTagLocation.pose.position.y += (np.random.normal(0, self.tagNoiseVariance))
+            self.simTagLocation.pose.position.x += (np.random.normal(0, self.tagNoiseVariance))*Truck.LAT_PER_NORTH
+            self.simTagLocation.pose.position.y += (np.random.normal(0, self.tagNoiseVariance))*Truck.LON_PER_EAST
             
     def TimerCallback(self, event):     
         self.PublishSimulationMsg()
@@ -342,7 +342,8 @@ class Truck:
 
 
 def main():
-    if len(sys.argv) > 1:        
+    if len(sys.argv) > 1:       
+		# 5 parameters available in argment vector: time step for GPS and tag; noise covariance for GPS, velocity, tag position 
         truck = Truck(timeStep = float(sys.argv[1]),timeStepTag = float(sys.argv[2]), gpsNoiseVariance = float(sys.argv[3]), velocityNoiseVariance = float(sys.argv[4]), tagNoiseVariance = float(sys.argv[5]))
         timeStep = float(sys.argv[1])
         timeStepTag = float(sys.argv[2])
