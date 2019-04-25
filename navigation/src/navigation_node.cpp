@@ -524,18 +524,18 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
         }
         truckPred = _ekf.Predict(_targetEstState);
         
-        if(!_bIsLock){   
-            _bIsLock = true;
-            _msgFusedTargetPosition.header.stamp = ros::Time::now();
-            _msgFusedTargetPosition.point.x = _targetEstState(0);
-            _msgFusedTargetPosition.point.y = _targetEstState(1);
-            _msgFusedTargetPosition.point.z = 0;
-
-            _msgFusedTargetVelocity.point.x = _targetEstState(2)*cos(_targetEstState(3));
-            _msgFusedTargetVelocity.point.y = _targetEstState(2)*sin(_targetEstState(3));
-            _msgFusedTargetVelocity.point.z = 0;
-            _bIsLock = false;
-        }
+        //~ if(!_bIsLock){   
+            //~ _bIsLock = true;
+            //~ _msgFusedTargetPosition.header.stamp = ros::Time::now();
+            //~ _msgFusedTargetPosition.point.x = _targetEstState(0);
+            //~ _msgFusedTargetPosition.point.y = _targetEstState(1);
+            //~ _msgFusedTargetPosition.point.z = 0;
+//~ 
+            //~ _msgFusedTargetVelocity.point.x = _targetEstState(2)*cos(_targetEstState(3));
+            //~ _msgFusedTargetVelocity.point.y = _targetEstState(2)*sin(_targetEstState(3));
+            //~ _msgFusedTargetVelocity.point.z = 0;
+            //~ _bIsLock = false;
+        //~ }
     }
     else{
         // Fused in Kalman Filter
@@ -546,18 +546,18 @@ float AttitudeControlHelper2(geometry_msgs::Point desired_position, float& dpitc
             _targetEstState = _kf.PredictWOObservation(timeElapsed.toSec());
         }
         truckPred = _kf.Predict(_targetEstState, _kf.nPred_ + P);
-        if(!_bIsLock){   
-            _bIsLock = true;
-            _msgFusedTargetPosition.header.stamp = ros::Time::now();
-            _msgFusedTargetPosition.point.x = _targetEstState(0);
-            _msgFusedTargetPosition.point.y = _targetEstState(1);
-            _msgFusedTargetPosition.point.z = 0;
-
-            _msgFusedTargetVelocity.point.x = _targetEstState(2);
-            _msgFusedTargetVelocity.point.y = _targetEstState(3);
-            _msgFusedTargetVelocity.point.z = 0;
-            _bIsLock = false;
-        }
+        //~ if(!_bIsLock){   
+            //~ _bIsLock = true;
+            //~ _msgFusedTargetPosition.header.stamp = ros::Time::now();
+            //~ _msgFusedTargetPosition.point.x = _targetEstState(0);
+            //~ _msgFusedTargetPosition.point.y = _targetEstState(1);
+            //~ _msgFusedTargetPosition.point.z = 0;
+//~ 
+            //~ _msgFusedTargetVelocity.point.x = _targetEstState(2);
+            //~ _msgFusedTargetVelocity.point.y = _targetEstState(3);
+            //~ _msgFusedTargetVelocity.point.z = 0;
+            //~ _bIsLock = false;
+        //~ }
     }
     VectorXd desiredState = truckPred.tail(P*nx);
     
@@ -1521,7 +1521,7 @@ void RunAutonomousLanding2()
     DJIDrone& drone = *_ptrDrone;
   
     bool bIsDroneLanded = false;
-    if(_bIsSimulation){  bIsDroneLanded = drone.local_position.z < 0.1;  }
+    if(_bIsSimulation){  bIsDroneLanded = drone.local_position.z < _cutoffThreshold;  }
     else{        bIsDroneLanded = (_msgUltraSonic.ranges[0] < _cutoffThreshold) && (int)_msgUltraSonic.intensities[0];}
     
     if (bIsDroneLanded)
@@ -1547,7 +1547,7 @@ void RunAutonomousLanding2()
     
     if (_bIsSimulation)
     {    
-      horiDistance = sqrt(pow((_msgTruckLocalPosition.point.x - drone_x),2) + pow((_msgTruckLocalPosition.point.y - drone_y),2));
+      horiDistance = sqrt(pow((_msgFusedTargetPosition.point.x - drone_x),2) + pow((_msgFusedTargetPosition.point.y - drone_y),2));
       bool bIsClose = horiDistance < limitRadius;
       bool bIsStartLanding = false;
       if (bIsClose)
@@ -1564,8 +1564,8 @@ void RunAutonomousLanding2()
       // float set_landing_point_z = LocalPositionControlAltitudeHelper(-0.1, drone.local_position.z);
   
       geometry_msgs::Point desired_position;
-      desired_position.x = _msgTruckLocalPosition.point.x;
-      desired_position.y = _msgTruckLocalPosition.point.y;;
+      desired_position.x = _msgFusedTargetPosition.point.x;
+      desired_position.y = _msgFusedTargetPosition.point.y;
       desired_position.z = bIsStartLanding ? -0.1 : drone_z;
       
       float desired_yaw = 0;
