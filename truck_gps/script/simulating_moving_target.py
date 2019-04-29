@@ -16,7 +16,7 @@ class Truck:
     LAT_PER_NORTH = 0.0000089354
     LON_PER_EAST = 0.0000121249
     
-    def __init__(self,isEnableNoise = True, timeStep = 0.1, timeStepTag = 0.1, gpsNoiseVariance = 0.3, velocityNoiseVariance = 0.18, tagNoiseVariance = 0.1):
+    def __init__(self,isEnableNoise = True, timeStep = 0.1, timeStepTag = 0.05, gpsNoiseVariance = 0.3, velocityNoiseVariance = 0.18, tagNoiseVariance = 0.1):
         
         # inital the class
 

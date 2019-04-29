@@ -280,11 +280,13 @@ float LocalPositionControlHelper(float desired, float current_position)
 
     float error = desired - current_position;
     float abs_error = abs(error);
+    
+    return desired
 
-    return (abs_error < 0.4) ? desired
-                         : (abs_error < 5) ? current_position + error * 0.5
-                                       : (abs_error < 20) ? current_position + error * 0.3
-                                                      : current_position + error * 0.2;
+    //~ return (abs_error < 0.4) ? desired
+                         //~ : (abs_error < 5) ? current_position + error * 0.5
+                                       //~ : (abs_error < 20) ? current_position + error * 0.3
+                                                      //~ : current_position + error * 0.2;
 
 }
 
@@ -1095,6 +1097,70 @@ void startSimCallback(const geometry_msgs::PointStamped msgStartSim)
   _nNavigationTask = msgStartSim.point.x;
   _bIsStartSim = true;
   
+}
+
+void apriltagSimCallback(const geometry_msgs::PoseStamped msgApriltagPosition)
+{
+	  // drone.local_position.x means northing
+    // drone.local_position.y means easting
+    
+    DJIDrone& drone = *_ptrDrone;
+    
+    
+    // Calculate the target local location
+    _msgTargetLocalPosition.header.stamp = ros::Time::now();
+    _msgTargetLocalPosition.point.x = (msgApriltagPosition.pose.position.x - drone.global_position.latitude)/0.0000089354 + drone.local_position.x;
+    _msgTargetLocalPosition.point.y = (msgApriltagPosition.pose.position.y - drone.global_position.longitude)/0.0000121249 + drone.local_position.y;
+    _msgTargetLocalPosition.point.z = 0;
+    _TargetLocalPositionPub.publish(_msgTargetLocalPosition);
+
+
+
+    if(_bIsEKFEnable){
+        // Update estimate by extended kalman filter
+        Vector2d targetState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
+        ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
+        _targetEstState = _ekf.UpdateWithCameraMeasurements(targetState, timeElapsed.toSec());
+
+        if(_bIsLock){   
+            return; 
+        }
+        else{
+            _bIsLock = true;
+            _msgFusedTargetPosition.header.stamp = ros::Time::now();
+            _msgFusedTargetPosition.point.x = _targetEstState(0);
+            _msgFusedTargetPosition.point.y = _targetEstState(1);
+            _msgFusedTargetPosition.point.z = 0;
+
+            _msgFusedTargetVelocity.point.x = _targetEstState(2)*cos(_targetEstState(3));
+            _msgFusedTargetVelocity.point.y = _targetEstState(2)*sin(_targetEstState(3));
+            _msgFusedTargetVelocity.point.z = 0;
+            _bIsLock = false;
+        }
+    }
+    else{
+
+        // Update estimate by kalman filter
+        Vector2d targetState(_msgTargetLocalPosition.point.x, _msgTargetLocalPosition.point.y);
+        ros::Duration timeElapsed = ros::Time::now() - _msgFusedTargetPosition.header.stamp;
+        _targetEstState = _kf.UpdateWithCameraMeasurements(targetState, timeElapsed.toSec());
+
+        if(_bIsLock){   
+            return; 
+        }
+        else{
+            _bIsLock = true;
+            _msgFusedTargetPosition.header.stamp = ros::Time::now();
+            _msgFusedTargetPosition.point.x = _targetEstState(0);
+            _msgFusedTargetPosition.point.y = _targetEstState(1);
+            _msgFusedTargetPosition.point.z = 0;
+
+            _msgFusedTargetVelocity.point.x = _targetEstState(2);
+            _msgFusedTargetVelocity.point.y = _targetEstState(3);
+            _msgFusedTargetVelocity.point.z = 0;
+            _bIsLock = false;
+        }
+    }
 }
 
 void truckPositionCallback(const geometry_msgs::PoseStamped msgTruckPosition)
@@ -2264,6 +2330,7 @@ int main(int argc, char **argv)
     //~ ros::Subscriber sub6 = nh.subscribe("/truck/real_location_GPS", numMessagesToBuffer, realTruckPositionCallback);
     ros::Subscriber sub7 = nh.subscribe("/truck/velocity", numMessagesToBuffer, truckVelocityCallback);
     ros::Subscriber sub8 = nh.subscribe("/truck/start_simulation", numMessagesToBuffer, startSimCallback);
+    ros::Subscriber sub9 = nh.subscribe("/truck/tag_detections", numMessagesToBuffer, apriltagSimCallback);
     // ros::Subscriber sub4 = nh.subscribe("/dji_sdk/gimbal", numMessagesToBuffer, gimbalCallback);
 
 
